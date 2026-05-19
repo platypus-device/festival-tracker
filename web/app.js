@@ -3,6 +3,7 @@ const state = {
   view: "available",
   search: "",
   festival: "",
+  year: "",
   status: "",
   sort: "rating",
 };
@@ -20,6 +21,7 @@ const els = {
   metricEvents: document.querySelector("#metricEvents"),
   searchInput: document.querySelector("#searchInput"),
   festivalFilter: document.querySelector("#festivalFilter"),
+  yearFilter: document.querySelector("#yearFilter"),
   statusFilter: document.querySelector("#statusFilter"),
   sortSelect: document.querySelector("#sortSelect"),
   viewKicker: document.querySelector("#viewKicker"),
@@ -67,7 +69,7 @@ const availabilitySummary = (event) => {
   const date = event.event_date || "Recorded";
   const types = Array.isArray(event.availability_types) ? event.availability_types : [];
   const readableTypes = types.map((type) => type.replaceAll("_", " ")).join(", ");
-  return readableTypes ? `${date} · ${readableTypes}` : date;
+  return readableTypes ? `${date} - ${readableTypes}` : date;
 };
 
 const ratingLabel = (rating) => {
@@ -118,12 +120,14 @@ function readUrlState() {
   const sort = params.get("sort");
   const search = params.get("q");
   const festival = params.get("festival");
+  const year = params.get("year");
 
   if (validViews.has(view)) state.view = view;
   if (validStatuses.has(status)) state.status = status;
   if (validSorts.has(sort)) state.sort = sort;
   if (typeof search === "string") state.search = search;
   if (typeof festival === "string") state.festival = festival;
+  if (typeof year === "string" && /^\d{4}$/.test(year)) state.year = year;
 }
 
 function syncControls() {
@@ -131,6 +135,7 @@ function syncControls() {
   els.statusFilter.value = state.status;
   els.sortSelect.value = state.sort;
   els.festivalFilter.value = state.festival;
+  els.yearFilter.value = state.year;
 }
 
 function writeUrlState() {
@@ -138,6 +143,7 @@ function writeUrlState() {
   if (state.view !== "available") params.set("view", state.view);
   if (state.search) params.set("q", state.search);
   if (state.festival) params.set("festival", state.festival);
+  if (state.year) params.set("year", state.year);
   if (state.status) params.set("status", state.status);
   if (state.sort !== "rating") params.set("sort", state.sort);
   const query = params.toString();
@@ -178,9 +184,16 @@ function setupFilters() {
   els.generatedAt.textContent = formatDateTime(state.data.generatedAt);
 
   const festivals = Array.isArray(state.data.festivals) ? state.data.festivals : [];
+  const years = Array.isArray(state.data.years)
+    ? state.data.years
+    : [...new Set((state.data.films || []).map((film) => film.year).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
   els.festivalFilter.innerHTML = [
     `<option value="">All festivals</option>`,
     ...festivals.map((festival) => `<option value="${escapeHtml(festival)}">${escapeHtml(festival)}</option>`),
+  ].join("");
+  els.yearFilter.innerHTML = [
+    `<option value="">All years</option>`,
+    ...years.map((year) => `<option value="${escapeHtml(year)}">${escapeHtml(year)}</option>`),
   ].join("");
 }
 
@@ -196,6 +209,9 @@ function filteredFilms() {
   }
   if (state.festival) {
     films = films.filter((film) => film.festival === state.festival);
+  }
+  if (state.year) {
+    films = films.filter((film) => String(film.year || "") === state.year);
   }
   if (state.status) {
     films = films.filter((film) => film.trackingStatus === state.status);
@@ -446,6 +462,10 @@ els.searchInput.addEventListener("input", (event) => {
 });
 els.festivalFilter.addEventListener("change", (event) => {
   state.festival = event.target.value;
+  render();
+});
+els.yearFilter.addEventListener("change", (event) => {
+  state.year = event.target.value;
   render();
 });
 els.statusFilter.addEventListener("change", (event) => {

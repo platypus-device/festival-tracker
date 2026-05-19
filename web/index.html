@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Festival Tracker</title>
-    <link rel="stylesheet" href="./styles.css?v=20260519-system-a11y" />
+    <link rel="stylesheet" href="./styles.css?v=20260519-year-filter" />
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to Content</a>
@@ -31,7 +31,7 @@
       <section class="controls" aria-label="Filters">
         <label>
           Search
-          <input id="searchInput" name="search" type="search" autocomplete="off" placeholder="Title, director, section…" />
+          <input id="searchInput" name="search" type="search" autocomplete="off" placeholder="Title, director, section..." />
         </label>
         <details class="filter-drawer" open>
           <summary>Filters</summary>
@@ -39,6 +39,10 @@
             <label>
               Festival
               <select id="festivalFilter" name="festival"></select>
+            </label>
+            <label>
+              Year
+              <select id="yearFilter" name="year"></select>
             </label>
             <label>
               Status
@@ -83,6 +87,6 @@
     </aside>
     <div id="overlay" class="overlay hidden"></div>
 
-    <script src="./app.js?v=20260519-availability-simple"></script>
+    <script src="./app.js?v=20260519-year-filter"></script>
   </body>
 </html>

@@ -55,13 +55,17 @@
       "sources": [
         {
           "url": "https://www.labiennale.org/en/cinema/2025/venezia-82-competition",
+          "enabled": false,
           "parser": "venice_selection",
-          "year": 2025
+          "year": 2025,
+          "notes": "Historical 2025 source moved to config/backfills/2025.json."
         },
         {
           "url": "https://www.labiennale.org/en/cinema/2025/orizzonti",
+          "enabled": false,
           "parser": "venice_selection",
-          "year": 2025
+          "year": 2025,
+          "notes": "Historical 2025 source moved to config/backfills/2025.json."
         }
       ]
     },
@@ -98,10 +102,12 @@
       "sources": [
         {
           "url": "https://www.filmlinc.org/nyff2025/daily/63rd-new-york-film-festival-main-slate-announced/",
+          "enabled": false,
           "parser": "nyff_main_slate",
           "sectionScope": [
             "Main Slate"
-          ]
+          ],
+          "notes": "Historical 2025 source moved to config/backfills/2025.json."
         }
       ]
     },
@@ -176,13 +182,17 @@
       "sources": [
         {
           "url": "https://www.kviff.com/en/programme/archive-of-films/2025/section/948-crystal-globe-competition",
+          "enabled": false,
           "parser": "kviff_archive_section",
-          "year": 2025
+          "year": 2025,
+          "notes": "Historical 2025 source moved to config/backfills/2025.json."
         },
         {
           "url": "https://www.kviff.com/en/programme/archive-of-films/2025/section/952-proxima-competition",
+          "enabled": false,
           "parser": "kviff_archive_section",
-          "year": 2025
+          "year": 2025,
+          "notes": "Historical 2025 source moved to config/backfills/2025.json."
         }
       ]
     },
@@ -230,11 +240,13 @@
       "sources": [
         {
           "url": "https://www.goldenhorse.org.tw/awards/nw/?ins=51&r=en&sc=8&search_regist_year=2025&serach_type=award",
+          "enabled": false,
           "parser": "golden_horse_awards",
           "year": 2025,
           "sectionScope": [
             "Best Narrative Feature"
-          ]
+          ],
+          "notes": "Historical 2025 source moved to config/backfills/2025.json."
         }
       ]
     },

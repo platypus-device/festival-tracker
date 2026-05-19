@@ -285,6 +285,21 @@ $taipeiNewTalent = @(ConvertFrom-TaipeiNewTalentData -Data $taipeiNewTalentData 
 Assert-Equal 1 $taipeiNewTalent.Count "converts Taipei New Talent API data"
 Assert-Equal "Sample Director" $taipeiNewTalent[0].director "extracts Taipei New Talent director"
 
+$sampleWebFilms = @(
+    [pscustomobject]@{ year = 2025 },
+    [pscustomobject]@{ year = 2026 },
+    [pscustomobject]@{ year = 2025 },
+    [pscustomobject]@{ year = 2024 },
+    [pscustomobject]@{ year = $null }
+)
+$sampleYears = @(
+    $sampleWebFilms |
+        ForEach-Object { ConvertTo-OptionalInt $_.year } |
+        Where-Object { $null -ne $_ } |
+        Sort-Object -Descending -Unique
+)
+Assert-Equal "2026,2025,2024" ($sampleYears -join ",") "exports web years descending and unique"
+
 $providerResult = [pscustomobject]@{
     results = [pscustomobject]@{
         US = [pscustomobject]@{

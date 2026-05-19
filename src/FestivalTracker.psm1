@@ -1891,7 +1891,31 @@ function Invoke-NotionRequest {
         $parameters["Body"] = [System.Text.Encoding]::UTF8.GetBytes($json)
     }
 
-    return Invoke-RestMethod @parameters
+    $maxAttempts = 4
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            return Invoke-RestMethod @parameters
+        }
+        catch {
+            if ($attempt -ge $maxAttempts) {
+                throw
+            }
+
+            $statusCode = $null
+            if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+                $statusCode = [int]$_.Exception.Response.StatusCode
+            }
+            $isTransientStatus = $statusCode -in @(408, 409, 425, 429, 500, 502, 503, 504)
+            $isConnectionFailure = $_.Exception -is [System.Net.WebException]
+            if (-not $isTransientStatus -and -not $isConnectionFailure) {
+                throw
+            }
+
+            $delaySeconds = [Math]::Min(20, [Math]::Pow(2, $attempt))
+            Write-Warning "Notion request failed; retrying in $delaySeconds second(s). Attempt $attempt of $maxAttempts."
+            Start-Sleep -Seconds $delaySeconds
+        }
+    }
 }
 
 function Get-NotionTextProperty {

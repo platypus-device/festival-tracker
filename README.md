@@ -21,7 +21,9 @@ https://platypus-device.github.io/festival-tracker/
 
 The tracker uses a restrained high-priority scope. The target annual library size is about 180-250 films after de-duplication.
 
-Enabled core sources:
+Current daily sources are kept in `config/festivals.json`. Historical editions are handled by manual backfill configs so the daily workflow does not keep rescanning old archive pages.
+
+Enabled or prepared core sources:
 
 - Cannes
 - Venice
@@ -71,6 +73,14 @@ Run the full tracker against Notion:
 Export Notion data for the web UI:
 
 ```powershell
+.\scripts\Export-TrackerData.ps1 -UseNotion
+```
+
+Backfill a historical year after a dry-run:
+
+```powershell
+.\scripts\Invoke-FestivalTracker.ps1 -Mode Lineups -ConfigPath .\config\backfills\2025.json -DryRun
+.\scripts\Invoke-FestivalTracker.ps1 -Mode Lineups -ConfigPath .\config\backfills\2025.json -UseNotion
 .\scripts\Export-TrackerData.ps1 -UseNotion
 ```
 

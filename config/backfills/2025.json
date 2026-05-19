@@ -1,0 +1,198 @@
+{
+  "festivals": [
+    {
+      "name": "Academy Awards",
+      "region": "United States",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 1, "endMonth": 12 },
+      "sources": [
+        {
+          "url": "https://www.oscars.org/oscars/ceremonies/2026",
+          "enabled": false,
+          "parser": "oscars_ceremony",
+          "year": 2025,
+          "sectionScope": [
+            "Best Picture",
+            "International Feature Film",
+            "Animated Feature Film"
+          ],
+          "notes": "Official Oscars ceremony pages currently return 403 to automated requests."
+        }
+      ]
+    },
+    {
+      "name": "Cannes",
+      "region": "France",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 3, "endMonth": 6 },
+      "sources": [
+        {
+          "url": "https://www.festival-cannes.com/en/press/press-releases/the-films-of-the-official-selection-2025/",
+          "parser": "cannes_selection",
+          "year": 2025,
+          "sectionScope": [
+            "In Competition - Feature films",
+            "Un Certain Regard"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Berlinale",
+      "region": "Germany",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 12, "endMonth": 3 },
+      "sources": [
+        {
+          "url": "https://www.berlinale.de/en/2025/programme/landing-programme.html",
+          "enabled": false,
+          "parser": "generic_title_by_director",
+          "year": 2025,
+          "sectionScope": [
+            "Competition",
+            "Encounters"
+          ],
+          "notes": "Official archive is stable for film detail pages, but no strict section-list parser is enabled yet."
+        }
+      ]
+    },
+    {
+      "name": "Venice",
+      "region": "Italy",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 7, "endMonth": 9 },
+      "sources": [
+        {
+          "url": "https://www.labiennale.org/en/cinema/2025/venezia-82-competition",
+          "parser": "venice_selection",
+          "year": 2025,
+          "sectionScope": [
+            "Venezia Competition"
+          ]
+        },
+        {
+          "url": "https://www.labiennale.org/en/cinema/2025/orizzonti",
+          "parser": "venice_selection",
+          "year": 2025,
+          "sectionScope": [
+            "Orizzonti"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sundance",
+      "region": "United States",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 11, "endMonth": 2 },
+      "sources": [
+        {
+          "url": "https://www.sundance.org/blogs/2025-sundance-film-festival-reveals-93-projects-for-feature-film-and-episodic-programs/",
+          "parser": "sundance_article",
+          "year": 2025,
+          "sectionScope": [
+            "U.S. Dramatic Competition",
+            "World Cinema Dramatic Competition",
+            "NEXT"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "NYFF",
+      "region": "United States",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 7, "endMonth": 10 },
+      "sources": [
+        {
+          "url": "https://www.filmlinc.org/nyff2025/daily/63rd-new-york-film-festival-main-slate-announced/",
+          "parser": "nyff_main_slate",
+          "year": 2025,
+          "sectionScope": [
+            "Main Slate"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Busan",
+      "region": "South Korea",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 8, "endMonth": 10 },
+      "sources": [
+        {
+          "url": "https://www.biff.kr/eng/html/archive/arc_history.asp?1=1&page_name=showing&pyear=2025",
+          "enabled": false,
+          "parser": "generic_title_by_director",
+          "year": 2025,
+          "sectionScope": [
+            "New Currents"
+          ],
+          "notes": "Official archive exists, but the current generic parser is too broad for safe New Currents-only import."
+        }
+      ]
+    },
+    {
+      "name": "Karlovy Vary",
+      "region": "Czech Republic",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 5, "endMonth": 7 },
+      "sources": [
+        {
+          "url": "https://www.kviff.com/en/programme/archive-of-films/2025/section/948-crystal-globe-competition",
+          "parser": "kviff_archive_section",
+          "year": 2025,
+          "sectionScope": [
+            "Crystal Globe Competition"
+          ]
+        },
+        {
+          "url": "https://www.kviff.com/en/programme/archive-of-films/2025/section/952-proxima-competition",
+          "parser": "kviff_archive_section",
+          "year": 2025,
+          "sectionScope": [
+            "Proxima Competition"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Taipei Golden Horse Film Festival",
+      "region": "Taiwan",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 9, "endMonth": 12 },
+      "sources": [
+        {
+          "url": "https://www.goldenhorse.org.tw/awards/nw/?ins=51&r=en&sc=8&search_regist_year=2025&serach_type=award",
+          "parser": "golden_horse_awards",
+          "year": 2025,
+          "sectionScope": [
+            "Best Narrative Feature"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Taipei Film Festival",
+      "region": "Taiwan",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 5, "endMonth": 7 },
+      "sources": [
+        {
+          "url": "https://www.taipeiff.taipei/tw/tfa?tab=shortlist",
+          "enabled": false,
+          "parser": "taipeiff_tfa_nominees",
+          "year": 2025,
+          "notes": "Current API token flow resolves the active edition; keep disabled until a stable 2025 archive endpoint is confirmed."
+        },
+        {
+          "url": "https://www.taipeiff.taipei/en/news/7ddc0697D4fe",
+          "enabled": false,
+          "parser": "taipeiff_new_talent",
+          "year": 2025,
+          "notes": "Official 2025 news page is stable, but this parser expects the active API endpoint."
+        }
+      ]
+    }
+  ]
+}

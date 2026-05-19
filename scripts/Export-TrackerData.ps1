@@ -89,6 +89,12 @@ else {
 }
 
 $webFilms = @($films | ForEach-Object { ConvertTo-WebFilm -Film $_ -Events $events })
+$years = @(
+    $webFilms |
+        ForEach-Object { ConvertTo-OptionalInt $_.year } |
+        Where-Object { $null -ne $_ } |
+        Sort-Object -Descending -Unique
+)
 $payload = [pscustomobject]@{
     generatedAt = (Get-Date).ToString("o")
     totals = [pscustomobject]@{
@@ -98,6 +104,7 @@ $payload = [pscustomobject]@{
         events = $events.Count
     }
     festivals = @($webFilms | ForEach-Object { $_.festival } | Where-Object { $_ } | Sort-Object -Unique)
+    years = $years
     films = $webFilms
     events = $events
 }
