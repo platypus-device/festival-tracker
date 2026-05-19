@@ -17,6 +17,9 @@ const els = {
   festivalFilter: document.querySelector("#festivalFilter"),
   statusFilter: document.querySelector("#statusFilter"),
   sortSelect: document.querySelector("#sortSelect"),
+  viewKicker: document.querySelector("#viewKicker"),
+  viewTitle: document.querySelector("#viewTitle"),
+  viewMeta: document.querySelector("#viewMeta"),
   spotlight: document.querySelector("#spotlight"),
   filmGrid: document.querySelector("#filmGrid"),
   reviewTable: document.querySelector("#reviewTable"),
@@ -62,6 +65,29 @@ const ratingLabel = (rating) => {
 const percentLabel = (value) => {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? `${Math.round(number * 100)}%` : "-";
+};
+
+const viewCopy = {
+  available: {
+    kicker: "Available",
+    title: "First legal availability",
+    meta: "films ready to watch",
+  },
+  all: {
+    kicker: "Library",
+    title: "Festival selection",
+    meta: "tracked films",
+  },
+  review: {
+    kicker: "Review",
+    title: "Needs manual check",
+    meta: "items to inspect",
+  },
+  events: {
+    kicker: "Events",
+    title: "Recent finds",
+    meta: "availability events",
+  },
 };
 
 const posterMarkup = (film) => {
@@ -164,6 +190,13 @@ function renderSpotlight(films) {
   button?.addEventListener("click", () => openDetail(film));
 }
 
+function renderViewHeader(count) {
+  const copy = viewCopy[state.view] || viewCopy.available;
+  els.viewKicker.textContent = copy.kicker;
+  els.viewTitle.textContent = copy.title;
+  els.viewMeta.textContent = `${count} ${copy.meta}`;
+}
+
 function setMode(mode) {
   els.filmGrid.classList.toggle("hidden", mode !== "grid");
   els.reviewTable.classList.toggle("hidden", mode !== "review");
@@ -173,6 +206,7 @@ function setMode(mode) {
 function renderFilmGrid() {
   const films = filteredFilms();
   setMode("grid");
+  renderViewHeader(films.length);
   renderSpotlight(films);
 
   if (films.length === 0) {
@@ -191,6 +225,7 @@ function renderFilmGrid() {
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
             <p class="film-subtitle">${escapeHtml(film.director || "Unknown director")}</p>
+            <p class="film-section">${escapeHtml(film.section || film.festival || "Official selection")}</p>
             <div class="film-facts">
               <span>${escapeHtml(film.festival || "Festival")}</span>
               <span>${escapeHtml(ratingLabel(film.tmdbRating))}</span>
@@ -212,6 +247,7 @@ function renderFilmGrid() {
 function renderReviewTable() {
   const films = filteredFilms();
   setMode("review");
+  renderViewHeader(films.length);
   renderSpotlight([]);
 
   if (films.length === 0) {
@@ -250,6 +286,7 @@ function renderEvents() {
   const events = Array.isArray(state.data.events) ? [...state.data.events] : [];
   events.sort((a, b) => String(b.event_date || "").localeCompare(String(a.event_date || "")));
   setMode("events");
+  renderViewHeader(events.length);
   renderSpotlight([]);
 
   if (events.length === 0) {
