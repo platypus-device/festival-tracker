@@ -656,12 +656,23 @@ select:focus-visible {
 .availability-card {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(89, 197, 139, 0.08);
   padding: 12px;
 }
 
+.availability-summary {
+  display: grid;
+  gap: 6px;
+  border-color: rgba(89, 197, 139, 0.24);
+}
+
+.availability-summary strong {
+  color: #d9f8e9;
+  font-size: 15px;
+}
+
 .availability-card p {
-  margin: 8px 0 0;
+  margin: 0;
 }
 
 .detail-body p {

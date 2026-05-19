@@ -62,6 +62,14 @@ const statusClass = (status) => {
   return "is-pending";
 };
 
+const availabilitySummary = (event) => {
+  if (!event) return "";
+  const date = event.event_date || "Recorded";
+  const types = Array.isArray(event.availability_types) ? event.availability_types : [];
+  const readableTypes = types.map((type) => type.replaceAll("_", " ")).join(", ");
+  return readableTypes ? `${date} · ${readableTypes}` : date;
+};
+
 const ratingLabel = (rating) => {
   const value = Number(rating);
   return Number.isFinite(value) && value > 0 ? value.toFixed(1) : "Unrated";
@@ -377,6 +385,7 @@ function render() {
 
 function openDetail(film) {
   const events = Array.isArray(film.availability) ? film.availability : [];
+  const firstEvent = events[0] || null;
   const links = [
     film.tmdbUrl ? `<a href="${escapeHtml(film.tmdbUrl)}" target="_blank" rel="noreferrer">TMDb</a>` : "",
     film.imdbUrl ? `<a href="${escapeHtml(film.imdbUrl)}" target="_blank" rel="noreferrer">IMDb</a>` : "",
@@ -402,26 +411,11 @@ function openDetail(film) {
       <p>${escapeHtml(film.section || "No section")}</p>
       <h3>Availability</h3>
       ${
-        events.length
-          ? `<div class="availability-list">${events
-              .map(
-                (event) => `
-                  <div class="availability-card">
-                    <div class="film-facts">
-                      <span>${escapeHtml(event.event_date || "No date")}</span>
-                      ${(event.availability_types || []).map((type) => `<span>${escapeHtml(type)}</span>`).join("")}
-                    </div>
-                    <p>${escapeHtml((event.providers || []).join(", ") || "Provider not listed")}</p>
-                    <p>${escapeHtml((event.countries || []).join(", ") || "Countries not listed")}</p>
-                    <div class="link-row">
-                      ${(event.source_urls || [])
-                        .map((url, index) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Source ${index + 1}</a>`)
-                        .join("")}
-                    </div>
-                  </div>
-                `
-              )
-              .join("")}</div>`
+        firstEvent
+          ? `<div class="availability-card availability-summary">
+              <strong>Available to watch</strong>
+              <p>${escapeHtml(availabilitySummary(firstEvent))}</p>
+            </div>`
           : `<p>No legal online availability event recorded yet.</p>`
       }
       <h3>Overview</h3>
