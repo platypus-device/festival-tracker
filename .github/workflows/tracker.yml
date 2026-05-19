@@ -58,8 +58,8 @@ jobs:
             $trackerArgs += "-RespectFestivalWindows"
           }
 
-          ./scripts/Invoke-FestivalTracker.ps1 @trackerArgs
-          ./scripts/Export-TrackerData.ps1 -UseNotion
+          & ./scripts/Invoke-FestivalTracker.ps1 @trackerArgs
+          & ./scripts/Export-TrackerData.ps1 -UseNotion
 
       - name: Prepare Pages artifact
         shell: pwsh
