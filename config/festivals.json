@@ -3,13 +3,19 @@
     {
       "name": "Academy Awards",
       "region": "United States",
-      "enabled": false,
+      "enabled": true,
       "lineupWindow": { "startMonth": 1, "endMonth": 12 },
       "sources": [
         {
           "url": "https://www.oscars.org/oscars/ceremonies/2026",
+          "enabled": false,
           "parser": "oscars_ceremony",
-          "year": 2025
+          "year": 2025,
+          "sectionScope": [
+            "Best Picture",
+            "International Feature Film",
+            "Animated Feature Film"
+          ]
         }
       ]
     },
@@ -28,12 +34,16 @@
     {
       "name": "Berlinale",
       "region": "Germany",
-      "enabled": false,
+      "enabled": true,
       "lineupWindow": { "startMonth": 12, "endMonth": 3 },
       "sources": [
         {
           "url": "https://www.berlinale.de/en/programm/berlinale_programm/programmsuche.php",
-          "parser": "generic_title_by_director"
+          "parser": "generic_title_by_director",
+          "sectionScope": [
+            "Competition",
+            "Encounters"
+          ]
         }
       ]
     },
@@ -83,12 +93,15 @@
     {
       "name": "NYFF",
       "region": "United States",
-      "enabled": false,
+      "enabled": true,
       "lineupWindow": { "startMonth": 7, "endMonth": 10 },
       "sources": [
         {
-          "url": "https://www.filmlinc.org/nyff/",
-          "parser": "generic_title_by_director"
+          "url": "https://www.filmlinc.org/nyff2025/daily/63rd-new-york-film-festival-main-slate-announced/",
+          "parser": "generic_title_by_director",
+          "sectionScope": [
+            "Main Slate"
+          ]
         }
       ]
     },
@@ -119,12 +132,15 @@
     {
       "name": "Busan",
       "region": "South Korea",
-      "enabled": false,
+      "enabled": true,
       "lineupWindow": { "startMonth": 8, "endMonth": 10 },
       "sources": [
         {
           "url": "https://www.biff.kr/eng/",
-          "parser": "generic_title_by_director"
+          "parser": "generic_title_by_director",
+          "sectionScope": [
+            "New Currents"
+          ]
         }
       ]
     },
@@ -209,12 +225,16 @@
     {
       "name": "Taipei Golden Horse Film Festival",
       "region": "Taiwan",
-      "enabled": false,
+      "enabled": true,
       "lineupWindow": { "startMonth": 9, "endMonth": 12 },
       "sources": [
         {
-          "url": "https://www.goldenhorse.org.tw/film/programme/schedule/?r=en",
-          "parser": "generic_title_by_director"
+          "url": "https://www.goldenhorse.org.tw/awards/nw/?ins=51&r=en&sc=8&search_regist_year=2025&serach_type=award",
+          "parser": "golden_horse_awards",
+          "year": 2025,
+          "sectionScope": [
+            "Best Narrative Feature"
+          ]
         }
       ]
     },

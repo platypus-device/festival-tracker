@@ -325,7 +325,7 @@ function ConvertFrom-TitleByDirectorText {
             continue
         }
 
-        if ($line.Length -lt 80 -and $line -match '(?i)^(in competition|competition|encounters|panorama|forum|premieres|midnight|midnight screenings|cannes premiere|spotlight|shorts|special screenings|out of competition|uncertain regard|un certain regard|main slate|galas|discovery|wavelengths|platform|proxima|competition films)$') {
+        if ($line.Length -lt 80 -and $line -match '(?i)^(in competition|competition|encounters|panorama|forum|premieres|midnight|midnight screenings|cannes premiere|spotlight|shorts|special screenings|out of competition|uncertain regard|un certain regard|main slate|galas|discovery|wavelengths|platform|proxima|competition films|new currents|best feature film|best narrative feature|golden horse awards)$') {
             $section = $line
             $subSection = $null
             $pendingTitle = $null
@@ -497,7 +497,8 @@ function ConvertFrom-OscarsText {
         [Parameter(Mandatory = $true)][string]$Festival,
         [string]$Region,
         [string]$SourceUrl,
-        [int]$Year = (Get-Date).Year
+        [int]$Year = (Get-Date).Year,
+        [string[]]$AllowedCategories = @()
     )
 
     $categories = @(
@@ -552,6 +553,9 @@ function ConvertFrom-OscarsText {
         }
 
         if ([string]::IsNullOrWhiteSpace($currentCategory)) {
+            continue
+        }
+        if (@($AllowedCategories).Count -gt 0 -and $AllowedCategories -notcontains $currentCategory) {
             continue
         }
 
@@ -620,6 +624,42 @@ function ConvertFrom-OscarsText {
     }
 
     return @($recordsByTitle.Values | Sort-Object title)
+}
+
+function ConvertFrom-GoldenHorseAwardsText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $start = $Text.IndexOf("Best Narrative Feature", [System.StringComparison]::OrdinalIgnoreCase)
+    if ($start -lt 0) {
+        return $records
+    }
+
+    $end = $Text.Length
+    foreach ($marker in @("Best Documentary Feature", "Best Animated Feature", "Best Director")) {
+        $index = $Text.IndexOf($marker, $start + 1, [System.StringComparison]::OrdinalIgnoreCase)
+        if ($index -ge 0 -and $index -lt $end) {
+            $end = $index
+        }
+    }
+
+    $segment = $Text.Substring($start, $end - $start)
+    $lines = @($segment -split "`n" | ForEach-Object { ($_ -replace '\s+', ' ').Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    for ($i = 1; $i -lt $lines.Count; $i += 2) {
+        $title = $lines[$i]
+        if ($title -match '(?i)\b(company|companies|production|pictures|films|agency|entertainment|limited|ltd|llc|inc|co\.)\b') {
+            continue
+        }
+        $records.Add((New-FilmRecord -Title $title -Director "" -Festival $Festival -Region $Region -Section "Best Narrative Feature" -SourceUrl $SourceUrl -Year $Year))
+    }
+
+    return $records
 }
 
 function ConvertTo-CleanHtmlText {
@@ -788,7 +828,8 @@ function ConvertFrom-TaipeiFilmAwardsData {
         [Parameter(Mandatory = $true)][string]$Festival,
         [string]$Region,
         [string]$SourceUrl,
-        [int]$Year = (Get-Date).Year
+        [int]$Year = (Get-Date).Year,
+        [string[]]$AllowedAwardPatterns = @()
     )
 
     $records = New-Object System.Collections.Generic.List[object]
@@ -807,6 +848,23 @@ function ConvertFrom-TaipeiFilmAwardsData {
             }
             if ($awardName -match '\u6700\u4f73\u5c0e\u6f14') {
                 $director = ConvertTo-CleanHtmlText ([string](Get-ObjectProperty $award "winner" ""))
+            }
+        }
+        if (@($AllowedAwardPatterns).Count -gt 0) {
+            $matchesAllowedAward = $false
+            foreach ($awardName in @($awardNames)) {
+                foreach ($pattern in @($AllowedAwardPatterns)) {
+                    if ($awardName -match $pattern) {
+                        $matchesAllowedAward = $true
+                        break
+                    }
+                }
+                if ($matchesAllowedAward) {
+                    break
+                }
+            }
+            if (-not $matchesAllowedAward) {
+                continue
             }
         }
 
@@ -864,7 +922,7 @@ function ConvertFrom-TaipeiFilmAwardsHtml {
         throw "Taipei Film Awards API returned status '$($data.status)'."
     }
 
-    return ConvertFrom-TaipeiFilmAwardsData -Data $data -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+    return ConvertFrom-TaipeiFilmAwardsData -Data $data -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedAwardPatterns @("Best Feature", "Grand Prize", "\u5287\u60c5\u9577\u7247", "\u6700\u4f73\u5287\u60c5\u9577\u7247", "\u9577\u7247")
 }
 
 function ConvertFrom-TaipeiNewTalentHtml {
@@ -892,13 +950,17 @@ function ConvertFrom-LineupHtml {
         [string]$Region,
         [string]$SourceUrl,
         [string]$Parser = "generic_title_by_director",
-        [int]$Year = (Get-Date).Year
+        [int]$Year = (Get-Date).Year,
+        [string[]]$SectionScope = @()
     )
 
     $text = ConvertTo-PlainText $Html
     $allowedSections = @()
     if ($Parser -eq "cannes_selection") {
         $allowedSections = @("In Competition - Feature films", "Un Certain Regard")
+    }
+    elseif (@($SectionScope).Count -gt 0) {
+        $allowedSections = @($SectionScope)
     }
     switch ($Parser) {
         "sundance_article" {
@@ -911,7 +973,11 @@ function ConvertFrom-LineupHtml {
             return ConvertFrom-VeniceText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
         }
         "oscars_ceremony" {
-            return ConvertFrom-OscarsText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+            $allowedOscarCategories = if (@($SectionScope).Count -gt 0) { @($SectionScope) } else { @("Best Picture", "International Feature Film", "Animated Feature Film") }
+            return ConvertFrom-OscarsText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedCategories $allowedOscarCategories
+        }
+        "golden_horse_awards" {
+            return ConvertFrom-GoldenHorseAwardsText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
         }
         "tidf_category" {
             return ConvertFrom-TidfCategoryHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
@@ -929,9 +995,32 @@ function ConvertFrom-LineupHtml {
             return @()
         }
         default {
-            return ConvertFrom-TitleByDirectorText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+            return ConvertFrom-TitleByDirectorText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedSections $allowedSections
         }
     }
+}
+
+function Invoke-CurlTextRequest {
+    param([Parameter(Mandatory = $true)][string]$Url)
+
+    $curl = Get-Command "curl" -CommandType Application -ErrorAction SilentlyContinue
+    if ($null -eq $curl) {
+        $curl = Get-Command "curl.exe" -CommandType Application -ErrorAction SilentlyContinue
+    }
+    if ($null -eq $curl) {
+        throw "curl is not available for HTTP fallback."
+    }
+
+    $output = & $curl.Source --location --fail --silent --show-error `
+        --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 FestivalLegalAvailabilityTracker/1.0" `
+        --header "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" `
+        --header "Accept-Language: en-US,en;q=0.9" `
+        $Url
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($output -join "`n"))) {
+        throw "curl fallback failed for $Url."
+    }
+
+    return ($output -join "`n")
 }
 
 function Invoke-TextRequest {
@@ -966,6 +1055,9 @@ function Invoke-TextRequest {
             $encoding = [System.Text.Encoding]::UTF8
         }
         return $encoding.GetString($bytes)
+    }
+    catch {
+        return Invoke-CurlTextRequest -Url $Url
     }
     finally {
         if ($null -ne $memory) { $memory.Dispose() }
@@ -1008,6 +1100,9 @@ function Get-FestivalLineupRecords {
         }
 
         foreach ($source in @($festival.sources)) {
+            if ((Get-ObjectProperty $source "enabled" $true) -eq $false) {
+                continue
+            }
             $url = Get-ObjectProperty $source "url"
             if ([string]::IsNullOrWhiteSpace($url)) {
                 continue
@@ -1018,7 +1113,8 @@ function Get-FestivalLineupRecords {
                 $html = Invoke-TextRequest -Url $url
                 $parser = Get-ObjectProperty $source "parser" "generic_title_by_director"
                 $year = [int](Get-ObjectProperty $source "year" $currentYear)
-                $parsed = ConvertFrom-LineupHtml -Html $html -Festival $festival.name -Region $festival.region -SourceUrl $url -Parser $parser -Year $year
+                $sectionScope = @((Get-ObjectProperty $source "sectionScope" @()) | ForEach-Object { [string]$_ })
+                $parsed = ConvertFrom-LineupHtml -Html $html -Festival $festival.name -Region $festival.region -SourceUrl $url -Parser $parser -Year $year -SectionScope $sectionScope
                 foreach ($record in @($parsed)) {
                     $records.Add($record)
                 }

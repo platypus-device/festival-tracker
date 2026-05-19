@@ -17,17 +17,27 @@ The tracker does not monitor piracy indexes, store magnet links, or count theatr
 
 https://platypus-device.github.io/festival-tracker/
 
-## Current Scope
+## Core Scope
 
-Enabled lineup sources:
+The tracker uses a restrained high-priority scope. The target annual library size is about 180-250 films after de-duplication.
+
+Enabled core sources:
 
 - Cannes
 - Venice
 - Sundance
 - Karlovy Vary
 - Taipei Film Festival
+- NYFF
+- Berlinale
+- Busan
+- Taipei Golden Horse Film Festival
 
 Taiwan is handled as its own region. Mainland China festivals are not included.
+
+Disabled sources remain in `config/festivals.json` until they have a stable official source and a strict high-priority section filter.
+
+Academy Awards parsing is implemented for Best Picture, International Feature Film, and Animated Feature Film, but the official ceremony page is currently disabled because it blocks automated requests.
 
 ## Automation
 

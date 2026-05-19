@@ -137,6 +137,15 @@ $oscarsHtml = @"
 <p>Nominees</p>
 <p>Timothée Chalamet</p>
 <p>Marty Supreme</p>
+<h2>Animated Feature Film</h2>
+<p>Nominees</p>
+<p>Animated Sample</p>
+<h2>International Feature Film</h2>
+<p>Nominees</p>
+<p>International Sample</p>
+<h2>Documentary Feature Film</h2>
+<p>Nominees</p>
+<p>Documentary Sample</p>
 <h2>Best Picture</h2>
 <p>Winner</p>
 <p>One Battle after Another</p>
@@ -152,10 +161,47 @@ $oscarsHtml = @"
 </html>
 "@
 $oscars = @(ConvertFrom-LineupHtml -Html $oscarsHtml -Festival "Academy Awards" -Region "United States" -SourceUrl "https://example.test/oscars" -Parser "oscars_ceremony" -Year 2025)
-Assert-Equal 3 $oscars.Count "parses Oscars films and de-duplicates by title"
-Assert-True (@($oscars | Where-Object { $_.title -eq "Sinners" }).Count -eq 1) "keeps repeated Oscar film once"
-Assert-True (@($oscars | Where-Object { $_.title -eq "Marty Supreme" }).Count -eq 1) "extracts acting category film title"
+Assert-Equal 4 $oscars.Count "filters Oscars to selected feature categories"
+Assert-True (@($oscars | Where-Object { $_.title -eq "Sinners" }).Count -eq 1) "keeps repeated Oscar film once from Best Picture"
+Assert-True (@($oscars | Where-Object { $_.title -eq "Marty Supreme" }).Count -eq 0) "excludes acting-only Oscar titles"
+Assert-True (@($oscars | Where-Object { $_.title -eq "Documentary Sample" }).Count -eq 0) "excludes Oscar documentary feature by default"
 Assert-True (@($oscars | Where-Object { $_.title -eq "One Battle after Another" }).Count -eq 1) "extracts best picture title"
+Assert-True (@($oscars | Where-Object { $_.title -eq "Animated Sample" }).Count -eq 1) "keeps animated feature title"
+Assert-True (@($oscars | Where-Object { $_.title -eq "International Sample" }).Count -eq 1) "keeps international feature title"
+
+$sectionScopedHtml = @"
+<html>
+<body>
+<h2>Competition</h2>
+<p>Competition Sample by Competition Director</p>
+<h2>Panorama</h2>
+<p>Panorama Sample by Panorama Director</p>
+<h2>Encounters</h2>
+<p>Encounters Sample by Encounters Director</p>
+</body>
+</html>
+"@
+$sectionScoped = @(ConvertFrom-LineupHtml -Html $sectionScopedHtml -Festival "Berlinale" -Region "Germany" -SourceUrl "https://example.test/berlinale" -Parser "generic_title_by_director" -Year 2026 -SectionScope @("Competition", "Encounters"))
+Assert-Equal 2 $sectionScoped.Count "filters generic parser to configured section scope"
+Assert-True (@($sectionScoped | Where-Object { $_.title -eq "Panorama Sample" }).Count -eq 0) "excludes sections outside configured scope"
+
+$goldenHorseHtml = @"
+<html>
+<body>
+<h2>Best Narrative Feature</h2>
+<p>A Foggy Tale</p>
+<p>Taiwan Creative Content Agency, MandarinVision Co., Ltd.</p>
+<p>Left-Handed Girl</p>
+<p>Left-Handed Girl Film Production Co., Ltd.</p>
+<h2>Best Documentary Feature</h2>
+<p>Documentary Sample</p>
+<p>Documentary Director</p>
+</body>
+</html>
+"@
+$goldenHorse = @(ConvertFrom-LineupHtml -Html $goldenHorseHtml -Festival "Taipei Golden Horse Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/goldenhorse" -Parser "golden_horse_awards" -Year 2025)
+Assert-Equal 2 $goldenHorse.Count "parses Golden Horse best narrative feature nominees"
+Assert-True (@($goldenHorse | Where-Object { $_.title -eq "Documentary Sample" }).Count -eq 0) "excludes Golden Horse documentary nominees"
 
 $tidfHtml = @"
 <html>
@@ -200,11 +246,17 @@ $taipeiAwardsData = [pscustomobject]@{
                 [pscustomobject]@{ award_name = "Best Feature"; winner = "Producer" },
                 [pscustomobject]@{ award_name = "Best Director"; winner = "Sample Director" }
             )
+        },
+        [pscustomobject]@{
+            title = "Sample Short"
+            awards_with_winners = @(
+                [pscustomobject]@{ award_name = "Best Short"; winner = "Short Producer" }
+            )
         }
     )
 }
-$taipeiAwards = @(ConvertFrom-TaipeiFilmAwardsData -Data $taipeiAwardsData -Festival "Taipei Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/tfa" -Year 2026)
-Assert-Equal 1 $taipeiAwards.Count "converts Taipei Film Awards API data"
+$taipeiAwards = @(ConvertFrom-TaipeiFilmAwardsData -Data $taipeiAwardsData -Festival "Taipei Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/tfa" -Year 2026 -AllowedAwardPatterns @("Best Feature", "Grand Prize", "\u5287\u60c5\u9577\u7247", "\u6700\u4f73\u5287\u60c5\u9577\u7247", "\u9577\u7247"))
+Assert-Equal 1 $taipeiAwards.Count "filters Taipei Film Awards to feature-related awards"
 Assert-Equal "Sample Feature" $taipeiAwards[0].title "keeps Taipei Film Awards title"
 
 $taipeiNewTalentData = [pscustomobject]@{
