@@ -7,6 +7,10 @@ const state = {
   sort: "rating",
 };
 
+const validViews = new Set(["available", "all", "review", "events"]);
+const validStatuses = new Set(["", "pending", "available_found", "needs_review"]);
+const validSorts = new Set(["rating", "available", "festival", "title"]);
+
 const els = {
   generatedAt: document.querySelector("#generatedAt"),
   metricFilms: document.querySelector("#metricFilms"),
@@ -42,7 +46,7 @@ const formatDateTime = (value) => {
   if (!value) return "No export time";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return `Updated ${date.toLocaleString()}`;
+  return `Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date)}`;
 };
 
 const statusLabel = (status) => {
@@ -93,16 +97,52 @@ const viewCopy = {
 const posterMarkup = (film) => {
   const title = escapeHtml(film.title || "Untitled");
   if (film.posterUrl) {
-    return `<img src="${escapeHtml(film.posterUrl)}" alt="${title} poster" loading="lazy" />`;
+    return `<img src="${escapeHtml(film.posterUrl)}" alt="${title} poster" width="342" height="513" loading="lazy" decoding="async" />`;
   }
   return `<div class="poster-fallback">${title}</div>`;
 };
 
+function readUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const view = params.get("view");
+  const status = params.get("status");
+  const sort = params.get("sort");
+  const search = params.get("q");
+  const festival = params.get("festival");
+
+  if (validViews.has(view)) state.view = view;
+  if (validStatuses.has(status)) state.status = status;
+  if (validSorts.has(sort)) state.sort = sort;
+  if (typeof search === "string") state.search = search;
+  if (typeof festival === "string") state.festival = festival;
+}
+
+function syncControls() {
+  els.searchInput.value = state.search;
+  els.statusFilter.value = state.status;
+  els.sortSelect.value = state.sort;
+  els.festivalFilter.value = state.festival;
+}
+
+function writeUrlState() {
+  const params = new URLSearchParams();
+  if (state.view !== "available") params.set("view", state.view);
+  if (state.search) params.set("q", state.search);
+  if (state.festival) params.set("festival", state.festival);
+  if (state.status) params.set("status", state.status);
+  if (state.sort !== "rating") params.set("sort", state.sort);
+  const query = params.toString();
+  const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+  window.history.replaceState(null, "", nextUrl);
+}
+
 async function loadData() {
+  readUrlState();
   const response = await fetch("./data/tracker-data.json", { cache: "no-store" });
   if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
   state.data = await response.json();
   setupFilters();
+  syncControls();
   render();
 }
 
@@ -311,6 +351,7 @@ function renderEvents() {
 }
 
 function render() {
+  writeUrlState();
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === state.view);
   });

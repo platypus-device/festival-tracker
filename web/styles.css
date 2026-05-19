@@ -24,6 +24,10 @@
   box-sizing: border-box;
 }
 
+html {
+  background: var(--bg);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -33,16 +37,56 @@ body {
     var(--bg);
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: rgba(89, 197, 139, 0.18);
 }
 
 button,
 input,
 select {
   font: inherit;
+  touch-action: manipulation;
 }
 
 button {
   color: inherit;
+}
+
+button,
+a,
+input,
+select,
+summary {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: 12px;
+  z-index: 100;
+  transform: translateY(-160%);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  color: var(--text);
+  padding: 9px 12px;
+  text-decoration: none;
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 .shell {
@@ -70,6 +114,8 @@ h1 {
   font-size: 24px;
   line-height: 1.1;
   letter-spacing: 0;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  font-weight: 700;
 }
 
 .brand p {
@@ -175,7 +221,6 @@ select {
   background: var(--surface);
   color: var(--text);
   padding: 0 12px;
-  outline: none;
 }
 
 select {
@@ -186,8 +231,8 @@ input::placeholder {
   color: var(--faint);
 }
 
-input:focus,
-select:focus {
+input:focus-visible,
+select:focus-visible {
   border-color: rgba(89, 197, 139, 0.72);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
@@ -214,6 +259,8 @@ select:focus {
   font-size: 22px;
   line-height: 1.08;
   letter-spacing: 0;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  font-weight: 700;
 }
 
 .view-header span {
@@ -258,9 +305,11 @@ select:focus {
 
 .spotlight-copy h2 {
   margin: 10px 0 10px;
-  font-size: clamp(30px, 4.3vw, 48px);
+  font-size: 46px;
   line-height: 1;
   letter-spacing: 0;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  font-weight: 700;
 }
 
 .spotlight-copy p {
@@ -315,6 +364,13 @@ select:focus {
   text-align: left;
   cursor: pointer;
   border-radius: var(--radius);
+  content-visibility: auto;
+  contain-intrinsic-size: 300px 430px;
+}
+
+.film-card:focus-visible .poster {
+  border-color: rgba(89, 197, 139, 0.78);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 12px 30px rgba(0, 0, 0, 0.22);
 }
 
 .film-card .poster {
@@ -509,6 +565,8 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 14px 16px;
+  content-visibility: auto;
+  contain-intrinsic-size: 72px;
 }
 
 .event-row time {
@@ -537,6 +595,7 @@ select:focus {
   box-shadow: var(--shadow);
   z-index: 20;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .detail-panel.open {
@@ -625,6 +684,16 @@ select:focus {
   padding: 7px 10px;
 }
 
+.link-row a:hover,
+.secondary-action:hover {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.primary-action:hover {
+  filter: brightness(1.06);
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -634,6 +703,17 @@ select:focus {
 
 .hidden {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .empty {
@@ -660,6 +740,10 @@ select:focus {
 
   .spotlight-card {
     grid-template-columns: 160px 1fr;
+  }
+
+  .spotlight-copy h2 {
+    font-size: 36px;
   }
 
   .review-row {
@@ -772,7 +856,7 @@ select:focus {
   }
 
   .spotlight-copy h2 {
-    font-size: 26px;
+    font-size: 28px;
     line-height: 1.05;
   }
 
