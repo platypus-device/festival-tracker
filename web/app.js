@@ -10,6 +10,7 @@ const state = {
 const validViews = new Set(["available", "all", "review", "events"]);
 const validStatuses = new Set(["", "pending", "available_found", "needs_review"]);
 const validSorts = new Set(["rating", "available", "festival", "title"]);
+let isCompactLayout = window.matchMedia("(max-width: 680px)").matches;
 
 const els = {
   generatedAt: document.querySelector("#generatedAt"),
@@ -143,7 +144,21 @@ async function loadData() {
   state.data = await response.json();
   setupFilters();
   syncControls();
+  syncFilterDrawer();
   render();
+}
+
+function syncFilterDrawer() {
+  const drawer = document.querySelector(".filter-drawer");
+  if (!drawer) return;
+  isCompactLayout = window.matchMedia("(max-width: 680px)").matches;
+  drawer.open = !isCompactLayout;
+}
+
+function handleResize() {
+  const nextCompactLayout = window.matchMedia("(max-width: 680px)").matches;
+  if (nextCompactLayout === isCompactLayout) return;
+  syncFilterDrawer();
 }
 
 function setupFilters() {
@@ -449,6 +464,7 @@ els.sortSelect.addEventListener("change", (event) => {
 });
 els.closeDetail.addEventListener("click", closeDetail);
 els.overlay.addEventListener("click", closeDetail);
+window.addEventListener("resize", handleResize);
 
 loadData().catch((error) => {
   els.generatedAt.textContent = "Could not load data. Run scripts/Export-TrackerData.ps1 first.";
