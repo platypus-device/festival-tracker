@@ -52,10 +52,13 @@ jobs:
             $mode = "Availability"
           }
 
-          $trackerArgs = @("-Mode", $mode, "-UseNotion")
+          $trackerArgs = @{
+            Mode = $mode
+            UseNotion = $true
+          }
           $respectWindows = "${{ github.event.inputs.respect_festival_windows }}"
           if (($mode -eq "Lineups" -or $mode -eq "All") -and $respectWindows -ne "false") {
-            $trackerArgs += "-RespectFestivalWindows"
+            $trackerArgs["RespectFestivalWindows"] = $true
           }
 
           & ./scripts/Invoke-FestivalTracker.ps1 @trackerArgs
