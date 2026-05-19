@@ -98,7 +98,7 @@
       "sources": [
         {
           "url": "https://www.filmlinc.org/nyff2025/daily/63rd-new-york-film-festival-main-slate-announced/",
-          "parser": "generic_title_by_director",
+          "parser": "nyff_main_slate",
           "sectionScope": [
             "Main Slate"
           ]

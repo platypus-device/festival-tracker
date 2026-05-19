@@ -662,6 +662,45 @@ function ConvertFrom-GoldenHorseAwardsText {
     return $records
 }
 
+function ConvertFrom-NyffMainSlateText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $recordsByTitle = @{}
+    $lines = @($Text -split "`n" | ForEach-Object { ($_ -replace '\s+', ' ').Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    for ($i = 0; $i -lt ($lines.Count - 1); $i++) {
+        $title = $lines[$i]
+        $meta = $lines[$i + 1]
+        if ($title.Length -lt 2 -or $title.Length -gt 180) {
+            continue
+        }
+        if ($title -match '(?i)\b(courtesy|secure your tickets|festival passes|film at lincoln center|read more|premiere|release)\b') {
+            continue
+        }
+        if ($meta -notmatch '^(?<director>[^,]{2,120}),\s*(?<year>(19|20)\d{2}),\s*(?<details>.+?)(?<duration>\d{2,3})m\b') {
+            continue
+        }
+
+        $director = Repair-MojibakeText $Matches.director.Trim()
+        $filmYear = [int]$Matches.year
+        $key = ConvertTo-NormalizedTitle $title
+        if ([string]::IsNullOrWhiteSpace($key) -or $recordsByTitle.ContainsKey($key)) {
+            continue
+        }
+
+        $recordsByTitle[$key] = $true
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section "Main Slate" -SourceUrl $SourceUrl -Year $filmYear))
+    }
+
+    return $records
+}
+
 function ConvertTo-CleanHtmlText {
     param([AllowNull()][string]$Text)
 
@@ -978,6 +1017,9 @@ function ConvertFrom-LineupHtml {
         }
         "golden_horse_awards" {
             return ConvertFrom-GoldenHorseAwardsText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "nyff_main_slate" {
+            return ConvertFrom-NyffMainSlateText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
         }
         "tidf_category" {
             return ConvertFrom-TidfCategoryHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year

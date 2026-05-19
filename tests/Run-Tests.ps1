@@ -203,6 +203,23 @@ $goldenHorse = @(ConvertFrom-LineupHtml -Html $goldenHorseHtml -Festival "Taipei
 Assert-Equal 2 $goldenHorse.Count "parses Golden Horse best narrative feature nominees"
 Assert-True (@($goldenHorse | Where-Object { $_.title -eq "Documentary Sample" }).Count -eq 0) "excludes Golden Horse documentary nominees"
 
+$nyffHtml = @"
+<html>
+<body>
+<h2>Main Slate</h2>
+<p>The Secret Agent</p>
+<p>Kleber Mendonca Filho, 2025, Brazil, 160m</p>
+<p>The Secret Agent. Courtesy of Neon.</p>
+<p>What Does That Nature Say to You / geu jayeoni nege mworago hani</p>
+<p>Hong Sangsoo, 2025, South Korea, 108m</p>
+<p>Secure your tickets with Festival Passes</p>
+</body>
+</html>
+"@
+$nyff = @(ConvertFrom-LineupHtml -Html $nyffHtml -Festival "NYFF" -Region "United States" -SourceUrl "https://example.test/nyff" -Parser "nyff_main_slate" -Year 2025)
+Assert-Equal 2 $nyff.Count "parses NYFF main slate title and director pairs"
+Assert-Equal "Main Slate" $nyff[0].section "sets NYFF Main Slate section"
+
 $tidfHtml = @"
 <html>
 <body>
