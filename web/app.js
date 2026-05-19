@@ -48,6 +48,12 @@ const statusLabel = (status) => {
   return "Pending";
 };
 
+const statusClass = (status) => {
+  if (status === "available_found") return "is-available";
+  if (status === "needs_review") return "is-review";
+  return "is-pending";
+};
+
 const ratingLabel = (rating) => {
   const value = Number(rating);
   return Number.isFinite(value) && value > 0 ? value.toFixed(1) : "Unrated";
@@ -180,7 +186,7 @@ function renderFilmGrid() {
         <button class="film-card" data-film-id="${escapeHtml(film.id)}">
           <div class="poster">
             ${posterMarkup(film)}
-            <span class="status-pill">${escapeHtml(statusLabel(film.trackingStatus))}</span>
+            <span class="status-pill ${escapeHtml(statusClass(film.trackingStatus))}">${escapeHtml(statusLabel(film.trackingStatus))}</span>
           </div>
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>

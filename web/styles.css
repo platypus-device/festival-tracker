@@ -320,17 +320,14 @@ select:focus {
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   min-height: 22px;
   max-width: calc(100% - 20px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: rgba(14, 18, 17, 0.9);
-  color: #eefbf4;
   border: 0;
   border-radius: 999px;
-  padding: 0 9px 0 8px;
+  padding: 0 9px;
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
@@ -340,14 +337,19 @@ select:focus {
   backdrop-filter: blur(12px);
 }
 
-.status-pill::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.8);
+.status-pill.is-available {
+  background: rgba(18, 55, 42, 0.9);
+  color: #d9f8e9;
+}
+
+.status-pill.is-review {
+  background: rgba(78, 55, 18, 0.92);
+  color: #ffe6a8;
+}
+
+.status-pill.is-pending {
+  background: rgba(35, 39, 46, 0.92);
+  color: #c7ccd4;
 }
 
 .film-meta {
