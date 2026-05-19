@@ -315,32 +315,35 @@ select:focus {
 
 .status-pill {
   position: absolute;
-  right: 8px;
-  top: 8px;
+  right: 10px;
+  top: 10px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  max-width: calc(100% - 16px);
+  gap: 6px;
+  min-height: 22px;
+  max-width: calc(100% - 20px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: rgba(12, 13, 15, 0.82);
-  color: #d9f8e9;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(14, 18, 17, 0.9);
+  color: #eefbf4;
+  border: 0;
   border-radius: 999px;
-  padding: 5px 8px 5px 7px;
+  padding: 0 9px 0 8px;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  letter-spacing: 0;
+  outline: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(12px);
 }
 
 .status-pill::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--accent);
