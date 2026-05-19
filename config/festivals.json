@@ -1,0 +1,275 @@
+{
+  "festivals": [
+    {
+      "name": "Academy Awards",
+      "region": "United States",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 1, "endMonth": 12 },
+      "sources": [
+        {
+          "url": "https://www.oscars.org/oscars/ceremonies/2026",
+          "parser": "oscars_ceremony",
+          "year": 2025
+        }
+      ]
+    },
+    {
+      "name": "Cannes",
+      "region": "France",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 3, "endMonth": 6 },
+      "sources": [
+        {
+          "url": "https://www.festival-cannes.com/en/the-selection/",
+          "parser": "cannes_selection"
+        }
+      ]
+    },
+    {
+      "name": "Berlinale",
+      "region": "Germany",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 12, "endMonth": 3 },
+      "sources": [
+        {
+          "url": "https://www.berlinale.de/en/programm/berlinale_programm/programmsuche.php",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Venice",
+      "region": "Italy",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 7, "endMonth": 9 },
+      "sources": [
+        {
+          "url": "https://www.labiennale.org/en/cinema/2025/venezia-82-competition",
+          "parser": "venice_selection",
+          "year": 2025
+        },
+        {
+          "url": "https://www.labiennale.org/en/cinema/2025/orizzonti",
+          "parser": "venice_selection",
+          "year": 2025
+        }
+      ]
+    },
+    {
+      "name": "Sundance",
+      "region": "United States",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 11, "endMonth": 2 },
+      "sources": [
+        {
+          "url": "https://www.sundance.org/blogs/2026-sundance-film-festival-unveils-97-projects-selected-for-the-feature-film-and-episodic-program/",
+          "parser": "sundance_article",
+          "year": 2026
+        }
+      ]
+    },
+    {
+      "name": "TIFF",
+      "region": "Canada",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 7, "endMonth": 9 },
+      "sources": [
+        {
+          "url": "https://tiff.net/press",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "NYFF",
+      "region": "United States",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 7, "endMonth": 10 },
+      "sources": [
+        {
+          "url": "https://www.filmlinc.org/nyff/",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Locarno",
+      "region": "Switzerland",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 6, "endMonth": 8 },
+      "sources": [
+        {
+          "url": "https://www.locarnofestival.ch/festival/program.html",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Rotterdam",
+      "region": "Netherlands",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 12, "endMonth": 2 },
+      "sources": [
+        {
+          "url": "https://iffr.com/en/iffr-programme",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Busan",
+      "region": "South Korea",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 8, "endMonth": 10 },
+      "sources": [
+        {
+          "url": "https://www.biff.kr/eng/",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Tokyo",
+      "region": "Japan",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 9, "endMonth": 11 },
+      "sources": [
+        {
+          "url": "https://2025.tiff-jp.net/en/",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "San Sebastian",
+      "region": "Spain",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 7, "endMonth": 9 },
+      "sources": [
+        {
+          "url": "https://www.sansebastianfestival.com/in/",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Karlovy Vary",
+      "region": "Czech Republic",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 5, "endMonth": 7 },
+      "sources": [
+        {
+          "url": "https://www.kviff.com/en/programme/archive-of-films/2025/section/948-crystal-globe-competition",
+          "parser": "kviff_archive_section",
+          "year": 2025
+        },
+        {
+          "url": "https://www.kviff.com/en/programme/archive-of-films/2025/section/952-proxima-competition",
+          "parser": "kviff_archive_section",
+          "year": 2025
+        }
+      ]
+    },
+    {
+      "name": "Telluride",
+      "region": "United States",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 8, "endMonth": 9 },
+      "sources": [
+        {
+          "url": "https://www.telluridefilmfestival.org/",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "SXSW",
+      "region": "United States",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 1, "endMonth": 3 },
+      "sources": [
+        {
+          "url": "https://www.sxsw.com/festivals/film/",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "BFI London",
+      "region": "United Kingdom",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 8, "endMonth": 10 },
+      "sources": [
+        {
+          "url": "https://whatson.bfi.org.uk/lff/Online/",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Taipei Golden Horse Film Festival",
+      "region": "Taiwan",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 9, "endMonth": 12 },
+      "sources": [
+        {
+          "url": "https://www.goldenhorse.org.tw/film/programme/schedule/?r=en",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Taipei Film Festival",
+      "region": "Taiwan",
+      "enabled": true,
+      "lineupWindow": { "startMonth": 5, "endMonth": 7 },
+      "sources": [
+        {
+          "url": "https://www.taipeiff.taipei/tw/tfa?tab=shortlist",
+          "parser": "taipeiff_tfa_nominees",
+          "year": 2026
+        },
+        {
+          "url": "https://www.taipeiff.taipei/tw/intc?tab=shortlist",
+          "parser": "taipeiff_new_talent",
+          "year": 2026
+        }
+      ]
+    },
+    {
+      "name": "Kaohsiung Film Festival",
+      "region": "Taiwan",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 9, "endMonth": 11 },
+      "sources": [
+        {
+          "url": "https://www.kff.tw/en/film/list/2025-panorama",
+          "parser": "generic_title_by_director"
+        }
+      ]
+    },
+    {
+      "name": "Taiwan International Documentary Festival",
+      "region": "Taiwan",
+      "enabled": false,
+      "lineupWindow": { "startMonth": 3, "endMonth": 5 },
+      "sources": [
+        {
+          "url": "https://www.tidf.org.tw/en/category/shows2026/6055",
+          "parser": "tidf_category",
+          "year": 2026
+        },
+        {
+          "url": "https://www.tidf.org.tw/en/category/shows2026/6056",
+          "parser": "tidf_category",
+          "year": 2026
+        },
+        {
+          "url": "https://www.tidf.org.tw/en/category/shows2026/6057",
+          "parser": "tidf_category",
+          "year": 2026
+        }
+      ]
+    }
+  ]
+}

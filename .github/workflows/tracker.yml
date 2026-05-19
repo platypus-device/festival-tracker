@@ -1,0 +1,79 @@
+name: Festival Legal Availability Tracker
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Tracker mode"
+        required: true
+        type: choice
+        options:
+          - Availability
+          - Lineups
+          - All
+        default: Availability
+      respect_festival_windows:
+        description: "Only fetch active lineup windows for Lineups/All"
+        required: true
+        type: boolean
+        default: true
+  schedule:
+    - cron: "30 23 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync tracker data
+        shell: pwsh
+        env:
+          TMDB_BEARER_TOKEN: ${{ secrets.TMDB_BEARER_TOKEN }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          WATCHMODE_API_KEY: ${{ secrets.WATCHMODE_API_KEY }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: |
+          $mode = "${{ github.event.inputs.mode }}"
+          if ([string]::IsNullOrWhiteSpace($mode)) {
+            $mode = "Availability"
+          }
+
+          $trackerArgs = @("-Mode", $mode, "-UseNotion")
+          $respectWindows = "${{ github.event.inputs.respect_festival_windows }}"
+          if (($mode -eq "Lineups" -or $mode -eq "All") -and $respectWindows -ne "false") {
+            $trackerArgs += "-RespectFestivalWindows"
+          }
+
+          ./scripts/Invoke-FestivalTracker.ps1 @trackerArgs
+          ./scripts/Export-TrackerData.ps1 -UseNotion
+
+      - name: Prepare Pages artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType File -Path ./web/.nojekyll -Force | Out-Null
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,2332 @@
+﻿$Script:NotionVersion = "2022-06-28"
+$Script:UserAgent = "FestivalLegalAvailabilityTracker/1.0"
+
+function Get-EnvValue {
+    param([Parameter(Mandatory = $true)][string]$Name)
+    $value = [Environment]::GetEnvironmentVariable($Name)
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        return $null
+    }
+    return $value
+}
+
+function Get-ObjectProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [object]$Default = $null
+    )
+
+    if ($null -eq $Object) {
+        return $Default
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $Default
+    }
+
+    return $property.Value
+}
+
+function ConvertTo-Scalar {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    if ($Value -is [array]) {
+        if ($Value.Count -eq 0) {
+            return $null
+        }
+        return $Value[0]
+    }
+
+    return $Value
+}
+
+function ConvertTo-OptionalInt {
+    param([object]$Value)
+
+    $scalar = ConvertTo-Scalar $Value
+    if ($null -eq $scalar) {
+        return $null
+    }
+
+    $text = [string]$scalar
+    if ($text -match '-?\d+') {
+        return [int]$Matches[0]
+    }
+
+    return $null
+}
+
+function ConvertTo-OptionalDouble {
+    param([object]$Value)
+
+    $scalar = ConvertTo-Scalar $Value
+    if ($null -eq $scalar) {
+        return $null
+    }
+
+    $text = [string]$scalar
+    if ($text -match '-?\d+(\.\d+)?') {
+        return [double]$Matches[0]
+    }
+
+    return $null
+}
+
+function ConvertTo-MutableRecord {
+    param([Parameter(Mandatory = $true)][object]$Value)
+
+    $record = [ordered]@{}
+    foreach ($property in $Value.PSObject.Properties) {
+        $record[$property.Name] = $property.Value
+    }
+    return [pscustomobject]$record
+}
+
+function Set-RecordProperty {
+    param(
+        [Parameter(Mandatory = $true)][object]$Record,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [object]$Value
+    )
+
+    if ($null -ne $Record.PSObject.Properties[$Name]) {
+        $Record.$Name = $Value
+    }
+    else {
+        $Record | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force
+    }
+}
+
+function New-StringFromCodePoints {
+    param([Parameter(Mandatory = $true)][int[]]$CodePoints)
+    return -join ($CodePoints | ForEach-Object { [char]$_ })
+}
+
+function Repair-MojibakeText {
+    param([AllowNull()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $Text
+    }
+
+    $fixed = $Text
+    $markerPattern = "[{0}{1}{2}{3}]" -f [char]0x00C2, [char]0x00C3, [char]0x00C6, [char]0x00E2
+
+    if ($fixed -match $markerPattern) {
+        try {
+            $bytes = [Text.Encoding]::GetEncoding("Windows-1252").GetBytes($fixed)
+            $candidate = [Text.Encoding]::UTF8.GetString($bytes)
+            if ($candidate.IndexOf([char]0xFFFD) -lt 0) {
+                $fixed = $candidate
+            }
+        }
+        catch {
+            # Best-effort text repair; fall through to targeted replacements.
+        }
+    }
+
+    $replacements = @(
+        @{ from = @(0x00E2, 0x20AC, 0x0153); to = '"' },
+        @{ from = @(0x00E2, 0x20AC, 0x009D); to = '"' },
+        @{ from = @(0x00E2, 0x20AC, 0x02DC); to = "'" },
+        @{ from = @(0x00E2, 0x20AC, 0x2122); to = "'" },
+        @{ from = @(0x00E2, 0x20AC, 0x201C); to = "-" },
+        @{ from = @(0x00E2, 0x20AC, 0x201D); to = "-" },
+        @{ from = @(0x00E2, 0x20AC, 0x00A6); to = "..." },
+        @{ from = @(0x00E2, 0x00A6); to = "..." },
+        @{ from = @(0x00C2, 0x00A0); to = " " },
+        @{ from = @(0x00C2); to = "" },
+        @{ from = @(0x00EF, 0x00BC, 0x008F); to = "/" },
+        @{ from = @(0x00EF, 0x00BD, 0x009C); to = "|" }
+    )
+    foreach ($replacement in $replacements) {
+        $fixed = $fixed.Replace((New-StringFromCodePoints $replacement.from), $replacement.to)
+    }
+
+    $mojibakeQuote = [string][char]0x00E2
+    $fixed = [regex]::Replace(
+        $fixed,
+        [regex]::Escape($mojibakeQuote) + "([^" + [regex]::Escape($mojibakeQuote) + "]+)" + [regex]::Escape($mojibakeQuote),
+        ([string][char]0x201C) + '$1' + ([string][char]0x201D)
+    )
+
+    $fixed = $fixed -replace '[\u0080-\u009F]', ''
+    $fixed = $fixed -replace '[\t ]+', ' '
+    return $fixed.Trim()
+}
+function Repair-RecordTextFields {
+    param([Parameter(Mandatory = $true)][object]$Record)
+
+    foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "imdb_id", "overview", "poster_url")) {
+        if ($null -ne $Record.PSObject.Properties[$name]) {
+            $value = Get-ObjectProperty $Record $name
+            if ($null -ne $value -and $value -is [string]) {
+                Set-RecordProperty -Record $Record -Name $name -Value (Repair-MojibakeText $value)
+            }
+        }
+    }
+
+    return $Record
+}
+
+function Read-JsonFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [object]$Default = $null
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $Default
+    }
+
+    $content = Get-Content -LiteralPath $Path -Raw
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        return $Default
+    }
+
+    return $content | ConvertFrom-Json
+}
+
+function Write-JsonFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][object]$Value
+    )
+
+    $directory = Split-Path -Parent $Path
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory | Out-Null
+    }
+
+    $Value | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $Path -Encoding UTF8
+}
+
+function ConvertTo-NormalizedTitle {
+    param([AllowNull()][string]$Title)
+
+    $Title = Repair-MojibakeText $Title
+    if ([string]::IsNullOrWhiteSpace($Title)) {
+        return ""
+    }
+
+    $decomposed = $Title.Normalize([Text.NormalizationForm]::FormD)
+    $characters = New-Object System.Collections.Generic.List[char]
+    foreach ($character in $decomposed.ToCharArray()) {
+        if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($character) -ne [Globalization.UnicodeCategory]::NonSpacingMark) {
+            $characters.Add($character)
+        }
+    }
+
+    $normalized = (-join $characters).ToLowerInvariant()
+    $normalized = $normalized -replace '&', ' and '
+    $normalized = $normalized -replace '[^\p{L}\p{Nd}]+', ' '
+    $normalized = $normalized -replace '\s+', ' '
+    return $normalized.Trim()
+}
+
+function New-StableId {
+    param([Parameter(Mandatory = $true)][string]$InputText)
+
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes($InputText)
+        $hash = $sha.ComputeHash($bytes)
+        return (($hash | ForEach-Object { $_.ToString("x2") }) -join "").Substring(0, 24)
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
+function ConvertTo-PlainText {
+    param([Parameter(Mandatory = $true)][string]$Html)
+
+    $text = $Html -replace '(?is)<script\b[^>]*>.*?</script>', ' '
+    $text = $text -replace '(?is)<style\b[^>]*>.*?</style>', ' '
+    $text = $text -replace '(?is)<noscript\b[^>]*>.*?</noscript>', ' '
+    $text = $text -replace '(?i)</?(br|p|div|li|tr|td|th|h[1-6]|section|article|header)[^>]*>', "`n"
+    $text = $text -replace '<[^>]+>', ' '
+    $text = [System.Net.WebUtility]::HtmlDecode($text)
+    $text = $text -replace "`r", "`n"
+    $text = $text -replace "[`t ]+", " "
+    $text = $text -replace " *`n *", "`n"
+    $text = $text -replace "`n{3,}", "`n`n"
+    return Repair-MojibakeText $text.Trim()
+}
+
+function New-FilmRecord {
+    param(
+        [Parameter(Mandatory = $true)][string]$Title,
+        [string]$OriginalTitle,
+        [string]$Director,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$Section,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $cleanTitle = (Repair-MojibakeText ($Title -replace '\s+', ' ').Trim())
+    $cleanDirector = (Repair-MojibakeText ($Director -replace '\s+', ' ').Trim())
+    $key = "{0}|{1}|{2}|{3}|{4}" -f $Festival, $Year, (ConvertTo-NormalizedTitle $cleanTitle), (ConvertTo-NormalizedTitle $cleanDirector), $SourceUrl
+
+    [pscustomobject]@{
+        id = New-StableId $key
+        title = $cleanTitle
+        original_title = if ([string]::IsNullOrWhiteSpace($OriginalTitle)) { $cleanTitle } else { Repair-MojibakeText $OriginalTitle.Trim() }
+        director = $cleanDirector
+        year = $Year
+        festival = $Festival
+        region = $Region
+        section = $Section
+        source_url = $SourceUrl
+        tmdb_id = $null
+        imdb_id = $null
+        match_confidence = 0
+        poster_url = $null
+        overview = $null
+        tmdb_rating = $null
+        tracking_status = "pending"
+        first_available_date = $null
+        last_checked = $null
+        needs_review = $false
+        authorized_source_urls = @()
+        notion_page_id = $null
+        created_at = (Get-Date).ToString("o")
+        updated_at = (Get-Date).ToString("o")
+    }
+}
+
+function ConvertFrom-TitleByDirectorText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year,
+        [string[]]$AllowedSections = @()
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $section = $null
+    $subSection = $null
+    $pendingTitle = $null
+    $lines = $Text -split "`n"
+
+    foreach ($rawLine in $lines) {
+        $line = ($rawLine -replace '\s+', ' ').Trim()
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        if ($line.Length -lt 80 -and $line -match '(?i)^(in competition|competition|encounters|panorama|forum|premieres|midnight|midnight screenings|cannes premiere|spotlight|shorts|special screenings|out of competition|uncertain regard|un certain regard|main slate|galas|discovery|wavelengths|platform|proxima|competition films)$') {
+            $section = $line
+            $subSection = $null
+            $pendingTitle = $null
+            continue
+        }
+
+        if ($line -match '(?i)^(feature films|short films)$') {
+            $subSection = $line
+            $pendingTitle = $null
+            continue
+        }
+
+        $effectiveSection = if (-not [string]::IsNullOrWhiteSpace($subSection)) { "$section - $subSection" } else { $section }
+
+        if ($line -cmatch '^by\s+(?<director>[^<>]{2,120})$' -and -not [string]::IsNullOrWhiteSpace($pendingTitle)) {
+            $title = $pendingTitle.Trim(" -")
+            $director = $Matches.director.Trim(" .")
+            if ($title.StartsWith("(") -and $title.EndsWith(")") -and $title.Length -gt 2) {
+                $title = $title.Substring(1, $title.Length - 2)
+            }
+            $sectionAllowed = @($AllowedSections).Count -eq 0 -or $AllowedSections -contains $effectiveSection
+            if ($sectionAllowed -and $director -notmatch '(?i)\b(filmmakers|programme|program|festival|screening|opening event|newsletter|tickets?)\b') {
+                $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $effectiveSection -SourceUrl $SourceUrl -Year $Year))
+            }
+            $pendingTitle = $null
+            continue
+        }
+
+        if ($line -cmatch '^(?<title>.{2,180})\s+by\s+(?<director>[^<>]{2,120})$') {
+            $title = $Matches.title.Trim(" -")
+            $director = $Matches.director.Trim(" .")
+            if ($director -match '(?i)\b(filmmakers|programme|program|festival|screening|opening event|newsletter|tickets?)\b') {
+                continue
+            }
+            $sectionAllowed = @($AllowedSections).Count -eq 0 -or $AllowedSections -contains $effectiveSection
+            if ($sectionAllowed -and $title.Length -ge 2 -and $director.Length -ge 2) {
+                $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $effectiveSection -SourceUrl $SourceUrl -Year $Year))
+            }
+            $pendingTitle = $null
+            continue
+        }
+
+        if ($line.Length -ge 2 -and $line.Length -le 180 -and $line -match '\p{L}' -and $line -notmatch '(?i)\b(menu|search|newsletter|ticket|festival|official selection|read more|press|accreditation|schedule|program)\b') {
+            $pendingTitle = $line
+        }
+        else {
+            $pendingTitle = $null
+        }
+    }
+
+    return $records
+}
+
+function ConvertFrom-SundanceText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $allowedSections = @("U.S. DRAMATIC COMPETITION", "WORLD CINEMA DRAMATIC COMPETITION", "NEXT")
+
+    $allSections = @(
+        "U.S. DRAMATIC COMPETITION",
+        "U.S. DOCUMENTARY COMPETITION",
+        "WORLD CINEMA DRAMATIC COMPETITION",
+        "WORLD CINEMA DOCUMENTARY COMPETITION",
+        "NEXT",
+        "PREMIERES",
+        "MIDNIGHT",
+        "EPISODIC",
+        "SPOTLIGHT",
+        "FAMILY MATINEE",
+        "PARK CITY LEGACY"
+    )
+    $normalized = ($Text -replace '\s+', ' ').Trim()
+    foreach ($section in $allowedSections) {
+        $sectionStart = $normalized.IndexOf($section, [System.StringComparison]::Ordinal)
+        if ($sectionStart -lt 0) {
+            continue
+        }
+
+        $segmentStart = $sectionStart + $section.Length
+        $segmentEnd = $normalized.Length
+        foreach ($candidate in $allSections) {
+            if ($candidate -eq $section) {
+                continue
+            }
+            $candidateIndex = $normalized.IndexOf($candidate, $segmentStart, [System.StringComparison]::Ordinal)
+            if ($candidateIndex -ge 0 -and $candidateIndex -lt $segmentEnd) {
+                $segmentEnd = $candidateIndex
+            }
+        }
+
+        $segment = $normalized.Substring($segmentStart, $segmentEnd - $segmentStart)
+        $pattern = '(?<title>[^/]{2,160})\s*/\s*(?<countries>[^()]{2,180})\s+\((?<credits>.+?)\)\s*[\u2013\u2014-]'
+        foreach ($match in [regex]::Matches($segment, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
+            $title = ($match.Groups["title"].Value -replace '\s+', ' ').Trim()
+            $lastSentence = $title.LastIndexOf(". ")
+            if ($lastSentence -ge 0 -and $lastSentence -lt ($title.Length - 2)) {
+                $title = $title.Substring($lastSentence + 2).Trim()
+            }
+            $title = Repair-MojibakeText ($title -replace '\s+', ' ')
+            $credits = $match.Groups["credits"].Value
+            $director = $null
+            if ($credits -match 'Directors?[^:]{0,80}:\s*(?<director>.+?)(,\s*(Screenwriters?|Producers?|Producer|Screenwriter):|$)') {
+                $director = Repair-MojibakeText ($Matches.director.Trim())
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($title) -and -not [string]::IsNullOrWhiteSpace($director)) {
+                $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $Year))
+            }
+        }
+    }
+
+    return $records
+}
+
+function ConvertFrom-VeniceText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $section = if ($SourceUrl -match 'orizzonti') { "Orizzonti Competition" } else { "Venezia Competition" }
+    $scanText = $Text
+    if ($section -eq "Orizzonti Competition" -and $scanText -match '(?s)(?<features>Orizzonti Competition.+?)Orizzonti Short Films Competition') {
+        $scanText = $Matches.features
+    }
+
+    $pattern = 'Read more\s+(?<title>.+?)\s+Director\s+(?<director>.+?)\s+Main Cast\s+(?<meta>.+?)(?=\s+Read more\s+|$)'
+    foreach ($match in [regex]::Matches($scanText, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
+        $title = Repair-MojibakeText (($match.Groups["title"].Value -replace '\s+', ' ').Trim())
+        $director = Repair-MojibakeText (($match.Groups["director"].Value -replace '\s+', ' ').Trim())
+        $meta = ($match.Groups["meta"].Value -replace '\s+', ' ').Trim()
+        if ([string]::IsNullOrWhiteSpace($title) -or [string]::IsNullOrWhiteSpace($director)) {
+            continue
+        }
+
+        $filmYear = $Year
+        if ($meta -match '(?<year>(19|20)\d{2})') {
+            $filmYear = [int]$Matches.year
+        }
+
+        $duration = $null
+        if ($meta -match "(?<minutes>\d{2,3})\s*['’]") {
+            $duration = [int]$Matches.minutes
+        }
+        if ($null -ne $duration -and $duration -lt 60) {
+            continue
+        }
+
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $filmYear))
+    }
+
+    return $records
+}
+
+function ConvertFrom-OscarsText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $categories = @(
+        "Actor in a Leading Role",
+        "Actor in a Supporting Role",
+        "Actress in a Leading Role",
+        "Actress in a Supporting Role",
+        "Animated Feature Film",
+        "Animated Short Film",
+        "Casting",
+        "Cinematography",
+        "Costume Design",
+        "Directing",
+        "Documentary Feature Film",
+        "Documentary Short Film",
+        "Film Editing",
+        "International Feature Film",
+        "Live Action Short Film",
+        "Makeup and Hairstyling",
+        "Music (Original Score)",
+        "Music (Original Song)",
+        "Best Picture",
+        "Production Design",
+        "Sound",
+        "Visual Effects",
+        "Writing (Adapted Screenplay)",
+        "Writing (Original Screenplay)"
+    )
+    $actingCategories = @(
+        "Actor in a Leading Role",
+        "Actor in a Supporting Role",
+        "Actress in a Leading Role",
+        "Actress in a Supporting Role"
+    )
+
+    $recordsByTitle = @{}
+    $lines = @($Text -split "`n" | ForEach-Object { ($_ -replace '\s+', ' ').Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $currentCategory = $null
+    $pendingStatus = $null
+    $pendingPersonOrSong = $null
+
+    foreach ($line in $lines) {
+        if ($line.StartsWith("Select a Category")) {
+            continue
+        }
+
+        if ($categories -contains $line) {
+            $currentCategory = $line
+            $pendingStatus = $null
+            $pendingPersonOrSong = $null
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($currentCategory)) {
+            continue
+        }
+
+        if ($line -eq "Winner" -or $line -eq "Nominees") {
+            $pendingStatus = if ($line -eq "Winner") { "Winner" } else { "Nominee" }
+            $pendingPersonOrSong = $null
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($pendingStatus)) {
+            continue
+        }
+
+        $title = $null
+        if ($actingCategories -contains $currentCategory) {
+            if ([string]::IsNullOrWhiteSpace($pendingPersonOrSong)) {
+                $pendingPersonOrSong = $line
+                continue
+            }
+            $title = $line
+        }
+        elseif ($currentCategory -eq "Music (Original Song)") {
+            if ([string]::IsNullOrWhiteSpace($pendingPersonOrSong)) {
+                $pendingPersonOrSong = $line
+                continue
+            }
+            if ($line -match '^from\s+(?<film>.+?);') {
+                $title = $Matches.film.Trim()
+            }
+            else {
+                $title = $line
+            }
+        }
+        else {
+            $title = $line
+        }
+
+        $pendingStatus = $null
+        $pendingPersonOrSong = $null
+        if ([string]::IsNullOrWhiteSpace($title)) {
+            continue
+        }
+        if ($title -match '(?i)^(written by|screenplay by|music by|production design|set decoration|makeup|hairstyling|sound|visual effects|costume|director:|producer)') {
+            continue
+        }
+
+        $sectionText = "$currentCategory ($pendingStatus)"
+        if ($sectionText -eq "$currentCategory ()") {
+            $sectionText = $currentCategory
+        }
+        $key = ConvertTo-NormalizedTitle $title
+        if ([string]::IsNullOrWhiteSpace($key)) {
+            continue
+        }
+
+        if ($recordsByTitle.ContainsKey($key)) {
+            $existing = $recordsByTitle[$key]
+            $sections = @($existing.section -split '; ' | Where-Object { $_ })
+            if ($sections -notcontains $currentCategory) {
+                $existing.section = (@($sections + $currentCategory) -join '; ')
+            }
+        }
+        else {
+            $recordsByTitle[$key] = New-FilmRecord -Title $title -Director "" -Festival $Festival -Region $Region -Section $currentCategory -SourceUrl $SourceUrl -Year $Year
+        }
+    }
+
+    return @($recordsByTitle.Values | Sort-Object title)
+}
+
+function ConvertTo-CleanHtmlText {
+    param([AllowNull()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ""
+    }
+
+    $clean = $Text -replace '<[^>]+>', ' '
+    $clean = [System.Net.WebUtility]::HtmlDecode($clean)
+    $clean = $clean -replace '\s+', ' '
+    return Repair-MojibakeText $clean.Trim()
+}
+
+function Join-Url {
+    param(
+        [Parameter(Mandatory = $true)][string]$BaseUrl,
+        [Parameter(Mandatory = $true)][string]$Href
+    )
+
+    try {
+        return ([Uri]::new([Uri]$BaseUrl, $Href)).AbsoluteUri
+    }
+    catch {
+        return $Href
+    }
+}
+
+function Get-SectionNameFromSourceUrl {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceUrl,
+        [string]$Default = ""
+    )
+
+    if ($SourceUrl -match 'asian-vision|6055') { return "Asian Vision Competition" }
+    if ($SourceUrl -match 'international-competition|6056') { return "International Competition" }
+    if ($SourceUrl -match 'taiwan-competition|6057') { return "Taiwan Competition" }
+    if ($SourceUrl -match 'crystal-globe-competition') { return "Crystal Globe Competition" }
+    if ($SourceUrl -match 'proxima-competition') { return "Proxima Competition" }
+    return $Default
+}
+
+function Get-TidfDirectorFromFilmPage {
+    param([Parameter(Mandatory = $true)][string]$FilmUrl)
+
+    try {
+        $filmHtml = Invoke-TextRequest -Url $FilmUrl
+        $directorMatches = [regex]::Matches($filmHtml, '<div class="director-info">.*?<div class="entity-name">(?<name>[^<]+)</div>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        $directors = @($directorMatches | ForEach-Object {
+            ConvertTo-CleanHtmlText $_.Groups["name"].Value
+        } | Where-Object { $_ } | Select-Object -Unique)
+        return ($directors -join ", ")
+    }
+    catch {
+        Write-Warning "Failed to fetch TIDF film detail ${FilmUrl}: $($_.Exception.Message)"
+        return ""
+    }
+}
+
+function ConvertFrom-TidfCategoryHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $section = Get-SectionNameFromSourceUrl -SourceUrl $SourceUrl -Default "Competition"
+    $pattern = '<h3 class="views-field views-field-title entity-title">\s*<a href="(?<href>[^"]+)">(?<title>[^<]+)</a>\s*</h3>.*?<div class="views-field views-field-field-year-start entity-start-date">(?<year>\d{4})</div>'
+    foreach ($match in [regex]::Matches($Html, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
+        $title = ConvertTo-CleanHtmlText $match.Groups["title"].Value
+        if ([string]::IsNullOrWhiteSpace($title)) {
+            continue
+        }
+
+        $filmYear = $Year
+        if ($match.Groups["year"].Value -match '^\d{4}$') {
+            $filmYear = [int]$match.Groups["year"].Value
+        }
+        $filmUrl = Join-Url -BaseUrl $SourceUrl -Href $match.Groups["href"].Value
+        $director = Get-TidfDirectorFromFilmPage -FilmUrl $filmUrl
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $filmUrl -Year $filmYear))
+    }
+
+    return $records
+}
+
+function ConvertFrom-KviffArchiveHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $section = Get-SectionNameFromSourceUrl -SourceUrl $SourceUrl -Default "Competition"
+    $pattern = '<a href="(?<href>[^"]+)" class="film-name">(?<title>.*?)</a><br\s*/>\s*(?:\((?<original>.*?)\)\s*)?</div>\s*<div class="col second">\s*Directed by:\s*(?<director>.*?)\s*/\s*(?<meta>.*?)<br\s*/>'
+    foreach ($match in [regex]::Matches($Html, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
+        $title = ConvertTo-CleanHtmlText $match.Groups["title"].Value
+        if ([string]::IsNullOrWhiteSpace($title)) {
+            continue
+        }
+
+        $originalTitle = ConvertTo-CleanHtmlText $match.Groups["original"].Value
+        if ([string]::IsNullOrWhiteSpace($originalTitle)) {
+            $originalTitle = $title
+        }
+
+        $director = ConvertTo-CleanHtmlText $match.Groups["director"].Value
+        $filmYear = $Year
+        $meta = ConvertTo-CleanHtmlText $match.Groups["meta"].Value
+        if ($meta -match '(?<year>(19|20)\d{2})') {
+            $filmYear = [int]$Matches.year
+        }
+
+        $filmUrl = Join-Url -BaseUrl $SourceUrl -Href $match.Groups["href"].Value
+        $records.Add((New-FilmRecord -Title $title -OriginalTitle $originalTitle -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $filmUrl -Year $filmYear))
+    }
+
+    return $records
+}
+
+function Get-TaipeiFilmFestivalApiToken {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$EndpointFragment
+    )
+
+    $escapedEndpoint = [regex]::Escape($EndpointFragment)
+    $pattern = "${escapedEndpoint}[^a-zA-Z0-9]{0,8}\s*\{\s*""(?<key>[a-f0-9]{32})""\s*:\s*""(?<value>[a-f0-9]+)"""
+    $match = [regex]::Match($Html, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if (-not $match.Success) {
+        throw "Could not find Taipei Film Festival API token for $EndpointFragment."
+    }
+
+    return [pscustomobject]@{
+        key = $match.Groups["key"].Value
+        value = $match.Groups["value"].Value
+    }
+}
+
+function Invoke-TaipeiFilmFestivalApi {
+    param(
+        [Parameter(Mandatory = $true)][string]$Endpoint,
+        [Parameter(Mandatory = $true)][object]$Token,
+        [hashtable]$Query = @{}
+    )
+
+    $params = @{}
+    foreach ($key in $Query.Keys) {
+        $params[$key] = $Query[$key]
+    }
+    $params[$Token.key] = $Token.value
+
+    return Invoke-RestMethod -Uri "https://www.taipeiff.taipei/$Endpoint" -Method Get -Body $params -Headers @{ "User-Agent" = $Script:UserAgent } -ErrorAction Stop
+}
+
+function ConvertFrom-TaipeiFilmAwardsData {
+    param(
+        [Parameter(Mandatory = $true)][object]$Data,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    foreach ($item in @($Data.awardAry)) {
+        $title = ConvertTo-CleanHtmlText ([string](Get-ObjectProperty $item "title" ""))
+        if ([string]::IsNullOrWhiteSpace($title)) {
+            continue
+        }
+
+        $awardNames = New-Object System.Collections.Generic.List[string]
+        $director = ""
+        foreach ($award in @($item.awards_with_winners)) {
+            $awardName = ConvertTo-CleanHtmlText ([string](Get-ObjectProperty $award "award_name" ""))
+            if (-not [string]::IsNullOrWhiteSpace($awardName)) {
+                $awardNames.Add($awardName)
+            }
+            if ($awardName -match '\u6700\u4f73\u5c0e\u6f14') {
+                $director = ConvertTo-CleanHtmlText ([string](Get-ObjectProperty $award "winner" ""))
+            }
+        }
+
+        $section = "Taipei Film Awards"
+        if ($awardNames.Count -gt 0) {
+            $section = "Taipei Film Awards - $($awardNames -join '; ')"
+        }
+
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $Year))
+    }
+
+    return $records
+}
+
+function ConvertFrom-TaipeiNewTalentData {
+    param(
+        [Parameter(Mandatory = $true)][object]$Data,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    foreach ($item in @($Data.awardAry)) {
+        $title = ConvertTo-CleanHtmlText ([string](Get-ObjectProperty $item "col_1" ""))
+        if ([string]::IsNullOrWhiteSpace($title)) {
+            continue
+        }
+
+        $credit = ConvertTo-CleanHtmlText ([string](Get-ObjectProperty $item "col_2" ""))
+        $director = $credit
+        if ($credit -match '^(?<director>.+?)\s*\|') {
+            $director = $Matches.director.Trim()
+        }
+
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section "International New Talent Competition" -SourceUrl $SourceUrl -Year $Year))
+    }
+
+    return $records
+}
+
+function ConvertFrom-TaipeiFilmAwardsHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $token = Get-TaipeiFilmFestivalApiToken -Html $Html -EndpointFragment "api/articles/tfa/nominees"
+    $data = Invoke-TaipeiFilmFestivalApi -Endpoint "api/articles/tfa/nominees" -Token $token -Query @{ type = "2"; search = "" }
+    if ($data.status -ne "success") {
+        throw "Taipei Film Awards API returned status '$($data.status)'."
+    }
+
+    return ConvertFrom-TaipeiFilmAwardsData -Data $data -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+}
+
+function ConvertFrom-TaipeiNewTalentHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year
+    )
+
+    $token = Get-TaipeiFilmFestivalApiToken -Html $Html -EndpointFragment "api/articles/international/nominees"
+    $data = Invoke-TaipeiFilmFestivalApi -Endpoint "api/articles/international/nominees" -Token $token -Query @{ pages = "1" }
+    if ($data.status -ne "success") {
+        throw "Taipei New Talent API returned status '$($data.status)'."
+    }
+
+    return ConvertFrom-TaipeiNewTalentData -Data $data -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+}
+
+function ConvertFrom-LineupHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [string]$Parser = "generic_title_by_director",
+        [int]$Year = (Get-Date).Year
+    )
+
+    $text = ConvertTo-PlainText $Html
+    $allowedSections = @()
+    if ($Parser -eq "cannes_selection") {
+        $allowedSections = @("In Competition - Feature films", "Un Certain Regard")
+    }
+    switch ($Parser) {
+        "sundance_article" {
+            return ConvertFrom-SundanceText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "cannes_selection" {
+            return ConvertFrom-TitleByDirectorText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedSections $allowedSections
+        }
+        "venice_selection" {
+            return ConvertFrom-VeniceText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "oscars_ceremony" {
+            return ConvertFrom-OscarsText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "tidf_category" {
+            return ConvertFrom-TidfCategoryHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "kviff_archive_section" {
+            return ConvertFrom-KviffArchiveHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "taipeiff_tfa_nominees" {
+            return ConvertFrom-TaipeiFilmAwardsHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "taipeiff_new_talent" {
+            return ConvertFrom-TaipeiNewTalentHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "none" {
+            return @()
+        }
+        default {
+            return ConvertFrom-TitleByDirectorText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+    }
+}
+
+function Invoke-TextRequest {
+    param([Parameter(Mandatory = $true)][string]$Url)
+
+    $request = [System.Net.HttpWebRequest]::Create($Url)
+    $request.Method = "GET"
+    $request.UserAgent = $Script:UserAgent
+    $request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    $request.Headers.Add("Accept-Language", "en-US,en;q=0.9")
+
+    $response = $null
+    $stream = $null
+    $memory = $null
+    try {
+        $response = $request.GetResponse()
+        $stream = $response.GetResponseStream()
+        $memory = New-Object System.IO.MemoryStream
+        $buffer = New-Object byte[] 8192
+        while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $memory.Write($buffer, 0, $read)
+        }
+        $bytes = $memory.ToArray()
+        $charset = $response.CharacterSet
+        if ([string]::IsNullOrWhiteSpace($charset)) {
+            $charset = "utf-8"
+        }
+        try {
+            $encoding = [System.Text.Encoding]::GetEncoding($charset)
+        }
+        catch {
+            $encoding = [System.Text.Encoding]::UTF8
+        }
+        return $encoding.GetString($bytes)
+    }
+    finally {
+        if ($null -ne $memory) { $memory.Dispose() }
+        if ($null -ne $stream) { $stream.Dispose() }
+        if ($null -ne $response) { $response.Dispose() }
+    }
+}
+
+function Get-FestivalLineupRecords {
+    param(
+        [Parameter(Mandatory = $true)][object]$Config,
+        [switch]$RespectFestivalWindows
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $currentMonth = [int](Get-Date).Month
+    $currentYear = [int](Get-Date).Year
+
+    foreach ($festival in @($Config.festivals)) {
+        if ((Get-ObjectProperty $festival "enabled" $true) -eq $false) {
+            continue
+        }
+
+        if ($RespectFestivalWindows) {
+            $window = Get-ObjectProperty $festival "lineupWindow"
+            if ($null -ne $window) {
+                $startMonth = [int](Get-ObjectProperty $window "startMonth" 1)
+                $endMonth = [int](Get-ObjectProperty $window "endMonth" 12)
+                $active = if ($startMonth -le $endMonth) {
+                    $currentMonth -ge $startMonth -and $currentMonth -le $endMonth
+                }
+                else {
+                    $currentMonth -ge $startMonth -or $currentMonth -le $endMonth
+                }
+
+                if (-not $active) {
+                    continue
+                }
+            }
+        }
+
+        foreach ($source in @($festival.sources)) {
+            $url = Get-ObjectProperty $source "url"
+            if ([string]::IsNullOrWhiteSpace($url)) {
+                continue
+            }
+
+            try {
+                Write-Host "Fetching lineup: $($festival.name) <$url>"
+                $html = Invoke-TextRequest -Url $url
+                $parser = Get-ObjectProperty $source "parser" "generic_title_by_director"
+                $year = [int](Get-ObjectProperty $source "year" $currentYear)
+                $parsed = ConvertFrom-LineupHtml -Html $html -Festival $festival.name -Region $festival.region -SourceUrl $url -Parser $parser -Year $year
+                foreach ($record in @($parsed)) {
+                    $records.Add($record)
+                }
+            }
+            catch {
+                Write-Warning "Failed to fetch lineup source ${url}: $($_.Exception.Message)"
+            }
+        }
+    }
+
+    return $records
+}
+
+function Merge-FilmRecords {
+    param(
+        [object[]]$Existing,
+        [object[]]$Incoming
+    )
+
+    $byId = @{}
+    foreach ($film in @($Existing)) {
+        if ($null -ne $film -and -not [string]::IsNullOrWhiteSpace($film.id)) {
+            $byId[$film.id] = $film
+        }
+    }
+
+    foreach ($film in @($Incoming)) {
+        if ($null -eq $film -or [string]::IsNullOrWhiteSpace($film.id)) {
+            continue
+        }
+
+        if ($byId.ContainsKey($film.id)) {
+            $existingFilm = $byId[$film.id]
+            foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "year")) {
+                $incomingValue = Get-ObjectProperty $film $name
+                if ($null -ne $incomingValue -and -not [string]::IsNullOrWhiteSpace([string]$incomingValue)) {
+                    if ($name -eq "section") {
+                        $existingSections = @(([string](Get-ObjectProperty $existingFilm "section" "") -split '; ') | Where-Object { $_ })
+                        $incomingSections = @(([string]$incomingValue -split '; ') | Where-Object { $_ })
+                        $sections = @($existingSections + $incomingSections | Select-Object -Unique)
+                        Set-RecordProperty -Record $existingFilm -Name "section" -Value ($sections -join '; ')
+                    }
+                    else {
+                        $existingFilm.$name = $incomingValue
+                    }
+                }
+            }
+            Set-RecordProperty -Record $existingFilm -Name "updated_at" -Value (Get-Date).ToString("o")
+        }
+        else {
+            $byId[$film.id] = $film
+        }
+    }
+
+    return @($byId.Values | Sort-Object festival, title, director)
+}
+
+function Invoke-TmdbGet {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [hashtable]$Query = @{}
+    )
+
+    $bearer = Get-EnvValue "TMDB_BEARER_TOKEN"
+    $apiKey = Get-EnvValue "TMDB_API_KEY"
+    if ([string]::IsNullOrWhiteSpace($bearer) -and [string]::IsNullOrWhiteSpace($apiKey)) {
+        throw "Set TMDB_BEARER_TOKEN or TMDB_API_KEY before querying TMDb."
+    }
+
+    $headers = @{ "accept" = "application/json"; "User-Agent" = $Script:UserAgent }
+    if (-not [string]::IsNullOrWhiteSpace($bearer)) {
+        $headers["Authorization"] = "Bearer $bearer"
+    }
+    elseif (-not $Query.ContainsKey("api_key")) {
+        $Query["api_key"] = $apiKey
+    }
+
+    $pairs = New-Object System.Collections.Generic.List[string]
+    foreach ($key in $Query.Keys) {
+        if ($null -ne $Query[$key] -and -not [string]::IsNullOrWhiteSpace([string]$Query[$key])) {
+            $pairs.Add(("{0}={1}" -f [Uri]::EscapeDataString([string]$key), [Uri]::EscapeDataString([string]$Query[$key])))
+        }
+    }
+
+    $uri = "https://api.themoviedb.org/3$Path"
+    if ($pairs.Count -gt 0) {
+        $uri = "${uri}?$($pairs -join '&')"
+    }
+
+    return Invoke-RestMethod -Uri $uri -Headers $headers -Method Get -ErrorAction Stop
+}
+
+function Get-TmdbMovieCreditsDirector {
+    param([Parameter(Mandatory = $true)][int]$MovieId)
+
+    try {
+        $credits = Invoke-TmdbGet -Path "/movie/$MovieId/credits"
+        $directors = @($credits.crew | Where-Object { $_.job -eq "Director" } | ForEach-Object { $_.name })
+        return ($directors -join ", ")
+    }
+    catch {
+        return ""
+    }
+}
+
+function Get-TmdbMovieMatch {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $query = @{
+        "query" = $Film.title
+        "include_adult" = "false"
+        "language" = "en-US"
+        "page" = "1"
+    }
+    $filmYear = ConvertTo-OptionalInt $Film.year
+    if ($null -ne $filmYear -and $filmYear -gt 0) {
+        $query["year"] = [string]$filmYear
+    }
+
+    $search = Invoke-TmdbGet -Path "/search/movie" -Query $query
+    $best = $null
+    $bestScore = 0.0
+    $targetTitle = ConvertTo-NormalizedTitle $Film.title
+    $targetDirector = ConvertTo-NormalizedTitle $Film.director
+    $targetYear = if ($null -ne $filmYear) { $filmYear } else { 0 }
+
+    foreach ($candidate in @($search.results | Select-Object -First 5)) {
+        $score = 0.0
+        $candidateTitle = ConvertTo-NormalizedTitle $candidate.title
+        $candidateOriginalTitle = ConvertTo-NormalizedTitle $candidate.original_title
+
+        if ($candidateTitle -eq $targetTitle -or $candidateOriginalTitle -eq $targetTitle) {
+            $score += 0.55
+        }
+        elseif ($candidateTitle.Contains($targetTitle) -or $targetTitle.Contains($candidateTitle)) {
+            $score += 0.35
+        }
+
+        $candidateYear = 0
+        if ($candidate.release_date -match '^(\d{4})') {
+            $candidateYear = [int]$Matches[1]
+            if ($targetYear -gt 0 -and $candidateYear -eq $targetYear) {
+                $score += 0.15
+            }
+            elseif ($targetYear -gt 0 -and [Math]::Abs($candidateYear - $targetYear) -le 1) {
+                $score += 0.08
+            }
+        }
+
+        $candidateDirector = ""
+        if (-not [string]::IsNullOrWhiteSpace($targetDirector)) {
+            $candidateDirector = Get-TmdbMovieCreditsDirector -MovieId ([int]$candidate.id)
+            $normalizedCandidateDirector = ConvertTo-NormalizedTitle $candidateDirector
+            if ($normalizedCandidateDirector.Contains($targetDirector) -or $targetDirector.Contains($normalizedCandidateDirector)) {
+                $score += 0.30
+            }
+        }
+
+        if ($score -gt $bestScore) {
+            $bestScore = $score
+            $best = [pscustomobject]@{
+                tmdb_id = [int]$candidate.id
+                imdb_id = $null
+                title = $candidate.title
+                original_title = $candidate.original_title
+                release_year = $candidateYear
+                director = $candidateDirector
+                confidence = [Math]::Min(1.0, [Math]::Round($score, 2))
+                poster_url = $null
+                overview = $null
+                tmdb_rating = $null
+            }
+        }
+    }
+
+    if ($null -ne $best -and $best.confidence -ge 0.65) {
+        try {
+            $details = Invoke-TmdbGet -Path "/movie/$($best.tmdb_id)" -Query @{ "append_to_response" = "external_ids" }
+            if ($null -ne $details.external_ids.imdb_id) {
+                $best.imdb_id = $details.external_ids.imdb_id
+            }
+            if (-not [string]::IsNullOrWhiteSpace([string]$details.poster_path)) {
+                $best.poster_url = "https://image.tmdb.org/t/p/w500$($details.poster_path)"
+            }
+            if (-not [string]::IsNullOrWhiteSpace([string]$details.overview)) {
+                $best.overview = [string]$details.overview
+            }
+            if ($null -ne $details.vote_average) {
+                $best.tmdb_rating = [Math]::Round([double]$details.vote_average, 1)
+            }
+        }
+        catch {
+            # External ids are useful but not required for tracking.
+        }
+        return $best
+    }
+
+    return $null
+}
+
+function Update-FilmMetadataFromTmdb {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [Parameter(Mandatory = $true)][int]$TmdbId
+    )
+
+    $details = Invoke-TmdbGet -Path "/movie/$TmdbId" -Query @{ "append_to_response" = "external_ids" }
+    if ($null -ne $details.external_ids.imdb_id -and [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "imdb_id" ""))) {
+        Set-RecordProperty -Record $Film -Name "imdb_id" -Value ([string]$details.external_ids.imdb_id)
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string]$details.poster_path)) {
+        Set-RecordProperty -Record $Film -Name "poster_url" -Value ("https://image.tmdb.org/t/p/w500$($details.poster_path)")
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string]$details.overview)) {
+        Set-RecordProperty -Record $Film -Name "overview" -Value ([string]$details.overview)
+    }
+    if ($null -ne $details.vote_average) {
+        Set-RecordProperty -Record $Film -Name "tmdb_rating" -Value ([Math]::Round([double]$details.vote_average, 1))
+    }
+    Set-RecordProperty -Record $Film -Name "updated_at" -Value (Get-Date).ToString("o")
+
+    return $Film
+}
+
+function Update-FilmMatches {
+    param([object[]]$Films)
+
+    foreach ($film in @($Films)) {
+        $existingTmdbId = ConvertTo-OptionalInt $film.tmdb_id
+        if ($null -ne $existingTmdbId -and $existingTmdbId -gt 0) {
+            try {
+                Update-FilmMetadataFromTmdb -Film $film -TmdbId $existingTmdbId | Out-Null
+            }
+            catch {
+                Write-Warning "TMDb metadata update failed for '$($film.title)': $($_.Exception.Message)"
+            }
+            continue
+        }
+        if ((Get-ObjectProperty $film "tracking_status" "pending") -eq "available_found") {
+            continue
+        }
+
+        try {
+            $match = Get-TmdbMovieMatch -Film $film
+            if ($null -ne $match) {
+                Set-RecordProperty -Record $film -Name "tmdb_id" -Value $match.tmdb_id
+                Set-RecordProperty -Record $film -Name "imdb_id" -Value $match.imdb_id
+                Set-RecordProperty -Record $film -Name "match_confidence" -Value $match.confidence
+                Set-RecordProperty -Record $film -Name "poster_url" -Value $match.poster_url
+                Set-RecordProperty -Record $film -Name "overview" -Value (Repair-MojibakeText $match.overview)
+                Set-RecordProperty -Record $film -Name "tmdb_rating" -Value $match.tmdb_rating
+                Set-RecordProperty -Record $film -Name "needs_review" -Value ($match.confidence -lt 0.8)
+            }
+            else {
+                Set-RecordProperty -Record $film -Name "needs_review" -Value $true
+            }
+            Set-RecordProperty -Record $film -Name "updated_at" -Value (Get-Date).ToString("o")
+        }
+        catch {
+            Write-Warning "TMDb match failed for '$($film.title)': $($_.Exception.Message)"
+        }
+    }
+
+    return $Films
+}
+
+function ConvertFrom-TmdbProviderResult {
+    param([Parameter(Mandatory = $true)][object]$ProviderResult)
+
+    $offers = New-Object System.Collections.Generic.List[object]
+    $mapping = @{
+        "flatrate" = "streaming_subscription"
+        "free" = "streaming_free"
+        "ads" = "streaming_free"
+        "rent" = "digital_rent"
+        "buy" = "digital_buy"
+    }
+
+    $results = Get-ObjectProperty $ProviderResult "results"
+    if ($null -eq $results) {
+        return @()
+    }
+
+    foreach ($regionProperty in $results.PSObject.Properties) {
+        $country = $regionProperty.Name
+        $entry = $regionProperty.Value
+        $link = Get-ObjectProperty $entry "link"
+
+        foreach ($category in $mapping.Keys) {
+            $providers = Get-ObjectProperty $entry $category
+            if ($null -eq $providers) {
+                continue
+            }
+
+            foreach ($provider in @($providers)) {
+                $providerName = Get-ObjectProperty $provider "provider_name" "Unknown"
+                $offers.Add([pscustomobject]@{
+                    type = $mapping[$category]
+                    provider = $providerName
+                    country = $country
+                    source_url = $link
+                    source_class = "tmdb"
+                    raw_category = $category
+                })
+            }
+        }
+    }
+
+    return $offers
+}
+
+function Get-TmdbWatchProviderOffers {
+    param([Parameter(Mandatory = $true)][int]$TmdbId)
+
+    $result = Invoke-TmdbGet -Path "/movie/$TmdbId/watch/providers"
+    return ConvertFrom-TmdbProviderResult -ProviderResult $result
+}
+
+function Get-WatchmodeOffers {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $apiKey = Get-EnvValue "WATCHMODE_API_KEY"
+    if ([string]::IsNullOrWhiteSpace($apiKey)) {
+        return @()
+    }
+
+    $filmTmdbId = ConvertTo-OptionalInt $Film.tmdb_id
+    if ($null -eq $filmTmdbId -or $filmTmdbId -le 0) {
+        return @()
+    }
+
+    try {
+        $searchUrl = "https://api.watchmode.com/v1/search/?apiKey=$([Uri]::EscapeDataString($apiKey))&search_field=tmdb_movie_id&search_value=$([Uri]::EscapeDataString([string]$filmTmdbId))"
+        $search = Invoke-RestMethod -Uri $searchUrl -Method Get -ErrorAction Stop
+        $watchmodeId = $null
+        if ($null -ne $search.title_results -and @($search.title_results).Count -gt 0) {
+            $watchmodeId = $search.title_results[0].id
+        }
+        if ($null -eq $watchmodeId) {
+            return @()
+        }
+
+        $sourcesUrl = "https://api.watchmode.com/v1/title/$watchmodeId/sources/?apiKey=$([Uri]::EscapeDataString($apiKey))"
+        $sources = Invoke-RestMethod -Uri $sourcesUrl -Method Get -ErrorAction Stop
+        $offers = New-Object System.Collections.Generic.List[object]
+        foreach ($source in @($sources)) {
+            $sourceType = (Get-ObjectProperty $source "type" "").ToLowerInvariant()
+            $mappedType = switch ($sourceType) {
+                "sub" { "streaming_subscription" }
+                "free" { "streaming_free" }
+                "rent" { "digital_rent" }
+                "buy" { "digital_buy" }
+                default { $null }
+            }
+            if ($null -eq $mappedType) {
+                continue
+            }
+
+            $offers.Add([pscustomobject]@{
+                type = $mappedType
+                provider = (Get-ObjectProperty $source "name" "Unknown")
+                country = (Get-ObjectProperty $source "region" "")
+                source_url = (Get-ObjectProperty $source "web_url" "")
+                source_class = "watchmode"
+                raw_category = $sourceType
+            })
+        }
+        return $offers
+    }
+    catch {
+        Write-Warning "Watchmode lookup failed for '$($Film.title)': $($_.Exception.Message)"
+        return @()
+    }
+}
+
+function Test-AllowedAuthorizedUrl {
+    param(
+        [Parameter(Mandatory = $true)][string]$Url,
+        [Parameter(Mandatory = $true)][object]$AuthorizedConfig
+    )
+
+    try {
+        $uri = [Uri]$Url
+    }
+    catch {
+        return $false
+    }
+
+    $host = $uri.Host.ToLowerInvariant()
+    foreach ($domain in @($AuthorizedConfig.allowedDomains)) {
+        $domainValue = ([string]$domain).ToLowerInvariant()
+        if ($host -eq $domainValue -or $host.EndsWith(".$domainValue")) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-AuthorizedArchiveLicense {
+    param(
+        [Parameter(Mandatory = $true)][object]$Metadata,
+        [Parameter(Mandatory = $true)][object]$AuthorizedConfig
+    )
+
+    $licenseUrl = [string](Get-ObjectProperty $Metadata.metadata "licenseurl" "")
+    $rights = [string](Get-ObjectProperty $Metadata.metadata "rights" "")
+    $combined = "$licenseUrl $rights".ToLowerInvariant()
+
+    foreach ($fragment in @($AuthorizedConfig.allowedLicenseFragments)) {
+        if ($combined.Contains(([string]$fragment).ToLowerInvariant())) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Get-ArchiveIdentifierFromUrl {
+    param([Parameter(Mandatory = $true)][string]$Url)
+
+    try {
+        $uri = [Uri]$Url
+        if ($uri.Host.ToLowerInvariant() -notin @("archive.org", "www.archive.org")) {
+            return $null
+        }
+        $segments = @($uri.AbsolutePath.Trim("/") -split "/")
+        $detailsIndex = [Array]::IndexOf($segments, "details")
+        if ($detailsIndex -ge 0 -and $segments.Count -gt ($detailsIndex + 1)) {
+            return $segments[$detailsIndex + 1]
+        }
+    }
+    catch {
+        return $null
+    }
+
+    return $null
+}
+
+function Get-AuthorizedSourceOffers {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [Parameter(Mandatory = $true)][object]$AuthorizedConfig
+    )
+
+    $offers = New-Object System.Collections.Generic.List[object]
+    $urls = @()
+    $rawUrls = Get-ObjectProperty $Film "authorized_source_urls" @()
+    if ($rawUrls -is [string]) {
+        $urls = @($rawUrls -split '[,\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    }
+    else {
+        $urls = @($rawUrls | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
+    foreach ($url in $urls) {
+        if (-not (Test-AllowedAuthorizedUrl -Url $url -AuthorizedConfig $AuthorizedConfig)) {
+            Write-Warning "Skipping non-whitelisted authorized source URL for '$($Film.title)': $url"
+            continue
+        }
+
+        $archiveIdentifier = Get-ArchiveIdentifierFromUrl -Url $url
+        if (-not [string]::IsNullOrWhiteSpace($archiveIdentifier)) {
+            try {
+                $metadata = Invoke-RestMethod -Uri "https://archive.org/metadata/$([Uri]::EscapeDataString($archiveIdentifier))" -Method Get -ErrorAction Stop
+                if (-not (Test-AuthorizedArchiveLicense -Metadata $metadata -AuthorizedConfig $AuthorizedConfig)) {
+                    Write-Warning "Archive.org item lacks accepted license metadata: $url"
+                    continue
+                }
+
+                foreach ($file in @($metadata.files)) {
+                    $fileName = [string](Get-ObjectProperty $file "name" "")
+                    if ([string]::IsNullOrWhiteSpace($fileName)) {
+                        continue
+                    }
+
+                    $lowerName = $fileName.ToLowerInvariant()
+                    foreach ($extension in @($AuthorizedConfig.torrentExtensions)) {
+                        if ($lowerName.EndsWith(([string]$extension).ToLowerInvariant())) {
+                            $offers.Add([pscustomobject]@{
+                                type = "authorized_torrent"
+                                provider = "Internet Archive"
+                                country = ""
+                                source_url = $url
+                                source_class = "official_or_whitelist"
+                                raw_category = "torrent"
+                            })
+                        }
+                    }
+                    foreach ($extension in @($AuthorizedConfig.downloadExtensions)) {
+                        if ($lowerName.EndsWith(([string]$extension).ToLowerInvariant())) {
+                            $offers.Add([pscustomobject]@{
+                                type = "authorized_download"
+                                provider = "Internet Archive"
+                                country = ""
+                                source_url = $url
+                                source_class = "official_or_whitelist"
+                                raw_category = "download"
+                            })
+                        }
+                    }
+                }
+            }
+            catch {
+                Write-Warning "Failed to inspect Archive.org source ${url}: $($_.Exception.Message)"
+            }
+            continue
+        }
+
+        try {
+            $html = Invoke-TextRequest -Url $url
+            $lowerHtml = $html.ToLowerInvariant()
+            foreach ($extension in @($AuthorizedConfig.torrentExtensions)) {
+                if ($lowerHtml.Contains(([string]$extension).ToLowerInvariant())) {
+                    $offers.Add([pscustomobject]@{
+                        type = "authorized_torrent"
+                        provider = ([Uri]$url).Host
+                        country = ""
+                        source_url = $url
+                        source_class = "official_or_whitelist"
+                        raw_category = "torrent"
+                    })
+                }
+            }
+            foreach ($extension in @($AuthorizedConfig.downloadExtensions)) {
+                if ($lowerHtml.Contains(([string]$extension).ToLowerInvariant()) -or $lowerHtml.Contains("download")) {
+                    $offers.Add([pscustomobject]@{
+                        type = "authorized_download"
+                        provider = ([Uri]$url).Host
+                        country = ""
+                        source_url = $url
+                        source_class = "official_or_whitelist"
+                        raw_category = "download"
+                    })
+                    break
+                }
+            }
+        }
+        catch {
+            Write-Warning "Failed to inspect authorized source ${url}: $($_.Exception.Message)"
+        }
+    }
+
+    return $offers
+}
+
+function Select-UniqueOffers {
+    param([object[]]$Offers)
+
+    $seen = @{}
+    $unique = New-Object System.Collections.Generic.List[object]
+    foreach ($offer in @($Offers)) {
+        $key = "{0}|{1}|{2}|{3}" -f $offer.type, $offer.provider, $offer.country, $offer.source_url
+        if (-not $seen.ContainsKey($key)) {
+            $seen[$key] = $true
+            $unique.Add($offer)
+        }
+    }
+    return $unique
+}
+
+function Get-LegalAvailabilityOffers {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [Parameter(Mandatory = $true)][object]$AuthorizedConfig
+    )
+
+    $offers = New-Object System.Collections.Generic.List[object]
+    $filmTmdbId = ConvertTo-OptionalInt $Film.tmdb_id
+    if ($null -ne $filmTmdbId -and $filmTmdbId -gt 0) {
+        try {
+            foreach ($offer in @(Get-TmdbWatchProviderOffers -TmdbId $filmTmdbId)) {
+                $offers.Add($offer)
+            }
+        }
+        catch {
+            Write-Warning "TMDb watch provider lookup failed for '$($Film.title)': $($_.Exception.Message)"
+        }
+
+        foreach ($offer in @(Get-WatchmodeOffers -Film $Film)) {
+            $offers.Add($offer)
+        }
+    }
+
+    foreach ($offer in @(Get-AuthorizedSourceOffers -Film $Film -AuthorizedConfig $AuthorizedConfig)) {
+        $offers.Add($offer)
+    }
+
+    return Select-UniqueOffers -Offers $offers
+}
+
+function New-FirstAvailabilityEvent {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [Parameter(Mandatory = $true)][object[]]$Offers
+    )
+
+    if (@($Offers).Count -eq 0) {
+        return $null
+    }
+
+    $date = (Get-Date).ToString("yyyy-MM-dd")
+    $types = @($Offers | ForEach-Object { $_.type } | Where-Object { $_ } | Sort-Object -Unique)
+    $providers = @($Offers | ForEach-Object { $_.provider } | Where-Object { $_ } | Sort-Object -Unique)
+    $countries = @($Offers | ForEach-Object { $_.country } | Where-Object { $_ } | Sort-Object -Unique)
+    $urls = @($Offers | ForEach-Object { $_.source_url } | Where-Object { $_ } | Sort-Object -Unique)
+    $canonicalKey = Get-FilmCanonicalKey -Film $Film
+    $eventId = New-StableId ("first-availability|{0}" -f $canonicalKey)
+
+    [pscustomobject]@{
+        id = $eventId
+        film_id = $Film.id
+        canonical_key = $canonicalKey
+        film_title = $Film.title
+        director = $Film.director
+        festival = $Film.festival
+        event_date = $date
+        availability_types = $types
+        providers = $providers
+        countries = $countries
+        source_urls = $urls
+        offers = $Offers
+        needs_review = [bool]$Film.needs_review
+        notion_page_id = $null
+        created_at = (Get-Date).ToString("o")
+    }
+}
+
+function Get-FilmCanonicalKey {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $filmTmdbId = ConvertTo-OptionalInt $Film.tmdb_id
+    if ($null -ne $filmTmdbId -and $filmTmdbId -gt 0) {
+        return "tmdb:$filmTmdbId"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Film.imdb_id)) {
+        return "imdb:$($Film.imdb_id)"
+    }
+
+    $year = if ($null -ne $Film.year) { [string]$Film.year } else { "" }
+    return "title:${year}:$(ConvertTo-NormalizedTitle $Film.title)"
+}
+
+function Add-FirstAvailabilityEvents {
+    param(
+        [object]$Films = @(),
+        [object]$ExistingEvents = @(),
+        [Parameter(Mandatory = $true)][object]$AuthorizedConfig
+    )
+
+    $filmItems = @($Films)
+    $existingEventItems = @($ExistingEvents)
+    $eventsByFilmId = @{}
+    $eventsByCanonicalKey = @{}
+    foreach ($event in $existingEventItems) {
+        if ($null -ne $event.film_id) {
+            $eventsByFilmId[$event.film_id] = $event
+        }
+        if (-not [string]::IsNullOrWhiteSpace($event.canonical_key)) {
+            $eventsByCanonicalKey[$event.canonical_key] = $event
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($event.id)) {
+            $eventsByCanonicalKey[$event.id] = $event
+        }
+    }
+
+    $newEvents = New-Object System.Collections.Generic.List[object]
+    foreach ($film in $filmItems) {
+        if ((Get-ObjectProperty $film "tracking_status" "pending") -ne "pending") {
+            continue
+        }
+        $needsReviewValue = Get-ObjectProperty $film "needs_review" $false
+        if ($null -ne $needsReviewValue -and [bool]$needsReviewValue) {
+            continue
+        }
+
+        $canonicalKey = Get-FilmCanonicalKey -Film $film
+        $canonicalEventId = New-StableId ("first-availability|{0}" -f $canonicalKey)
+        if ($eventsByFilmId.ContainsKey($film.id) -or $eventsByCanonicalKey.ContainsKey($canonicalKey) -or $eventsByCanonicalKey.ContainsKey($canonicalEventId)) {
+            Set-RecordProperty -Record $film -Name "tracking_status" -Value "available_found"
+            continue
+        }
+
+        $offers = @(Get-LegalAvailabilityOffers -Film $film -AuthorizedConfig $AuthorizedConfig)
+        Set-RecordProperty -Record $film -Name "last_checked" -Value (Get-Date).ToString("yyyy-MM-dd")
+        if ($offers.Count -gt 0) {
+            $event = New-FirstAvailabilityEvent -Film $film -Offers $offers
+            $newEvents.Add($event)
+            $eventsByFilmId[$film.id] = $event
+            $eventsByCanonicalKey[$canonicalKey] = $event
+            Set-RecordProperty -Record $film -Name "tracking_status" -Value "available_found"
+            Set-RecordProperty -Record $film -Name "first_available_date" -Value $event.event_date
+            Set-RecordProperty -Record $film -Name "updated_at" -Value (Get-Date).ToString("o")
+        }
+    }
+
+    return [pscustomobject]@{
+        films = $filmItems
+        new_events = @($newEvents.ToArray())
+        all_events = @($existingEventItems + @($newEvents.ToArray()))
+    }
+}
+
+function Invoke-NotionRequest {
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet("GET", "POST", "PATCH")][string]$Method,
+        [Parameter(Mandatory = $true)][string]$Path,
+        [object]$Body = $null
+    )
+
+    $token = Get-EnvValue "NOTION_TOKEN"
+    if ([string]::IsNullOrWhiteSpace($token)) {
+        throw "Set NOTION_TOKEN before using Notion sync."
+    }
+
+    $headers = @{
+        "Authorization" = "Bearer $token"
+        "Notion-Version" = $Script:NotionVersion
+        "Content-Type" = "application/json; charset=utf-8"
+        "User-Agent" = $Script:UserAgent
+    }
+
+    $parameters = @{
+        Uri = "https://api.notion.com$Path"
+        Method = $Method
+        Headers = $headers
+        ErrorAction = "Stop"
+    }
+
+    if ($null -ne $Body) {
+        $json = $Body | ConvertTo-Json -Depth 30
+        $parameters["Body"] = [System.Text.Encoding]::UTF8.GetBytes($json)
+    }
+
+    return Invoke-RestMethod @parameters
+}
+
+function Get-NotionTextProperty {
+    param(
+        [Parameter(Mandatory = $true)][object]$Page,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $property = Get-ObjectProperty $Page.properties $Name
+    if ($null -eq $property) {
+        return ""
+    }
+
+    $type = Get-ObjectProperty $property "type"
+    switch ($type) {
+        "title" { return (@($property.title) | ForEach-Object { $_.plain_text }) -join "" }
+        "rich_text" { return (@($property.rich_text) | ForEach-Object { $_.plain_text }) -join "" }
+        "url" { return [string]$property.url }
+        "select" { return [string](Get-ObjectProperty $property.select "name" "") }
+        "number" { return [string]$property.number }
+        "date" { return [string](Get-ObjectProperty $property.date "start" "") }
+        default { return "" }
+    }
+}
+
+function ConvertFrom-NotionFilmPage {
+    param([Parameter(Mandatory = $true)][object]$Page)
+
+    $authorizedUrls = Get-NotionTextProperty -Page $Page -Name "Authorized Source URLs"
+    $yearText = Get-NotionTextProperty -Page $Page -Name "Year"
+    $yearValue = $null
+    if ($yearText -match '\d{4}') {
+        $yearValue = [int]$Matches[0]
+    }
+    $tmdbText = Get-NotionTextProperty -Page $Page -Name "TMDb ID"
+    $tmdbValue = $null
+    if ($tmdbText -match '\d+') {
+        $tmdbValue = [int]$Matches[0]
+    }
+    $confidenceText = Get-NotionTextProperty -Page $Page -Name "Match Confidence"
+    $confidenceValue = 0
+    if ($confidenceText -match '^\d+(\.\d+)?$') {
+        $confidenceValue = [double]$confidenceText
+    }
+
+    $record = [pscustomobject]@{
+        id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
+        title = Get-NotionTextProperty -Page $Page -Name "Film Title"
+        original_title = Get-NotionTextProperty -Page $Page -Name "Original Title"
+        director = Get-NotionTextProperty -Page $Page -Name "Director"
+        year = $yearValue
+        festival = Get-NotionTextProperty -Page $Page -Name "Festival"
+        region = Get-NotionTextProperty -Page $Page -Name "Region"
+        section = Get-NotionTextProperty -Page $Page -Name "Section"
+        source_url = Get-NotionTextProperty -Page $Page -Name "Source URL"
+        tmdb_id = $tmdbValue
+        imdb_id = Get-NotionTextProperty -Page $Page -Name "IMDb ID"
+        match_confidence = $confidenceValue
+        poster_url = Get-NotionTextProperty -Page $Page -Name "Poster URL"
+        overview = Get-NotionTextProperty -Page $Page -Name "Overview"
+        tmdb_rating = ConvertTo-OptionalDouble (Get-NotionTextProperty -Page $Page -Name "TMDb Rating")
+        tracking_status = Get-NotionTextProperty -Page $Page -Name "Tracking Status"
+        first_available_date = Get-NotionTextProperty -Page $Page -Name "First Available Date"
+        last_checked = Get-NotionTextProperty -Page $Page -Name "Last Checked"
+        needs_review = [bool](Get-ObjectProperty (Get-ObjectProperty $Page.properties "Needs Review") "checkbox" $false)
+        authorized_source_urls = @($authorizedUrls -split '[,\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        notion_page_id = $Page.id
+        created_at = $Page.created_time
+        updated_at = $Page.last_edited_time
+    }
+
+    return Repair-RecordTextFields -Record $record
+}
+
+function Get-NotionDatabasePages {
+    param([Parameter(Mandatory = $true)][string]$DatabaseId)
+
+    $pages = New-Object System.Collections.Generic.List[object]
+    $cursor = $null
+    do {
+        $body = @{ page_size = 100 }
+        if (-not [string]::IsNullOrWhiteSpace($cursor)) {
+            $body["start_cursor"] = $cursor
+        }
+        $response = Invoke-NotionRequest -Method "POST" -Path "/v1/databases/$DatabaseId/query" -Body $body
+        foreach ($page in @($response.results)) {
+            $pages.Add($page)
+        }
+        $cursor = $response.next_cursor
+    } while ($response.has_more -eq $true)
+
+    return $pages
+}
+
+function Import-NotionFilms {
+    param([Parameter(Mandatory = $true)][string]$DatabaseId)
+
+    $films = New-Object System.Collections.Generic.List[object]
+    foreach ($page in @(Get-NotionDatabasePages -DatabaseId $DatabaseId)) {
+            $film = ConvertTo-MutableRecord (ConvertFrom-NotionFilmPage -Page $page)
+        if (-not [string]::IsNullOrWhiteSpace($film.id)) {
+            if ([string]::IsNullOrWhiteSpace((Get-ObjectProperty $film "tracking_status" ""))) {
+                Set-RecordProperty -Record $film -Name "tracking_status" -Value "pending"
+            }
+            $films.Add($film)
+        }
+    }
+
+    return $films
+}
+
+function New-RichTextProperty {
+    param([AllowNull()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @{ rich_text = @() }
+    }
+    if ($Text.Length -gt 1900) {
+        $Text = $Text.Substring(0, 1900) + "`n[truncated]"
+    }
+    return @{ rich_text = @(@{ text = @{ content = $Text } }) }
+}
+
+function New-TitleProperty {
+    param([AllowNull()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        $Text = "Untitled"
+    }
+    return @{ title = @(@{ text = @{ content = $Text } }) }
+}
+
+function New-UrlProperty {
+    param([AllowNull()][string]$Url)
+    if ([string]::IsNullOrWhiteSpace($Url)) {
+        return @{ url = $null }
+    }
+    return @{ url = $Url }
+}
+
+function ConvertTo-NotionFilmProperties {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    Repair-RecordTextFields -Record $Film | Out-Null
+
+    $filmTitle = [string](ConvertTo-Scalar $Film.title)
+    $originalTitle = [string](ConvertTo-Scalar $Film.original_title)
+    $director = [string](ConvertTo-Scalar $Film.director)
+    $festival = [string](ConvertTo-Scalar $Film.festival)
+    $region = [string](ConvertTo-Scalar $Film.region)
+    $section = [string](ConvertTo-Scalar $Film.section)
+    $sourceUrl = [string](ConvertTo-Scalar $Film.source_url)
+    $imdbId = [string](ConvertTo-Scalar $Film.imdb_id)
+    $posterUrl = [string](ConvertTo-Scalar $Film.poster_url)
+    $overview = [string](ConvertTo-Scalar $Film.overview)
+    $trackingStatus = [string](ConvertTo-Scalar $Film.tracking_status)
+    if ([string]::IsNullOrWhiteSpace($trackingStatus)) {
+        $trackingStatus = "pending"
+    }
+    $needsReviewValue = ConvertTo-Scalar $Film.needs_review
+    $needsReview = if ($null -eq $needsReviewValue) { $false } else { [bool]$needsReviewValue }
+    $firstAvailableDate = [string](ConvertTo-Scalar $Film.first_available_date)
+    $lastChecked = [string](ConvertTo-Scalar $Film.last_checked)
+
+    $properties = @{
+        "Film Title" = New-TitleProperty $filmTitle
+        "Tracker ID" = New-RichTextProperty ([string](ConvertTo-Scalar $Film.id))
+        "Original Title" = New-RichTextProperty $originalTitle
+        "Director" = New-RichTextProperty $director
+        "Festival" = New-RichTextProperty $festival
+        "Region" = New-RichTextProperty $region
+        "Section" = New-RichTextProperty $section
+        "Source URL" = New-UrlProperty $sourceUrl
+        "IMDb ID" = New-RichTextProperty $imdbId
+        "Poster URL" = New-UrlProperty $posterUrl
+        "Overview" = New-RichTextProperty $overview
+        "Tracking Status" = @{ select = @{ name = $trackingStatus } }
+        "Needs Review" = @{ checkbox = $needsReview }
+        "Authorized Source URLs" = New-RichTextProperty ((@($Film.authorized_source_urls) | Where-Object { $_ }) -join "`n")
+    }
+
+    $filmYear = ConvertTo-OptionalInt $Film.year
+    $filmTmdbId = ConvertTo-OptionalInt $Film.tmdb_id
+    $filmConfidence = ConvertTo-OptionalDouble $Film.match_confidence
+    $filmTmdbRating = ConvertTo-OptionalDouble $Film.tmdb_rating
+    if ($null -ne $filmYear -and $filmYear -gt 0) {
+        $properties["Year"] = @{ number = $filmYear }
+    }
+    if ($null -ne $filmTmdbId -and $filmTmdbId -gt 0) {
+        $properties["TMDb ID"] = @{ number = $filmTmdbId }
+    }
+    if ($null -ne $filmConfidence) {
+        $properties["Match Confidence"] = @{ number = $filmConfidence }
+    }
+    if ($null -ne $filmTmdbRating) {
+        $properties["TMDb Rating"] = @{ number = $filmTmdbRating }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($firstAvailableDate)) {
+        $properties["First Available Date"] = @{ date = @{ start = $firstAvailableDate } }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($lastChecked)) {
+        $properties["Last Checked"] = @{ date = @{ start = $lastChecked } }
+    }
+
+    return $properties
+}
+
+function Get-NotionPageCover {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $posterUrl = [string](ConvertTo-Scalar $Film.poster_url)
+    if ([string]::IsNullOrWhiteSpace($posterUrl)) {
+        return $null
+    }
+
+    return @{ type = "external"; external = @{ url = $posterUrl } }
+}
+
+function Find-NotionPageByTrackerId {
+    param(
+        [Parameter(Mandatory = $true)][string]$DatabaseId,
+        [Parameter(Mandatory = $true)][string]$TrackerId
+    )
+
+    $body = @{
+        page_size = 1
+        filter = @{
+            property = "Tracker ID"
+            rich_text = @{ equals = $TrackerId }
+        }
+    }
+    $response = Invoke-NotionRequest -Method "POST" -Path "/v1/databases/$DatabaseId/query" -Body $body
+    if (@($response.results).Count -gt 0) {
+        return $response.results[0]
+    }
+    return $null
+}
+
+function Sync-NotionFilm {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [Parameter(Mandatory = $true)][string]$DatabaseId
+    )
+
+    $properties = ConvertTo-NotionFilmProperties -Film $Film
+    $page = $null
+    if (-not [string]::IsNullOrWhiteSpace($Film.notion_page_id)) {
+        $page = [pscustomobject]@{ id = $Film.notion_page_id }
+    }
+    else {
+        $page = Find-NotionPageByTrackerId -DatabaseId $DatabaseId -TrackerId $Film.id
+    }
+
+    if ($null -eq $page) {
+        $body = @{
+            parent = @{ database_id = $DatabaseId }
+            properties = $properties
+        }
+        $cover = Get-NotionPageCover -Film $Film
+        if ($null -ne $cover) {
+            $body["cover"] = $cover
+        }
+        $created = Invoke-NotionRequest -Method "POST" -Path "/v1/pages" -Body $body
+        $Film.notion_page_id = $created.id
+    }
+    else {
+        $body = @{ properties = $properties }
+        $cover = Get-NotionPageCover -Film $Film
+        if ($null -ne $cover) {
+            $body["cover"] = $cover
+        }
+        $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body $body
+        $Film.notion_page_id = $updated.id
+    }
+
+    return $Film
+}
+
+function ConvertTo-NotionEventProperties {
+    param([Parameter(Mandatory = $true)][object]$Event)
+
+    $title = "{0} - {1}" -f $Event.film_title, $Event.event_date
+    $multiSelect = @($Event.availability_types | ForEach-Object { @{ name = [string]$_ } })
+    $properties = @{
+        "Event Title" = New-TitleProperty $title
+        "Tracker ID" = New-RichTextProperty $Event.id
+        "Film Tracker ID" = New-RichTextProperty $Event.film_id
+        "Film Title" = New-RichTextProperty $Event.film_title
+        "Director" = New-RichTextProperty $Event.director
+        "Festival" = New-RichTextProperty $Event.festival
+        "Event Date" = @{ date = @{ start = $Event.event_date } }
+        "Availability Types" = @{ multi_select = $multiSelect }
+        "Providers" = New-RichTextProperty ((@($Event.providers) | Where-Object { $_ }) -join ", ")
+        "Countries" = New-RichTextProperty ((@($Event.countries) | Where-Object { $_ }) -join ", ")
+        "Source URLs" = New-RichTextProperty ((@($Event.source_urls) | Where-Object { $_ }) -join "`n")
+        "Needs Review" = @{ checkbox = [bool]$Event.needs_review }
+    }
+
+    $filmNotionPageId = [string](Get-ObjectProperty $Event "film_notion_page_id" "")
+    if (-not [string]::IsNullOrWhiteSpace($filmNotionPageId)) {
+        $properties["Film"] = @{ relation = @(@{ id = $filmNotionPageId }) }
+    }
+
+    return $properties
+}
+
+function Sync-NotionEvent {
+    param(
+        [Parameter(Mandatory = $true)][object]$Event,
+        [Parameter(Mandatory = $true)][string]$DatabaseId,
+        [hashtable]$FilmPageIdByTrackerId = @{}
+    )
+
+    $filmTrackerId = [string](Get-ObjectProperty $Event "film_id" "")
+    if (-not [string]::IsNullOrWhiteSpace($filmTrackerId) -and $FilmPageIdByTrackerId.ContainsKey($filmTrackerId)) {
+        Set-RecordProperty -Record $Event -Name "film_notion_page_id" -Value $FilmPageIdByTrackerId[$filmTrackerId]
+    }
+
+    $properties = ConvertTo-NotionEventProperties -Event $Event
+    $page = Find-NotionPageByTrackerId -DatabaseId $DatabaseId -TrackerId $Event.id
+    if ($null -eq $page) {
+        $body = @{
+            parent = @{ database_id = $DatabaseId }
+            properties = $properties
+        }
+        $created = Invoke-NotionRequest -Method "POST" -Path "/v1/pages" -Body $body
+        $Event.notion_page_id = $created.id
+    }
+    else {
+        $body = @{ properties = $properties }
+        $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body $body
+        $Event.notion_page_id = $updated.id
+    }
+
+    return $Event
+}
+
+function Ensure-NotionFilmMetadataProperties {
+    param([Parameter(Mandatory = $true)][string]$DatabaseId)
+
+    $body = @{
+        properties = @{
+            "Poster URL" = @{ url = @{} }
+            "Overview" = @{ rich_text = @{} }
+            "TMDb Rating" = @{ number = @{ format = "number" } }
+        }
+    }
+    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$DatabaseId" -Body $body | Out-Null
+}
+
+function Ensure-NotionEventRelationProperty {
+    param(
+        [Parameter(Mandatory = $true)][string]$EventsDatabaseId,
+        [Parameter(Mandatory = $true)][string]$FilmsDatabaseId
+    )
+
+    $body = @{
+        properties = @{
+            "Film" = @{
+                relation = @{
+                    database_id = $FilmsDatabaseId
+                    type = "single_property"
+                    single_property = @{}
+                }
+            }
+        }
+    }
+    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$EventsDatabaseId" -Body $body | Out-Null
+}
+
+function Sync-NotionState {
+    param(
+        [object[]]$Films = @(),
+        [object[]]$NewEvents = @()
+    )
+
+    $filmsDb = Get-EnvValue "NOTION_FILMS_DATABASE_ID"
+    $eventsDb = Get-EnvValue "NOTION_EVENTS_DATABASE_ID"
+    if ([string]::IsNullOrWhiteSpace($filmsDb) -or [string]::IsNullOrWhiteSpace($eventsDb)) {
+        throw "Set NOTION_FILMS_DATABASE_ID and NOTION_EVENTS_DATABASE_ID before syncing Notion."
+    }
+
+    Ensure-NotionFilmMetadataProperties -DatabaseId $filmsDb
+    Ensure-NotionEventRelationProperty -EventsDatabaseId $eventsDb -FilmsDatabaseId $filmsDb
+
+    $syncedFilms = New-Object System.Collections.Generic.List[object]
+    foreach ($film in @($Films)) {
+        $syncedFilms.Add((Sync-NotionFilm -Film $film -DatabaseId $filmsDb))
+    }
+
+    $filmPageIdByTrackerId = @{}
+    foreach ($film in @($syncedFilms.ToArray())) {
+        $trackerId = [string](Get-ObjectProperty $film "id" "")
+        $pageId = [string](Get-ObjectProperty $film "notion_page_id" "")
+        if (-not [string]::IsNullOrWhiteSpace($trackerId) -and -not [string]::IsNullOrWhiteSpace($pageId)) {
+            $filmPageIdByTrackerId[$trackerId] = $pageId
+        }
+    }
+
+    $syncedEvents = New-Object System.Collections.Generic.List[object]
+    foreach ($event in @($NewEvents)) {
+        $syncedEvents.Add((Sync-NotionEvent -Event $event -DatabaseId $eventsDb -FilmPageIdByTrackerId $filmPageIdByTrackerId))
+    }
+
+    return [pscustomobject]@{
+        films = @($syncedFilms.ToArray())
+        events = @($syncedEvents.ToArray())
+    }
+}
+
+function New-NotionTrackerDatabases {
+    param([Parameter(Mandatory = $true)][string]$ParentPageId)
+
+    $filmDbBody = @{
+        parent = @{ type = "page_id"; page_id = $ParentPageId }
+        title = @(@{ type = "text"; text = @{ content = "Festival Films" } })
+        properties = @{
+            "Film Title" = @{ title = @{} }
+            "Tracker ID" = @{ rich_text = @{} }
+            "Original Title" = @{ rich_text = @{} }
+            "Director" = @{ rich_text = @{} }
+            "Year" = @{ number = @{ format = "number" } }
+            "Festival" = @{ rich_text = @{} }
+            "Region" = @{ rich_text = @{} }
+            "Section" = @{ rich_text = @{} }
+            "Source URL" = @{ url = @{} }
+            "TMDb ID" = @{ number = @{ format = "number" } }
+            "IMDb ID" = @{ rich_text = @{} }
+            "Match Confidence" = @{ number = @{ format = "percent" } }
+            "Poster URL" = @{ url = @{} }
+            "Overview" = @{ rich_text = @{} }
+            "TMDb Rating" = @{ number = @{ format = "number" } }
+            "Tracking Status" = @{ select = @{ options = @(
+                @{ name = "pending"; color = "yellow" },
+                @{ name = "available_found"; color = "green" },
+                @{ name = "needs_review"; color = "red" }
+            ) } }
+            "First Available Date" = @{ date = @{} }
+            "Last Checked" = @{ date = @{} }
+            "Needs Review" = @{ checkbox = @{} }
+            "Authorized Source URLs" = @{ rich_text = @{} }
+        }
+    }
+
+    $filmsDb = Invoke-NotionRequest -Method "POST" -Path "/v1/databases" -Body $filmDbBody
+
+    $eventDbBody = @{
+        parent = @{ type = "page_id"; page_id = $ParentPageId }
+        title = @(@{ type = "text"; text = @{ content = "First Legal Availability Events" } })
+        properties = @{
+            "Event Title" = @{ title = @{} }
+            "Film" = @{
+                relation = @{
+                    database_id = $filmsDb.id
+                    type = "single_property"
+                    single_property = @{}
+                }
+            }
+            "Tracker ID" = @{ rich_text = @{} }
+            "Film Tracker ID" = @{ rich_text = @{} }
+            "Film Title" = @{ rich_text = @{} }
+            "Director" = @{ rich_text = @{} }
+            "Festival" = @{ rich_text = @{} }
+            "Event Date" = @{ date = @{} }
+            "Availability Types" = @{ multi_select = @{ options = @(
+                @{ name = "streaming_subscription"; color = "blue" },
+                @{ name = "streaming_free"; color = "green" },
+                @{ name = "digital_rent"; color = "orange" },
+                @{ name = "digital_buy"; color = "yellow" },
+                @{ name = "authorized_download"; color = "purple" },
+                @{ name = "authorized_torrent"; color = "pink" }
+            ) } }
+            "Providers" = @{ rich_text = @{} }
+            "Countries" = @{ rich_text = @{} }
+            "Source URLs" = @{ rich_text = @{} }
+            "Needs Review" = @{ checkbox = @{} }
+        }
+    }
+
+    $eventsDb = Invoke-NotionRequest -Method "POST" -Path "/v1/databases" -Body $eventDbBody
+
+    return [pscustomobject]@{
+        films_database_id = $filmsDb.id
+        events_database_id = $eventsDb.id
+        films_database_url = $filmsDb.url
+        events_database_url = $eventsDb.url
+    }
+}
+
+function Invoke-FestivalTracker {
+    param(
+        [ValidateSet("Lineups", "Availability", "All")][string]$Mode = "All",
+        [string]$ConfigPath = (Join-Path (Get-Location) "config/festivals.json"),
+        [string]$AuthorizedSourcesPath = (Join-Path (Get-Location) "config/authorized_sources.json"),
+        [string]$StateDir = (Join-Path (Get-Location) ".tracker"),
+        [switch]$UseNotion,
+        [switch]$RespectFestivalWindows,
+        [switch]$DryRun
+    )
+
+    $filmsPath = Join-Path $StateDir "films.json"
+    $eventsPath = Join-Path $StateDir "events.json"
+    $config = Read-JsonFile -Path $ConfigPath
+    $authorizedConfig = Read-JsonFile -Path $AuthorizedSourcesPath
+    if ($null -eq $config) {
+        throw "Missing tracker config: $ConfigPath"
+    }
+    if ($null -eq $authorizedConfig) {
+        throw "Missing authorized sources config: $AuthorizedSourcesPath"
+    }
+
+    $films = @()
+    $importedFilmsFromNotion = $false
+    if ($UseNotion) {
+        $filmsDb = Get-EnvValue "NOTION_FILMS_DATABASE_ID"
+        if (-not [string]::IsNullOrWhiteSpace($filmsDb)) {
+            try {
+                $films = @(Import-NotionFilms -DatabaseId $filmsDb)
+                $importedFilmsFromNotion = $true
+                Write-Host "Imported $($films.Count) film records from Notion."
+            }
+            catch {
+                Write-Warning "Could not import films from Notion: $($_.Exception.Message)"
+            }
+        }
+    }
+
+    if (-not $importedFilmsFromNotion) {
+        $localFilms = @(Read-JsonFile -Path $filmsPath -Default @())
+        $films = @(Merge-FilmRecords -Existing $films -Incoming $localFilms)
+    }
+
+    if ($Mode -eq "Lineups" -or $Mode -eq "All") {
+        $incoming = @(Get-FestivalLineupRecords -Config $config -RespectFestivalWindows:$RespectFestivalWindows)
+        $films = @(Merge-FilmRecords -Existing $films -Incoming $incoming)
+        Write-Host "Lineup sync found $($incoming.Count) records; merged total is $($films.Count)."
+    }
+
+    $newEvents = @()
+    $events = @()
+    if (-not $UseNotion) {
+        $events = @(Read-JsonFile -Path $eventsPath -Default @())
+    }
+
+    if ($Mode -eq "Availability" -or $Mode -eq "All") {
+        if (@($films).Count -gt 0) {
+            $films = @(Update-FilmMatches -Films $films)
+            $availabilityResult = Add-FirstAvailabilityEvents -Films $films -ExistingEvents $events -AuthorizedConfig $authorizedConfig
+            $films = @($availabilityResult.films)
+            $newEvents = @($availabilityResult.new_events)
+            $events = @($availabilityResult.all_events)
+            Write-Host "Availability sync created $($newEvents.Count) first-availability events."
+        }
+        else {
+            Write-Host "Availability sync skipped; no films are available to check."
+        }
+    }
+
+    if (-not $DryRun) {
+        Write-JsonFile -Path $filmsPath -Value $films
+        Write-JsonFile -Path $eventsPath -Value $events
+        if ($UseNotion) {
+            Sync-NotionState -Films $films -NewEvents $newEvents | Out-Null
+        }
+    }
+    else {
+        Write-Host "DryRun enabled; no local state or Notion changes were written."
+    }
+
+    return [pscustomobject]@{
+        films_count = $films.Count
+        events_count = $events.Count
+        new_events_count = $newEvents.Count
+        state_dir = $StateDir
+    }
+}
+
+Export-ModuleMember -Function *-*

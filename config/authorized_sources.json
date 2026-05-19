@@ -1,0 +1,25 @@
+{
+  "allowedDomains": [
+    "archive.org",
+    "www.archive.org",
+    "bitlove.org",
+    "webtorrent.io"
+  ],
+  "allowedLicenseFragments": [
+    "creativecommons.org",
+    "publicdomain",
+    "rightsstatements.org/vocab/NoC-US"
+  ],
+  "downloadExtensions": [
+    ".mp4",
+    ".mkv",
+    ".mov",
+    ".webm",
+    ".m4v",
+    ".avi",
+    ".zip"
+  ],
+  "torrentExtensions": [
+    ".torrent"
+  ]
+}
