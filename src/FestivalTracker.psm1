@@ -475,6 +475,101 @@ function ConvertTo-OptionalOmdbVotes {
     return [int]$digits
 }
 
+function ConvertTo-OptionalImdbVotes {
+    param([object]$Value)
+    return ConvertTo-OptionalOmdbVotes $Value
+}
+
+function Get-ImdbRatingsDatasetPath {
+    param([Parameter(Mandatory = $true)][string]$StateDir)
+
+    $directory = Join-Path $StateDir "imdb"
+    if (-not (Test-Path $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+    return Join-Path $directory "title.ratings.tsv.gz"
+}
+
+function Update-ImdbRatingsDataset {
+    param(
+        [Parameter(Mandatory = $true)][string]$StateDir,
+        [int]$MaxAgeHours = 24
+    )
+
+    $path = Get-ImdbRatingsDatasetPath -StateDir $StateDir
+    $shouldDownload = $true
+    if (Test-Path $path) {
+        $age = (Get-Date) - (Get-Item $path).LastWriteTime
+        $shouldDownload = $age.TotalHours -ge $MaxAgeHours
+    }
+
+    if (-not $shouldDownload) {
+        return $path
+    }
+
+    $tmpPath = "$path.tmp"
+    Invoke-WebRequest -Uri "https://datasets.imdbws.com/title.ratings.tsv.gz" -OutFile $tmpPath -Headers @{ "User-Agent" = $Script:UserAgent } -ErrorAction Stop
+    Move-Item -LiteralPath $tmpPath -Destination $path -Force
+    return $path
+}
+
+function Get-ImdbRatingsFromDataset {
+    param(
+        [Parameter(Mandatory = $true)][string]$DatasetPath,
+        [Parameter(Mandatory = $true)][string[]]$ImdbIds
+    )
+
+    $wanted = @{}
+    foreach ($id in @($ImdbIds | Where-Object { $_ -match '^tt\d+$' } | Sort-Object -Unique)) {
+        $wanted[$id] = $true
+    }
+    if ($wanted.Count -eq 0 -or -not (Test-Path $DatasetPath)) {
+        return @{}
+    }
+
+    $ratings = @{}
+    $fileStream = [System.IO.File]::OpenRead($DatasetPath)
+    try {
+        $gzipStream = [System.IO.Compression.GZipStream]::new($fileStream, [System.IO.Compression.CompressionMode]::Decompress)
+        try {
+            $reader = [System.IO.StreamReader]::new($gzipStream)
+            try {
+                [void]$reader.ReadLine()
+                while (-not $reader.EndOfStream -and $ratings.Count -lt $wanted.Count) {
+                    $line = $reader.ReadLine()
+                    if ([string]::IsNullOrWhiteSpace($line)) {
+                        continue
+                    }
+                    $parts = $line -split "`t"
+                    if ($parts.Count -lt 3) {
+                        continue
+                    }
+                    $id = $parts[0]
+                    if (-not $wanted.ContainsKey($id)) {
+                        continue
+                    }
+                    $ratings[$id] = [pscustomobject]@{
+                        imdb_id = $id
+                        imdb_rating = ConvertTo-OptionalDouble $parts[1]
+                        imdb_votes = ConvertTo-OptionalImdbVotes $parts[2]
+                    }
+                }
+            }
+            finally {
+                $reader.Dispose()
+            }
+        }
+        finally {
+            $gzipStream.Dispose()
+        }
+    }
+    finally {
+        $fileStream.Dispose()
+    }
+
+    return $ratings
+}
+
 function Get-OmdbMovieByImdbId {
     param([Parameter(Mandatory = $true)][string]$ImdbId)
 
@@ -581,6 +676,51 @@ function Update-FilmOmdbRatings {
 
     if ($updated -gt 0) {
         Write-Host "OMDb rating sync checked $updated film(s)."
+    }
+
+    return @($Films)
+}
+
+function Update-FilmImdbDatasetRatings {
+    param(
+        [object[]]$Films = @(),
+        [Parameter(Mandatory = $true)][string]$StateDir
+    )
+
+    $ids = @($Films | ForEach-Object { [string](Get-ObjectProperty $_ "imdb_id" "") } | Where-Object { $_ -match '^tt\d+$' } | Sort-Object -Unique)
+    if ($ids.Count -eq 0) {
+        return @($Films)
+    }
+
+    try {
+        $datasetPath = Update-ImdbRatingsDataset -StateDir $StateDir
+        $ratings = Get-ImdbRatingsFromDataset -DatasetPath $datasetPath -ImdbIds $ids
+    }
+    catch {
+        Write-Warning "IMDb ratings dataset sync failed: $($_.Exception.Message)"
+        return @($Films)
+    }
+
+    $updated = 0
+    foreach ($film in @($Films)) {
+        $imdbId = [string](Get-ObjectProperty $film "imdb_id" "")
+        if (-not $ratings.ContainsKey($imdbId)) {
+            continue
+        }
+        $rating = $ratings[$imdbId]
+        if ($null -ne $rating.imdb_rating -and $rating.imdb_rating -gt 0) {
+            Set-RecordProperty -Record $film -Name "imdb_rating" -Value $rating.imdb_rating
+            Set-RecordProperty -Record $film -Name "rating_source" -Value "IMDb Dataset"
+            Set-RecordProperty -Record $film -Name "imdb_rating_checked_at" -Value (Get-Date).ToString("yyyy-MM-dd")
+            $updated++
+        }
+        if ($null -ne $rating.imdb_votes -and $rating.imdb_votes -gt 0) {
+            Set-RecordProperty -Record $film -Name "imdb_votes" -Value $rating.imdb_votes
+        }
+    }
+
+    if ($updated -gt 0) {
+        Write-Host "IMDb dataset rating sync updated $updated film record(s)."
     }
 
     return @($Films)
@@ -2646,6 +2786,7 @@ function Invoke-FestivalTracker {
     if ($Mode -eq "Availability" -or $Mode -eq "All") {
         if (@($films).Count -gt 0) {
             $films = @(Update-FilmMatches -Films $films)
+            $films = @(Update-FilmImdbDatasetRatings -Films $films -StateDir $StateDir)
             $films = @(Update-FilmOmdbRatings -Films $films -MaxUpdates $OmdbMaxUpdates)
             $availabilityResult = Add-FirstAvailabilityEvents -Films $films -ExistingEvents $events -AuthorizedConfig $authorizedConfig
             $films = @($availabilityResult.films)

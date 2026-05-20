@@ -40,6 +40,15 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache IMDb datasets
+        uses: actions/cache@v4
+        with:
+          path: .tracker/imdb
+          key: imdb-ratings-${{ github.run_id }}
+          restore-keys: |
+            imdb-ratings-
+
       - name: Sync tracker data
         shell: pwsh
         env:
