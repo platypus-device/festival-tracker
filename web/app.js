@@ -105,6 +105,18 @@ const viewCopy = {
   },
 };
 
+const filmSelections = (film) => (Array.isArray(film.selections) && film.selections.length > 0 ? film.selections : [
+  {
+    festival: film.festival,
+    section: film.section,
+    festivalYear: film.festivalYear || film.year,
+    sourceUrl: film.sourceUrl,
+  },
+]);
+
+const selectionLabel = (selection) =>
+  [selection.festival, selection.festivalYear, selection.section].filter(Boolean).join(" - ");
+
 const posterMarkup = (film) => {
   const title = escapeHtml(film.title || "Untitled");
   if (film.posterUrl) {
@@ -208,17 +220,17 @@ function filteredFilms() {
     films = films.filter((film) => film.needsReview);
   }
   if (state.festival) {
-    films = films.filter((film) => film.festival === state.festival);
+    films = films.filter((film) => filmSelections(film).some((selection) => selection.festival === state.festival));
   }
   if (state.year) {
-    films = films.filter((film) => String(film.year || "") === state.year);
+    films = films.filter((film) => filmSelections(film).some((selection) => String(selection.festivalYear || "") === state.year));
   }
   if (state.status) {
     films = films.filter((film) => film.trackingStatus === state.status);
   }
   if (query) {
     films = films.filter((film) => {
-      const haystack = [film.title, film.originalTitle, film.director, film.festival, film.section]
+      const haystack = [film.title, film.originalTitle, film.director, film.selectionSummary, ...(film.selectionLabels || [])]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -304,9 +316,9 @@ function renderFilmGrid() {
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
             <p class="film-subtitle">${escapeHtml(film.director || "Unknown director")}</p>
-            <p class="film-section">${escapeHtml(film.section || film.festival || "Official selection")}</p>
+            <p class="film-section">${escapeHtml(film.selectionSummary || film.section || "Official selection")}</p>
             <div class="film-facts">
-              <span>${escapeHtml(film.festival || "Festival")}</span>
+              <span>${escapeHtml(film.selectionLabels?.length > 1 ? `${film.selectionLabels.length} selections` : film.selectionLabels?.[0] || "Selection")}</span>
               <span>${escapeHtml(ratingLabel(film.tmdbRating))}</span>
             </div>
           </div>
@@ -342,7 +354,7 @@ function renderReviewTable() {
       .map(
         (film) => `
           <div class="review-row">
-            <button data-film-id="${escapeHtml(film.id)}">${escapeHtml(film.title || "Untitled")}<br><small>${escapeHtml(film.festival || "")}</small></button>
+            <button data-film-id="${escapeHtml(film.id)}">${escapeHtml(film.title || "Untitled")}<br><small>${escapeHtml(film.selectionSummary || film.festival || "")}</small></button>
             <span>${escapeHtml(film.director || "-")}</span>
             <span>${escapeHtml(percentLabel(film.matchConfidence))}</span>
             <span>${escapeHtml(film.tmdbId || "-")}</span>
@@ -402,10 +414,14 @@ function render() {
 function openDetail(film) {
   const events = Array.isArray(film.availability) ? film.availability : [];
   const firstEvent = events[0] || null;
+  const selections = filmSelections(film);
+  const sourceLinks = selections
+    .filter((selection) => selection.sourceUrl)
+    .map((selection, index) => `<a href="${escapeHtml(selection.sourceUrl)}" target="_blank" rel="noreferrer">Source ${index + 1}</a>`);
   const links = [
     film.tmdbUrl ? `<a href="${escapeHtml(film.tmdbUrl)}" target="_blank" rel="noreferrer">TMDb</a>` : "",
     film.imdbUrl ? `<a href="${escapeHtml(film.imdbUrl)}" target="_blank" rel="noreferrer">IMDb</a>` : "",
-    film.sourceUrl ? `<a href="${escapeHtml(film.sourceUrl)}" target="_blank" rel="noreferrer">Lineup source</a>` : "",
+    ...sourceLinks,
   ].filter(Boolean);
 
   els.detailContent.innerHTML = `
@@ -413,7 +429,7 @@ function openDetail(film) {
       <div class="poster">${posterMarkup(film)}</div>
       <div class="detail-body">
         <h2>${escapeHtml(film.title || "Untitled")}</h2>
-        <p>${escapeHtml([film.director, film.year, film.festival].filter(Boolean).join(" - "))}</p>
+        <p>${escapeHtml([film.director, film.filmYear ? `Film ${film.filmYear}` : "", `${selections.length} selection${selections.length === 1 ? "" : "s"}`].filter(Boolean).join(" - "))}</p>
         <div class="film-facts">
           <span>${escapeHtml(statusLabel(film.trackingStatus))}</span>
           <span>${escapeHtml(ratingLabel(film.tmdbRating))}</span>
@@ -423,8 +439,24 @@ function openDetail(film) {
       </div>
     </div>
     <div class="detail-body">
-      <h3>Section</h3>
-      <p>${escapeHtml(film.section || "No section")}</p>
+      <h3>Festival selections</h3>
+      <div class="selection-list">
+        ${selections
+          .map(
+            (selection) => `
+              <div class="selection-row">
+                <strong>${escapeHtml(selection.festival || "Festival")}</strong>
+                <span>${escapeHtml([selection.festivalYear, selection.section].filter(Boolean).join(" - ") || "Official selection")}</span>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+      <h3>Years</h3>
+      <p>${escapeHtml([
+        `Festival years: ${[...new Set(selections.map((selection) => selection.festivalYear).filter(Boolean))].join(", ") || "Unknown"}`,
+        `Film year: ${film.filmYear || "Unknown"}`
+      ].join(" - "))}</p>
       <h3>Availability</h3>
       ${
         firstEvent

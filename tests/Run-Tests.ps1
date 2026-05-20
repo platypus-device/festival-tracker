@@ -234,7 +234,8 @@ $tidf = @(ConvertFrom-LineupHtml -Html $tidfHtml -Festival "Taiwan International
 Assert-Equal 2 $tidf.Count "parses TIDF category film cards"
 Assert-Equal "Air Base" $tidf[0].title "keeps TIDF title"
 Assert-Equal "Asian Vision Competition" $tidf[0].section "maps TIDF source URL to section"
-Assert-Equal 2025 $tidf[0].year "keeps TIDF film year"
+Assert-Equal 2026 $tidf[0].year "keeps TIDF festival year"
+Assert-Equal 2025 $tidf[0].film_year "keeps TIDF film year separately"
 
 $kviffHtml = @"
 <html>
@@ -299,6 +300,85 @@ $sampleYears = @(
         Sort-Object -Descending -Unique
 )
 Assert-Equal "2026,2025,2024" ($sampleYears -join ",") "exports web years descending and unique"
+
+$exportStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-export-test-" + [guid]::NewGuid().ToString("N"))
+$exportOutput = Join-Path $exportStateDir "tracker-data.json"
+New-Item -ItemType Directory -Path $exportStateDir | Out-Null
+$duplicateFestivalFilms = @(
+    [pscustomobject]@{
+        id = "selection-cannes"
+        title = "Duplicate Export"
+        original_title = "Duplicate Export"
+        director = "Sample Director"
+        year = 2025
+        festival_year = 2025
+        film_year = 2024
+        festival = "Cannes"
+        region = "France"
+        section = "Un Certain Regard"
+        source_url = "https://example.test/cannes"
+        tmdb_id = 1001
+        imdb_id = "tt1001"
+        match_confidence = 1
+        poster_url = ""
+        overview = ""
+        tmdb_rating = 7.2
+        tracking_status = "available_found"
+        first_available_date = "2026-05-19"
+        last_checked = "2026-05-19"
+        needs_review = $false
+        authorized_source_urls = @()
+    },
+    [pscustomobject]@{
+        id = "selection-nyff"
+        title = "Duplicate Export"
+        original_title = "Duplicate Export"
+        director = "Sample Director"
+        year = 2025
+        festival_year = 2025
+        film_year = 2024
+        festival = "NYFF"
+        region = "United States"
+        section = "Main Slate"
+        source_url = "https://example.test/nyff"
+        tmdb_id = 1001
+        imdb_id = "tt1001"
+        match_confidence = 1
+        poster_url = ""
+        overview = ""
+        tmdb_rating = 7.2
+        tracking_status = "pending"
+        first_available_date = ""
+        last_checked = ""
+        needs_review = $false
+        authorized_source_urls = @()
+    }
+)
+$duplicateEvents = @(
+    [pscustomobject]@{
+        id = "event-cannes"
+        film_id = "selection-cannes"
+        film_title = "Duplicate Export"
+        director = "Sample Director"
+        festival = "Cannes"
+        event_date = "2026-05-19"
+        availability_types = @("streaming_subscription")
+        providers = @("Test")
+        countries = @("US")
+        source_urls = @("https://example.test/watch")
+        needs_review = $false
+    }
+)
+ConvertTo-Json -InputObject $duplicateFestivalFilms -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "films.json") -Encoding UTF8
+ConvertTo-Json -InputObject $duplicateEvents -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "events.json") -Encoding UTF8
+& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir | Out-Null
+$exportedWebData = Get-Content $exportOutput -Raw | ConvertFrom-Json
+Assert-Equal 1 $exportedWebData.totals.films "exports one web card for duplicate TMDb selections"
+Assert-Equal 2 $exportedWebData.totals.selections "keeps both festival selections in export totals"
+Assert-Equal 2 $exportedWebData.films[0].selections.Count "keeps duplicate selections on merged web card"
+Assert-Equal 2024 $exportedWebData.films[0].filmYear "keeps film year separate from festival year"
+Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
+Remove-Item -LiteralPath $exportStateDir -Recurse -Force
 
 $providerResult = [pscustomobject]@{
     results = [pscustomobject]@{

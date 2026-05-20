@@ -269,7 +269,8 @@ function New-FilmRecord {
         [string]$Region,
         [string]$Section,
         [string]$SourceUrl,
-        [int]$Year = (Get-Date).Year
+        [int]$Year = (Get-Date).Year,
+        [Nullable[int]]$FilmYear = $null
     )
 
     $cleanTitle = (Repair-MojibakeText ($Title -replace '\s+', ' ').Trim())
@@ -282,6 +283,8 @@ function New-FilmRecord {
         original_title = if ([string]::IsNullOrWhiteSpace($OriginalTitle)) { $cleanTitle } else { Repair-MojibakeText $OriginalTitle.Trim() }
         director = $cleanDirector
         year = $Year
+        festival_year = $Year
+        film_year = $FilmYear
         festival = $Festival
         region = $Region
         section = $Section
@@ -485,7 +488,7 @@ function ConvertFrom-VeniceText {
             continue
         }
 
-        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $filmYear))
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $Year -FilmYear $filmYear))
     }
 
     return $records
@@ -695,7 +698,7 @@ function ConvertFrom-NyffMainSlateText {
         }
 
         $recordsByTitle[$key] = $true
-        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section "Main Slate" -SourceUrl $SourceUrl -Year $filmYear))
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section "Main Slate" -SourceUrl $SourceUrl -Year $Year -FilmYear $filmYear))
     }
 
     return $records
@@ -783,7 +786,7 @@ function ConvertFrom-TidfCategoryHtml {
         }
         $filmUrl = Join-Url -BaseUrl $SourceUrl -Href $match.Groups["href"].Value
         $director = Get-TidfDirectorFromFilmPage -FilmUrl $filmUrl
-        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $filmUrl -Year $filmYear))
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $filmUrl -Year $Year -FilmYear $filmYear))
     }
 
     return $records
@@ -820,7 +823,7 @@ function ConvertFrom-KviffArchiveHtml {
         }
 
         $filmUrl = Join-Url -BaseUrl $SourceUrl -Href $match.Groups["href"].Value
-        $records.Add((New-FilmRecord -Title $title -OriginalTitle $originalTitle -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $filmUrl -Year $filmYear))
+        $records.Add((New-FilmRecord -Title $title -OriginalTitle $originalTitle -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $filmUrl -Year $Year -FilmYear $filmYear))
     }
 
     return $records
@@ -1376,6 +1379,9 @@ function Update-FilmMetadataFromTmdb {
     if ($null -ne $details.vote_average) {
         Set-RecordProperty -Record $Film -Name "tmdb_rating" -Value ([Math]::Round([double]$details.vote_average, 1))
     }
+    if ([string]$details.release_date -match '^(?<year>(19|20)\d{2})') {
+        Set-RecordProperty -Record $Film -Name "film_year" -Value ([int]$Matches.year)
+    }
     Set-RecordProperty -Record $Film -Name "updated_at" -Value (Get-Date).ToString("o")
 
     return $Film
@@ -1408,6 +1414,9 @@ function Update-FilmMatches {
                 Set-RecordProperty -Record $film -Name "poster_url" -Value $match.poster_url
                 Set-RecordProperty -Record $film -Name "overview" -Value (Repair-MojibakeText $match.overview)
                 Set-RecordProperty -Record $film -Name "tmdb_rating" -Value $match.tmdb_rating
+                if ($match.release_year -gt 0) {
+                    Set-RecordProperty -Record $film -Name "film_year" -Value $match.release_year
+                }
                 Set-RecordProperty -Record $film -Name "needs_review" -Value ($match.confidence -lt 0.8)
             }
             else {
@@ -1950,6 +1959,11 @@ function ConvertFrom-NotionFilmPage {
     if ($yearText -match '\d{4}') {
         $yearValue = [int]$Matches[0]
     }
+    $filmYearText = Get-NotionTextProperty -Page $Page -Name "Film Year"
+    $filmYearValue = $null
+    if ($filmYearText -match '\d{4}') {
+        $filmYearValue = [int]$Matches[0]
+    }
     $tmdbText = Get-NotionTextProperty -Page $Page -Name "TMDb ID"
     $tmdbValue = $null
     if ($tmdbText -match '\d+') {
@@ -1967,6 +1981,8 @@ function ConvertFrom-NotionFilmPage {
         original_title = Get-NotionTextProperty -Page $Page -Name "Original Title"
         director = Get-NotionTextProperty -Page $Page -Name "Director"
         year = $yearValue
+        festival_year = $yearValue
+        film_year = $filmYearValue
         festival = Get-NotionTextProperty -Page $Page -Name "Festival"
         region = Get-NotionTextProperty -Page $Page -Name "Region"
         section = Get-NotionTextProperty -Page $Page -Name "Section"
@@ -2095,12 +2111,16 @@ function ConvertTo-NotionFilmProperties {
         "Authorized Source URLs" = New-RichTextProperty ((@($Film.authorized_source_urls) | Where-Object { $_ }) -join "`n")
     }
 
-    $filmYear = ConvertTo-OptionalInt $Film.year
+    $festivalYear = ConvertTo-OptionalInt $Film.year
+    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
     $filmTmdbId = ConvertTo-OptionalInt $Film.tmdb_id
     $filmConfidence = ConvertTo-OptionalDouble $Film.match_confidence
     $filmTmdbRating = ConvertTo-OptionalDouble $Film.tmdb_rating
+    if ($null -ne $festivalYear -and $festivalYear -gt 0) {
+        $properties["Year"] = @{ number = $festivalYear }
+    }
     if ($null -ne $filmYear -and $filmYear -gt 0) {
-        $properties["Year"] = @{ number = $filmYear }
+        $properties["Film Year"] = @{ number = $filmYear }
     }
     if ($null -ne $filmTmdbId -and $filmTmdbId -gt 0) {
         $properties["TMDb ID"] = @{ number = $filmTmdbId }
@@ -2259,6 +2279,7 @@ function Ensure-NotionFilmMetadataProperties {
             "Poster URL" = @{ url = @{} }
             "Overview" = @{ rich_text = @{} }
             "TMDb Rating" = @{ number = @{ format = "number" } }
+            "Film Year" = @{ number = @{ format = "number" } }
         }
     }
     Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$DatabaseId" -Body $body | Out-Null
@@ -2336,6 +2357,7 @@ function New-NotionTrackerDatabases {
             "Original Title" = @{ rich_text = @{} }
             "Director" = @{ rich_text = @{} }
             "Year" = @{ number = @{ format = "number" } }
+            "Film Year" = @{ number = @{ format = "number" } }
             "Festival" = @{ rich_text = @{} }
             "Region" = @{ rich_text = @{} }
             "Section" = @{ rich_text = @{} }

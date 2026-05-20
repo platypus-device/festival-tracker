@@ -653,6 +653,30 @@ select:focus-visible {
   margin: 10px 0 4px;
 }
 
+.selection-list {
+  display: grid;
+  gap: 8px;
+}
+
+.selection-row {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px 12px;
+}
+
+.selection-row strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.selection-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .availability-card {
   border: 1px solid var(--line);
   border-radius: var(--radius);
