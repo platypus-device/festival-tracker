@@ -397,7 +397,7 @@ select:focus-visible {
 
 .film-card {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(118px, 1fr);
   min-width: 0;
   width: 100%;
   min-height: 100%;
@@ -517,8 +517,8 @@ select:focus-visible {
 
 .film-meta {
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
-  gap: 5px;
+  grid-template-rows: auto auto 1fr;
+  gap: 7px;
   padding-top: 10px;
 }
 
@@ -538,25 +538,15 @@ select:focus-visible {
 }
 
 .film-subtitle {
+  display: -webkit-box;
+  min-height: 34px;
   overflow: hidden;
   margin: 0;
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.film-section {
-  display: -webkit-box;
-  min-height: 17px;
-  margin: 0;
-  overflow: hidden;
-  color: var(--color-faint);
-  font-size: 12px;
-  line-height: 1.35;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
 }
 
 .film-facts {
@@ -960,11 +950,8 @@ select:focus-visible {
   }
 
   .film-subtitle {
+    min-height: 32px;
     font-size: 12px;
-  }
-
-  .film-section {
-    font-size: 11px;
   }
 
   .detail-hero,
