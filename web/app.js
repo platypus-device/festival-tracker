@@ -85,6 +85,14 @@ const primaryRatingValue = (film) => {
   return 0;
 };
 
+const ratingSourceRank = (film) => {
+  const imdb = Number(film?.imdbRating);
+  if (Number.isFinite(imdb) && imdb > 0) return 2;
+  const tmdb = Number(film?.tmdbRating);
+  if (Number.isFinite(tmdb) && tmdb > 0) return 1;
+  return 0;
+};
+
 const primaryRatingLabel = (film) => {
   const imdb = Number(film?.imdbRating);
   if (Number.isFinite(imdb) && imdb > 0) return `IMDb ${imdb.toFixed(1)}`;
@@ -280,7 +288,7 @@ function filteredFilms() {
     if (state.sort === "title") return String(a.title || "").localeCompare(String(b.title || ""));
     if (state.sort === "festival") return String(a.festival || "").localeCompare(String(b.festival || ""));
     if (state.sort === "available") return String(b.firstAvailableDate || "").localeCompare(String(a.firstAvailableDate || ""));
-    return primaryRatingValue(b) - primaryRatingValue(a);
+    return ratingSourceRank(b) - ratingSourceRank(a) || primaryRatingValue(b) - primaryRatingValue(a);
   });
 
   return films;
