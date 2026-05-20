@@ -1,6 +1,9 @@
 name: Festival Legal Availability Tracker
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       mode:
@@ -67,6 +70,13 @@ jobs:
       - name: Prepare Pages artifact
         shell: pwsh
         run: |
+          $buildVersion = "${{ github.sha }}"
+          $buildTime = (Get-Date).ToUniversalTime().ToString("o")
+          @{
+            buildVersion = $buildVersion
+            buildTime = $buildTime
+          } | ConvertTo-Json | Set-Content -Path ./web/build-meta.json -Encoding UTF8
+          "window.FESTIVAL_TRACKER_BUILD = { version: '$buildVersion', time: '$buildTime' };" | Set-Content -Path ./web/build-meta.js -Encoding UTF8
           New-Item -ItemType File -Path ./web/.nojekyll -Force | Out-Null
 
       - name: Configure GitHub Pages

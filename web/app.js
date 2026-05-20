@@ -165,7 +165,10 @@ function writeUrlState() {
 
 async function loadData() {
   readUrlState();
-  const response = await fetch("./data/tracker-data.json", { cache: "no-store" });
+  const appScript = document.currentScript || [...document.scripts].find((script) => script.src.includes("app.js"));
+  const appVersion = appScript?.src ? new URL(appScript.src, window.location.href).searchParams.get("v") : "";
+  const buildVersion = window.FESTIVAL_TRACKER_BUILD?.version || appVersion || String(Date.now());
+  const response = await fetch(`./data/tracker-data.json?v=${encodeURIComponent(buildVersion)}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
   state.data = await response.json();
   setupFilters();
