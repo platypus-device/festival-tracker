@@ -77,6 +77,22 @@ const ratingLabel = (rating) => {
   return Number.isFinite(value) && value > 0 ? value.toFixed(1) : "Unrated";
 };
 
+const primaryRatingValue = (film) => {
+  const imdb = Number(film?.imdbRating);
+  if (Number.isFinite(imdb) && imdb > 0) return imdb;
+  const tmdb = Number(film?.tmdbRating);
+  if (Number.isFinite(tmdb) && tmdb > 0) return tmdb;
+  return 0;
+};
+
+const primaryRatingLabel = (film) => {
+  const imdb = Number(film?.imdbRating);
+  if (Number.isFinite(imdb) && imdb > 0) return `IMDb ${imdb.toFixed(1)}`;
+  const tmdb = Number(film?.tmdbRating);
+  if (Number.isFinite(tmdb) && tmdb > 0) return `TMDb ${tmdb.toFixed(1)}`;
+  return "Unrated";
+};
+
 const percentLabel = (value) => {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? `${Math.round(number * 100)}%` : "-";
@@ -264,7 +280,7 @@ function filteredFilms() {
     if (state.sort === "title") return String(a.title || "").localeCompare(String(b.title || ""));
     if (state.sort === "festival") return String(a.festival || "").localeCompare(String(b.festival || ""));
     if (state.sort === "available") return String(b.firstAvailableDate || "").localeCompare(String(a.firstAvailableDate || ""));
-    return Number(b.tmdbRating || 0) - Number(a.tmdbRating || 0);
+    return primaryRatingValue(b) - primaryRatingValue(a);
   });
 
   return films;
@@ -289,7 +305,7 @@ function renderSpotlight(films) {
         <p>${escapeHtml(film.overview || `${film.director || "Unknown director"} - ${film.festival || "Festival"}`)}</p>
         <div class="film-facts">
           <span>${escapeHtml(film.festival || "Festival")}</span>
-          <span>${escapeHtml(ratingLabel(film.tmdbRating))}</span>
+          <span>${escapeHtml(primaryRatingLabel(film))}</span>
           ${event ? `<span>${escapeHtml((event.availability_types || []).join(", "))}</span>` : ""}
         </div>
         <div class="spotlight-actions">
@@ -341,7 +357,7 @@ function renderFilmGrid() {
             <p class="film-section">${escapeHtml(sectionSummaryLabel(film))}</p>
             <div class="film-facts">
               <span>${escapeHtml(selectionSummaryLabel(film))}</span>
-              <span>${escapeHtml(ratingLabel(film.tmdbRating))}</span>
+              <span>${escapeHtml(primaryRatingLabel(film))}</span>
             </div>
           </div>
         </button>
@@ -454,7 +470,7 @@ function openDetail(film) {
         <p>${escapeHtml([film.director, film.filmYear ? `Film ${film.filmYear}` : "", `${selections.length} selection${selections.length === 1 ? "" : "s"}`].filter(Boolean).join(" - "))}</p>
         <div class="film-facts">
           <span>${escapeHtml(statusLabel(film.trackingStatus))}</span>
-          <span>${escapeHtml(ratingLabel(film.tmdbRating))}</span>
+          <span>${escapeHtml(primaryRatingLabel(film))}</span>
           ${film.needsReview ? `<span>Needs review</span>` : ""}
         </div>
         <div class="link-row">${links.join("")}</div>

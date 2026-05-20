@@ -64,6 +64,10 @@ function ConvertTo-WebFilm {
         posterUrl = [string](Get-ObjectProperty $Film "poster_url" "")
         overview = [string](Get-ObjectProperty $Film "overview" "")
         tmdbRating = ConvertTo-OptionalDouble $Film.tmdb_rating
+        imdbRating = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "imdb_rating" $null)
+        imdbVotes = ConvertTo-OptionalInt (Get-ObjectProperty $Film "imdb_votes" $null)
+        imdbRatingCheckedAt = [string](Get-ObjectProperty $Film "imdb_rating_checked_at" "")
+        ratingSource = [string](Get-ObjectProperty $Film "rating_source" "")
         trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
         firstAvailableDate = [string](Get-ObjectProperty $Film "first_available_date" "")
         lastChecked = [string](Get-ObjectProperty $Film "last_checked" "")
@@ -156,6 +160,21 @@ function Merge-WebFilms {
         $incomingRating = ConvertTo-OptionalDouble $film.tmdbRating
         if (($null -eq $existingRating -or $existingRating -le 0) -and $null -ne $incomingRating -and $incomingRating -gt 0) {
             $existing.tmdbRating = $incomingRating
+        }
+
+        $existingImdbRating = ConvertTo-OptionalDouble (Get-ObjectProperty $existing "imdbRating" $null)
+        $incomingImdbRating = ConvertTo-OptionalDouble (Get-ObjectProperty $film "imdbRating" $null)
+        if (($null -eq $existingImdbRating -or $existingImdbRating -le 0) -and $null -ne $incomingImdbRating -and $incomingImdbRating -gt 0) {
+            $existing.imdbRating = $incomingImdbRating
+            $existing.ratingSource = "IMDb"
+        }
+        $existingImdbVotes = ConvertTo-OptionalInt (Get-ObjectProperty $existing "imdbVotes" $null)
+        $incomingImdbVotes = ConvertTo-OptionalInt (Get-ObjectProperty $film "imdbVotes" $null)
+        if (($null -eq $existingImdbVotes -or $existingImdbVotes -le 0) -and $null -ne $incomingImdbVotes -and $incomingImdbVotes -gt 0) {
+            $existing.imdbVotes = $incomingImdbVotes
+        }
+        if ([string](Get-ObjectProperty $film "imdbRatingCheckedAt" "") -gt [string](Get-ObjectProperty $existing "imdbRatingCheckedAt" "")) {
+            $existing.imdbRatingCheckedAt = $film.imdbRatingCheckedAt
         }
 
         $existingConfidence = ConvertTo-OptionalDouble $existing.matchConfidence

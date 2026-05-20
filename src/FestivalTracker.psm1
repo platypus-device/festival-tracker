@@ -295,6 +295,10 @@ function New-FilmRecord {
         poster_url = $null
         overview = $null
         tmdb_rating = $null
+        imdb_rating = $null
+        imdb_votes = $null
+        imdb_rating_checked_at = $null
+        rating_source = $null
         tracking_status = "pending"
         first_available_date = $null
         last_checked = $null
@@ -448,6 +452,138 @@ function ConvertFrom-SundanceText {
     }
 
     return $records
+}
+
+function ConvertTo-OptionalOmdbVotes {
+    param([object]$Value)
+
+    $scalar = ConvertTo-Scalar $Value
+    if ($null -eq $scalar) {
+        return $null
+    }
+
+    $text = ([string]$scalar).Trim()
+    if ([string]::IsNullOrWhiteSpace($text) -or $text -eq "N/A") {
+        return $null
+    }
+
+    $digits = $text -replace '[^\d]', ''
+    if ([string]::IsNullOrWhiteSpace($digits)) {
+        return $null
+    }
+
+    return [int]$digits
+}
+
+function Get-OmdbMovieByImdbId {
+    param([Parameter(Mandatory = $true)][string]$ImdbId)
+
+    $apiKey = Get-EnvValue "OMDB_API_KEY"
+    if ([string]::IsNullOrWhiteSpace($apiKey)) {
+        return $null
+    }
+
+    if ($ImdbId -notmatch '^tt\d+$') {
+        return $null
+    }
+
+    $uri = "https://www.omdbapi.com/?i=$([uri]::EscapeDataString($ImdbId))&apikey=$([uri]::EscapeDataString($apiKey))"
+    try {
+        $response = Invoke-RestMethod -Uri $uri -Method Get -Headers @{ "User-Agent" = $Script:UserAgent } -ErrorAction Stop
+        if ([string](Get-ObjectProperty $response "Response" "") -ne "True") {
+            return $null
+        }
+        return $response
+    }
+    catch {
+        Write-Warning "OMDb request failed for ${ImdbId}: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Test-ShouldRefreshOmdbRating {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [int]$RefreshDays = 30
+    )
+
+    $imdbId = [string](Get-ObjectProperty $Film "imdb_id" "")
+    if ($imdbId -notmatch '^tt\d+$') {
+        return $false
+    }
+
+    $rating = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "imdb_rating" $null)
+    $checkedAtText = [string](Get-ObjectProperty $Film "imdb_rating_checked_at" "")
+    if ($null -eq $rating -or $rating -le 0) {
+        if ([string]::IsNullOrWhiteSpace($checkedAtText)) {
+            return $true
+        }
+        $checkedAt = [datetime]::MinValue
+        if ([datetime]::TryParse($checkedAtText, [ref]$checkedAt)) {
+            return $checkedAt.Date -lt (Get-Date).Date
+        }
+        return $true
+    }
+
+    if ([string](Get-ObjectProperty $Film "tracking_status" "pending") -eq "available_found") {
+        return $false
+    }
+
+    if ([string]::IsNullOrWhiteSpace($checkedAtText)) {
+        return $true
+    }
+
+    $lastChecked = [datetime]::MinValue
+    if (-not [datetime]::TryParse($checkedAtText, [ref]$lastChecked)) {
+        return $true
+    }
+
+    return $lastChecked.Date -le (Get-Date).Date.AddDays(-1 * $RefreshDays)
+}
+
+function Update-FilmOmdbRatings {
+    param(
+        [object[]]$Films = @(),
+        [int]$RefreshDays = 30,
+        [int]$MaxUpdates = 20
+    )
+
+    $apiKey = Get-EnvValue "OMDB_API_KEY"
+    if ([string]::IsNullOrWhiteSpace($apiKey)) {
+        return @($Films)
+    }
+
+    $updated = 0
+    foreach ($film in @($Films)) {
+        if ($MaxUpdates -gt 0 -and $updated -ge $MaxUpdates) {
+            break
+        }
+        if (-not (Test-ShouldRefreshOmdbRating -Film $film -RefreshDays $RefreshDays)) {
+            continue
+        }
+
+        $imdbId = [string](Get-ObjectProperty $film "imdb_id" "")
+        $omdb = Get-OmdbMovieByImdbId -ImdbId $imdbId
+        Set-RecordProperty -Record $film -Name "imdb_rating_checked_at" -Value (Get-Date).ToString("yyyy-MM-dd")
+        if ($null -ne $omdb) {
+            $rating = ConvertTo-OptionalDouble (Get-ObjectProperty $omdb "imdbRating" $null)
+            $votes = ConvertTo-OptionalOmdbVotes (Get-ObjectProperty $omdb "imdbVotes" $null)
+            if ($null -ne $rating -and $rating -gt 0) {
+                Set-RecordProperty -Record $film -Name "imdb_rating" -Value $rating
+                Set-RecordProperty -Record $film -Name "rating_source" -Value "IMDb"
+            }
+            if ($null -ne $votes -and $votes -gt 0) {
+                Set-RecordProperty -Record $film -Name "imdb_votes" -Value $votes
+            }
+        }
+        $updated++
+    }
+
+    if ($updated -gt 0) {
+        Write-Host "OMDb rating sync checked $updated film(s)."
+    }
+
+    return @($Films)
 }
 
 function ConvertFrom-VeniceText {
@@ -1993,6 +2129,10 @@ function ConvertFrom-NotionFilmPage {
         poster_url = Get-NotionTextProperty -Page $Page -Name "Poster URL"
         overview = Get-NotionTextProperty -Page $Page -Name "Overview"
         tmdb_rating = ConvertTo-OptionalDouble (Get-NotionTextProperty -Page $Page -Name "TMDb Rating")
+        imdb_rating = ConvertTo-OptionalDouble (Get-NotionTextProperty -Page $Page -Name "IMDb Rating")
+        imdb_votes = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "IMDb Votes")
+        imdb_rating_checked_at = Get-NotionTextProperty -Page $Page -Name "IMDb Rating Checked At"
+        rating_source = Get-NotionTextProperty -Page $Page -Name "Rating Source"
         tracking_status = Get-NotionTextProperty -Page $Page -Name "Tracking Status"
         first_available_date = Get-NotionTextProperty -Page $Page -Name "First Available Date"
         last_checked = Get-NotionTextProperty -Page $Page -Name "Last Checked"
@@ -2093,6 +2233,8 @@ function ConvertTo-NotionFilmProperties {
     $needsReview = if ($null -eq $needsReviewValue) { $false } else { [bool]$needsReviewValue }
     $firstAvailableDate = [string](ConvertTo-Scalar $Film.first_available_date)
     $lastChecked = [string](ConvertTo-Scalar $Film.last_checked)
+    $imdbRatingCheckedAt = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "imdb_rating_checked_at" ""))
+    $ratingSource = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "rating_source" ""))
 
     $properties = @{
         "Film Title" = New-TitleProperty $filmTitle
@@ -2106,6 +2248,7 @@ function ConvertTo-NotionFilmProperties {
         "IMDb ID" = New-RichTextProperty $imdbId
         "Poster URL" = New-UrlProperty $posterUrl
         "Overview" = New-RichTextProperty $overview
+        "Rating Source" = New-RichTextProperty $ratingSource
         "Tracking Status" = @{ select = @{ name = $trackingStatus } }
         "Needs Review" = @{ checkbox = $needsReview }
         "Authorized Source URLs" = New-RichTextProperty ((@($Film.authorized_source_urls) | Where-Object { $_ }) -join "`n")
@@ -2116,6 +2259,8 @@ function ConvertTo-NotionFilmProperties {
     $filmTmdbId = ConvertTo-OptionalInt $Film.tmdb_id
     $filmConfidence = ConvertTo-OptionalDouble $Film.match_confidence
     $filmTmdbRating = ConvertTo-OptionalDouble $Film.tmdb_rating
+    $filmImdbRating = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "imdb_rating" $null)
+    $filmImdbVotes = ConvertTo-OptionalInt (Get-ObjectProperty $Film "imdb_votes" $null)
     if ($null -ne $festivalYear -and $festivalYear -gt 0) {
         $properties["Year"] = @{ number = $festivalYear }
     }
@@ -2130,6 +2275,15 @@ function ConvertTo-NotionFilmProperties {
     }
     if ($null -ne $filmTmdbRating) {
         $properties["TMDb Rating"] = @{ number = $filmTmdbRating }
+    }
+    if ($null -ne $filmImdbRating) {
+        $properties["IMDb Rating"] = @{ number = $filmImdbRating }
+    }
+    if ($null -ne $filmImdbVotes) {
+        $properties["IMDb Votes"] = @{ number = $filmImdbVotes }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($imdbRatingCheckedAt)) {
+        $properties["IMDb Rating Checked At"] = @{ date = @{ start = $imdbRatingCheckedAt } }
     }
     if (-not [string]::IsNullOrWhiteSpace($firstAvailableDate)) {
         $properties["First Available Date"] = @{ date = @{ start = $firstAvailableDate } }
@@ -2279,6 +2433,10 @@ function Ensure-NotionFilmMetadataProperties {
             "Poster URL" = @{ url = @{} }
             "Overview" = @{ rich_text = @{} }
             "TMDb Rating" = @{ number = @{ format = "number" } }
+            "IMDb Rating" = @{ number = @{ format = "number" } }
+            "IMDb Votes" = @{ number = @{ format = "number" } }
+            "IMDb Rating Checked At" = @{ date = @{} }
+            "Rating Source" = @{ rich_text = @{} }
             "Film Year" = @{ number = @{ format = "number" } }
         }
     }
@@ -2368,6 +2526,10 @@ function New-NotionTrackerDatabases {
             "Poster URL" = @{ url = @{} }
             "Overview" = @{ rich_text = @{} }
             "TMDb Rating" = @{ number = @{ format = "number" } }
+            "IMDb Rating" = @{ number = @{ format = "number" } }
+            "IMDb Votes" = @{ number = @{ format = "number" } }
+            "IMDb Rating Checked At" = @{ date = @{} }
+            "Rating Source" = @{ rich_text = @{} }
             "Tracking Status" = @{ select = @{ options = @(
                 @{ name = "pending"; color = "yellow" },
                 @{ name = "available_found"; color = "green" },
@@ -2431,6 +2593,7 @@ function Invoke-FestivalTracker {
         [string]$ConfigPath = (Join-Path (Get-Location) "config/festivals.json"),
         [string]$AuthorizedSourcesPath = (Join-Path (Get-Location) "config/authorized_sources.json"),
         [string]$StateDir = (Join-Path (Get-Location) ".tracker"),
+        [int]$OmdbMaxUpdates = 20,
         [switch]$UseNotion,
         [switch]$RespectFestivalWindows,
         [switch]$DryRun
@@ -2483,6 +2646,7 @@ function Invoke-FestivalTracker {
     if ($Mode -eq "Availability" -or $Mode -eq "All") {
         if (@($films).Count -gt 0) {
             $films = @(Update-FilmMatches -Films $films)
+            $films = @(Update-FilmOmdbRatings -Films $films -MaxUpdates $OmdbMaxUpdates)
             $availabilityResult = Add-FirstAvailabilityEvents -Films $films -ExistingEvents $events -AuthorizedConfig $authorizedConfig
             $films = @($availabilityResult.films)
             $newEvents = @($availabilityResult.new_events)

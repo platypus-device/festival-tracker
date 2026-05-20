@@ -5,6 +5,7 @@ param(
     [string]$ConfigPath = (Join-Path (Get-Location) "config/festivals.json"),
     [string]$AuthorizedSourcesPath = (Join-Path (Get-Location) "config/authorized_sources.json"),
     [string]$StateDir = (Join-Path (Get-Location) ".tracker"),
+    [int]$OmdbMaxUpdates = 20,
 
     [switch]$UseNotion,
     [switch]$RespectFestivalWindows,
@@ -20,6 +21,7 @@ Invoke-FestivalTracker `
     -ConfigPath $ConfigPath `
     -AuthorizedSourcesPath $AuthorizedSourcesPath `
     -StateDir $StateDir `
+    -OmdbMaxUpdates $OmdbMaxUpdates `
     -UseNotion:$UseNotion `
     -RespectFestivalWindows:$RespectFestivalWindows `
     -DryRun:$DryRun

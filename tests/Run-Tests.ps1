@@ -323,6 +323,10 @@ $duplicateFestivalFilms = @(
         poster_url = ""
         overview = ""
         tmdb_rating = 7.2
+        imdb_rating = 7.8
+        imdb_votes = 12345
+        imdb_rating_checked_at = "2026-05-20"
+        rating_source = "IMDb"
         tracking_status = "available_found"
         first_available_date = "2026-05-19"
         last_checked = "2026-05-19"
@@ -377,6 +381,8 @@ Assert-Equal 1 $exportedWebData.totals.films "exports one web card for duplicate
 Assert-Equal 2 $exportedWebData.totals.selections "keeps both festival selections in export totals"
 Assert-Equal 2 $exportedWebData.films[0].selections.Count "keeps duplicate selections on merged web card"
 Assert-Equal 2024 $exportedWebData.films[0].filmYear "keeps film year separate from festival year"
+Assert-Equal 7.8 $exportedWebData.films[0].imdbRating "exports IMDb rating"
+Assert-Equal 12345 $exportedWebData.films[0].imdbVotes "exports IMDb vote count"
 Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
 Assert-Equal "Cannes,NYFF" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
 Remove-Item -LiteralPath $exportStateDir -Recurse -Force
