@@ -17,13 +17,11 @@
         <div class="summary-line" aria-label="Summary">
           <span class="metric-card"><strong id="metricAvailable">0</strong><small>Available</small></span>
           <span class="metric-card"><strong id="metricFilms">0</strong><small>Films</small></span>
-          <span class="metric-card"><strong id="metricReview">0</strong><small>Review</small></span>
           <span class="metric-card"><strong id="metricEvents">0</strong><small>Events</small></span>
         </div>
         <nav class="tabs" aria-label="Views">
           <button class="tab active" data-view="available">Available</button>
           <button class="tab" data-view="all">All Films</button>
-          <button class="tab" data-view="review">Review</button>
           <button class="tab" data-view="events">Finds</button>
         </nav>
       </header>
@@ -76,7 +74,6 @@
         </section>
         <section id="spotlight" class="spotlight" aria-live="polite"></section>
         <section id="filmGrid" class="film-grid" aria-live="polite"></section>
-        <section id="reviewTable" class="review-table hidden" aria-live="polite"></section>
         <section id="eventList" class="event-list hidden" aria-live="polite"></section>
       </main>
     </div>
@@ -88,6 +85,6 @@
     <div id="overlay" class="overlay hidden"></div>
 
     <script src="./build-meta.js?v=20260520-cache"></script>
-    <script src="./app.js?v=20260521-card-meta"></script>
+    <script src="./app.js?v=20260521-no-review-tab"></script>
   </body>
 </html>

@@ -8,7 +8,7 @@ const state = {
   sort: "rating",
 };
 
-const validViews = new Set(["available", "all", "review", "events"]);
+const validViews = new Set(["available", "all", "events"]);
 const validStatuses = new Set(["", "pending", "available_found", "needs_review"]);
 const validSorts = new Set(["rating", "available", "festival", "title"]);
 let isCompactLayout = window.matchMedia("(max-width: 680px)").matches;
@@ -17,7 +17,6 @@ const els = {
   generatedAt: document.querySelector("#generatedAt"),
   metricFilms: document.querySelector("#metricFilms"),
   metricAvailable: document.querySelector("#metricAvailable"),
-  metricReview: document.querySelector("#metricReview"),
   metricEvents: document.querySelector("#metricEvents"),
   searchInput: document.querySelector("#searchInput"),
   festivalFilter: document.querySelector("#festivalFilter"),
@@ -29,7 +28,6 @@ const els = {
   viewMeta: document.querySelector("#viewMeta"),
   spotlight: document.querySelector("#spotlight"),
   filmGrid: document.querySelector("#filmGrid"),
-  reviewTable: document.querySelector("#reviewTable"),
   eventList: document.querySelector("#eventList"),
   detailPanel: document.querySelector("#detailPanel"),
   detailContent: document.querySelector("#detailContent"),
@@ -101,11 +99,6 @@ const primaryRatingLabel = (film) => {
   return "Unrated";
 };
 
-const percentLabel = (value) => {
-  const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? `${Math.round(number * 100)}%` : "-";
-};
-
 const viewCopy = {
   available: {
     kicker: "Available",
@@ -116,11 +109,6 @@ const viewCopy = {
     kicker: "Library",
     title: "Festival selection",
     meta: "tracked films",
-  },
-  review: {
-    kicker: "Review",
-    title: "Needs manual check",
-    meta: "items to inspect",
   },
   events: {
     kicker: "Events",
@@ -242,7 +230,6 @@ function setupFilters() {
   const totals = state.data.totals || {};
   els.metricFilms.textContent = totals.films ?? 0;
   els.metricAvailable.textContent = totals.available ?? 0;
-  els.metricReview.textContent = totals.needsReview ?? 0;
   els.metricEvents.textContent = totals.events ?? 0;
   els.generatedAt.textContent = formatDateTime(state.data.generatedAt);
 
@@ -272,9 +259,6 @@ function filteredFilms() {
 
   if (state.view === "available") {
     films = films.filter((film) => film.trackingStatus === "available_found");
-  }
-  if (state.view === "review") {
-    films = films.filter((film) => film.needsReview);
   }
   if (state.festival) {
     films = films.filter((film) => filmSelections(film).some((selection) => selection.festival === state.festival));
@@ -347,7 +331,6 @@ function renderViewHeader(count) {
 
 function setMode(mode) {
   els.filmGrid.classList.toggle("hidden", mode !== "grid");
-  els.reviewTable.classList.toggle("hidden", mode !== "review");
   els.eventList.classList.toggle("hidden", mode !== "events");
 }
 
@@ -391,44 +374,6 @@ function renderFilmGrid() {
   });
 }
 
-function renderReviewTable() {
-  const films = filteredFilms();
-  setMode("review");
-  renderViewHeader(films.length);
-  renderSpotlight([]);
-
-  if (films.length === 0) {
-    els.reviewTable.innerHTML = `<div class="empty">No review items match this view.</div>`;
-    return;
-  }
-
-  els.reviewTable.innerHTML = `
-    <div class="review-row header">
-      <span>Film</span><span>Director</span><span>Match</span><span>TMDb</span><span>IMDb</span>
-    </div>
-    ${films
-      .map(
-        (film) => `
-          <div class="review-row">
-            <button data-film-id="${escapeHtml(film.id)}">${escapeHtml(film.title || "Untitled")}<br><small>${escapeHtml(film.selectionSummary || film.festival || "")}</small></button>
-            <span>${escapeHtml(film.director || "-")}</span>
-            <span>${escapeHtml(percentLabel(film.matchConfidence))}</span>
-            <span>${escapeHtml(film.tmdbId || "-")}</span>
-            <span>${escapeHtml(film.imdbId || "-")}</span>
-          </div>
-        `
-      )
-      .join("")}
-  `;
-
-  els.reviewTable.querySelectorAll("button[data-film-id]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const film = state.data.films.find((item) => item.id === button.dataset.filmId);
-      if (film) openDetail(film);
-    });
-  });
-}
-
 function renderEvents() {
   const events = Array.isArray(state.data.events) ? [...state.data.events] : [];
   events.sort((a, b) => String(b.event_date || "").localeCompare(String(a.event_date || "")));
@@ -463,7 +408,6 @@ function render() {
     tab.classList.toggle("active", tab.dataset.view === state.view);
   });
   if (state.view === "events") renderEvents();
-  else if (state.view === "review") renderReviewTable();
   else renderFilmGrid();
 }
 
@@ -489,7 +433,6 @@ function openDetail(film) {
         <div class="film-facts">
           <span>${escapeHtml(statusLabel(film.trackingStatus))}</span>
           <span>${escapeHtml(primaryRatingLabel(film))}</span>
-          ${film.needsReview ? `<span>Needs review</span>` : ""}
         </div>
         <div class="link-row">${links.join("")}</div>
       </div>
