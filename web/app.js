@@ -144,14 +144,25 @@ const selectionLabel = (selection) =>
 const selectionSummaryLabel = (film) => {
   const selections = filmSelections(film);
   const festivals = [...new Set(selections.map((selection) => selection.festival).filter(Boolean))];
-  if (festivals.length > 1) return festivals.slice(0, 3).join(" / ");
-  return selections[0]?.festival || film.festival || "Festival";
+  const shortFestivals = festivals.map(shortFestivalLabel);
+  if (shortFestivals.length > 1) return shortFestivals.slice(0, 3).join(" / ");
+  return shortFestivals[0] || shortFestivalLabel(film.festival) || "Festival";
 };
 
 const sectionSummaryLabel = (film) => {
   const selections = filmSelections(film);
   if (selections.length > 1) return `${selections.length} selections`;
   return selections[0]?.section || film.section || "Official selection";
+};
+
+const shortFestivalLabel = (festival) => {
+  const value = String(festival || "").trim();
+  const labels = {
+    "Taipei Golden Horse Film Festival": "Golden Horse",
+    "Taipei Film Festival": "Taipei",
+    "Karlovy Vary": "KVIFF",
+  };
+  return labels[value] || value;
 };
 
 const posterMarkup = (film) => {
@@ -362,7 +373,7 @@ function renderFilmGrid() {
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
             <p class="film-subtitle">${escapeHtml(film.director || "Unknown director")}</p>
-            <p class="film-section">${escapeHtml(sectionSummaryLabel(film))}</p>
+            <p class="film-section">${escapeHtml(selectionSummaryLabel(film))}</p>
             <div class="film-facts">
               <span>${escapeHtml(selectionSummaryLabel(film))}</span>
               <span>${escapeHtml(primaryRatingLabel(film))}</span>
