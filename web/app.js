@@ -211,7 +211,13 @@ function setupFilters() {
   els.metricEvents.textContent = totals.events ?? 0;
   els.generatedAt.textContent = formatDateTime(state.data.generatedAt);
 
-  const festivals = Array.isArray(state.data.festivals) ? state.data.festivals : [];
+  const festivals = [
+    ...new Set(
+      (Array.isArray(state.data.films) ? state.data.films : [])
+        .flatMap((film) => filmSelections(film).map((selection) => selection.festival))
+        .filter(Boolean)
+    ),
+  ].sort((a, b) => String(a).localeCompare(String(b)));
   const years = Array.isArray(state.data.years)
     ? state.data.years
     : [...new Set((state.data.films || []).map((film) => film.year).filter(Boolean))].sort((a, b) => Number(b) - Number(a));

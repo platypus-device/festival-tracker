@@ -378,6 +378,7 @@ Assert-Equal 2 $exportedWebData.totals.selections "keeps both festival selection
 Assert-Equal 2 $exportedWebData.films[0].selections.Count "keeps duplicate selections on merged web card"
 Assert-Equal 2024 $exportedWebData.films[0].filmYear "keeps film year separate from festival year"
 Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
+Assert-Equal "Cannes,NYFF" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
 Remove-Item -LiteralPath $exportStateDir -Recurse -Force
 
 $providerResult = [pscustomobject]@{

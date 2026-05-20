@@ -226,6 +226,13 @@ $years = @(
         Where-Object { $null -ne $_ } |
         Sort-Object -Descending -Unique
 )
+$festivals = @(
+    $webFilms |
+        ForEach-Object { @($_.selections) } |
+        ForEach-Object { $_.festival } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } |
+        Sort-Object -Unique
+)
 $payload = [pscustomobject]@{
     generatedAt = (Get-Date).ToString("o")
     totals = [pscustomobject]@{
@@ -235,7 +242,7 @@ $payload = [pscustomobject]@{
         needsReview = @($webFilms | Where-Object { $_.needsReview }).Count
         events = $events.Count
     }
-    festivals = @($selectionRecords | ForEach-Object { $_.festival } | Where-Object { $_ } | Sort-Object -Unique)
+    festivals = $festivals
     years = $years
     festivalYears = $years
     selectionCount = $selectionRecords.Count
