@@ -44,6 +44,7 @@ Academy Awards parsing is implemented for Best Picture, International Feature Fi
 ## Automation
 
 GitHub Actions runs daily and can also be triggered manually from the Actions tab.
+Pushes to `main` publish the current web bundle only; scheduled and manual runs perform Notion sync before deployment.
 
 Workflow modes:
 
@@ -60,6 +61,7 @@ Workflow modes:
 
 Optional:
 
+- `OMDB_API_KEY`
 - `WATCHMODE_API_KEY`
 
 ## Local Commands
@@ -96,8 +98,12 @@ Run tests:
 .\tests\Run-Tests.ps1
 ```
 
-## Review Queue
+## Matching Diagnostics
 
-Films enter `Needs Review` when the tracker cannot confidently match the source title to TMDb/IMDb or when source metadata is incomplete.
+`Tracking Status` is the only workflow status:
 
-Review those rows before trusting any availability event for the film.
+- `pending`: no legal online availability has been found yet.
+- `available_found`: the first legal online availability event has been recorded.
+- `needs_review`: automation cannot safely continue for this item.
+
+Low-confidence TMDb/IMDb matches are exported as diagnostics. They are useful for maintenance, but they are not shown as a main review queue in the web UI.

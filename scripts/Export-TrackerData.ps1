@@ -28,7 +28,7 @@ function ConvertTo-EventRecord {
         providers = @((Get-NotionTextProperty -Page $Page -Name "Providers") -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ })
         countries = @((Get-NotionTextProperty -Page $Page -Name "Countries") -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ })
         source_urls = @((Get-NotionTextProperty -Page $Page -Name "Source URLs") -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-        needs_review = [bool](Get-ObjectProperty (Get-ObjectProperty $Page.properties "Needs Review") "checkbox" $false)
+        needs_review = $false
     }
 }
 
@@ -71,7 +71,7 @@ function ConvertTo-WebFilm {
         trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
         firstAvailableDate = [string](Get-ObjectProperty $Film "first_available_date" "")
         lastChecked = [string](Get-ObjectProperty $Film "last_checked" "")
-        needsReview = [bool](Get-ObjectProperty $Film "needs_review" $false)
+        lowConfidence = [bool](Get-ObjectProperty $Film "needs_review" $false)
         availability = @($availability)
         selections = @([pscustomobject]@{
             id = $Film.id
@@ -183,7 +183,7 @@ function Merge-WebFilms {
             $existing.matchConfidence = $incomingConfidence
         }
 
-        $existing.needsReview = [bool]$existing.needsReview -or [bool]$film.needsReview
+        $existing.lowConfidence = [bool]$existing.lowConfidence -or [bool]$film.lowConfidence
         if ($existing.trackingStatus -ne "available_found" -and $film.trackingStatus -eq "available_found") {
             $existing.trackingStatus = "available_found"
         }
@@ -258,8 +258,15 @@ $payload = [pscustomobject]@{
         films = $webFilms.Count
         selections = $selectionRecords.Count
         available = @($webFilms | Where-Object { $_.trackingStatus -eq "available_found" }).Count
-        needsReview = @($webFilms | Where-Object { $_.needsReview }).Count
         events = $events.Count
+    }
+    diagnostics = [pscustomobject]@{
+        lowConfidence = @($webFilms | Where-Object { $_.lowConfidence }).Count
+        trackingNeedsReview = @($webFilms | Where-Object { $_.trackingStatus -eq "needs_review" }).Count
+        unmatched = @($webFilms | Where-Object {
+            ($null -eq (ConvertTo-OptionalInt $_.tmdbId) -or (ConvertTo-OptionalInt $_.tmdbId) -le 0) -and
+            [string]::IsNullOrWhiteSpace([string]$_.imdbId)
+        }).Count
     }
     festivals = $festivals
     years = $years

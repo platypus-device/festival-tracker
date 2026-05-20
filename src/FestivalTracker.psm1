@@ -2113,11 +2113,6 @@ function Add-FirstAvailabilityEvents {
         if ((Get-ObjectProperty $film "tracking_status" "pending") -ne "pending") {
             continue
         }
-        $needsReviewValue = Get-ObjectProperty $film "needs_review" $false
-        if ($null -ne $needsReviewValue -and [bool]$needsReviewValue) {
-            continue
-        }
-
         $canonicalKey = Get-FilmCanonicalKey -Film $film
         $canonicalEventId = New-StableId ("first-availability|{0}" -f $canonicalKey)
         if ($eventsByFilmId.ContainsKey($film.id) -or $eventsByCanonicalKey.ContainsKey($canonicalKey) -or $eventsByCanonicalKey.ContainsKey($canonicalEventId)) {
@@ -2230,7 +2225,10 @@ function ConvertFrom-NotionFilmPage {
     param([Parameter(Mandatory = $true)][object]$Page)
 
     $authorizedUrls = Get-NotionTextProperty -Page $Page -Name "Authorized Source URLs"
-    $yearText = Get-NotionTextProperty -Page $Page -Name "Year"
+    $yearText = Get-NotionTextProperty -Page $Page -Name "Festival Year"
+    if ([string]::IsNullOrWhiteSpace($yearText)) {
+        $yearText = Get-NotionTextProperty -Page $Page -Name "Year"
+    }
     $yearValue = $null
     if ($yearText -match '\d{4}') {
         $yearValue = [int]$Matches[0]
@@ -2369,8 +2367,6 @@ function ConvertTo-NotionFilmProperties {
     if ([string]::IsNullOrWhiteSpace($trackingStatus)) {
         $trackingStatus = "pending"
     }
-    $needsReviewValue = ConvertTo-Scalar $Film.needs_review
-    $needsReview = if ($null -eq $needsReviewValue) { $false } else { [bool]$needsReviewValue }
     $firstAvailableDate = [string](ConvertTo-Scalar $Film.first_available_date)
     $lastChecked = [string](ConvertTo-Scalar $Film.last_checked)
     $imdbRatingCheckedAt = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "imdb_rating_checked_at" ""))
@@ -2390,7 +2386,6 @@ function ConvertTo-NotionFilmProperties {
         "Overview" = New-RichTextProperty $overview
         "Rating Source" = New-RichTextProperty $ratingSource
         "Tracking Status" = @{ select = @{ name = $trackingStatus } }
-        "Needs Review" = @{ checkbox = $needsReview }
         "Authorized Source URLs" = New-RichTextProperty ((@($Film.authorized_source_urls) | Where-Object { $_ }) -join "`n")
     }
 
@@ -2402,7 +2397,7 @@ function ConvertTo-NotionFilmProperties {
     $filmImdbRating = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "imdb_rating" $null)
     $filmImdbVotes = ConvertTo-OptionalInt (Get-ObjectProperty $Film "imdb_votes" $null)
     if ($null -ne $festivalYear -and $festivalYear -gt 0) {
-        $properties["Year"] = @{ number = $festivalYear }
+        $properties["Festival Year"] = @{ number = $festivalYear }
     }
     if ($null -ne $filmYear -and $filmYear -gt 0) {
         $properties["Film Year"] = @{ number = $filmYear }
@@ -2523,7 +2518,6 @@ function ConvertTo-NotionEventProperties {
         "Providers" = New-RichTextProperty ((@($Event.providers) | Where-Object { $_ }) -join ", ")
         "Countries" = New-RichTextProperty ((@($Event.countries) | Where-Object { $_ }) -join ", ")
         "Source URLs" = New-RichTextProperty ((@($Event.source_urls) | Where-Object { $_ }) -join "`n")
-        "Needs Review" = @{ checkbox = [bool]$Event.needs_review }
     }
 
     $filmNotionPageId = [string](Get-ObjectProperty $Event "film_notion_page_id" "")
@@ -2578,6 +2572,7 @@ function Ensure-NotionFilmMetadataProperties {
             "IMDb Rating Checked At" = @{ date = @{} }
             "Rating Source" = @{ rich_text = @{} }
             "Film Year" = @{ number = @{ format = "number" } }
+            "Festival Year" = @{ number = @{ format = "number" } }
         }
     }
     Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$DatabaseId" -Body $body | Out-Null
@@ -2654,7 +2649,7 @@ function New-NotionTrackerDatabases {
             "Tracker ID" = @{ rich_text = @{} }
             "Original Title" = @{ rich_text = @{} }
             "Director" = @{ rich_text = @{} }
-            "Year" = @{ number = @{ format = "number" } }
+            "Festival Year" = @{ number = @{ format = "number" } }
             "Film Year" = @{ number = @{ format = "number" } }
             "Festival" = @{ rich_text = @{} }
             "Region" = @{ rich_text = @{} }
@@ -2677,7 +2672,6 @@ function New-NotionTrackerDatabases {
             ) } }
             "First Available Date" = @{ date = @{} }
             "Last Checked" = @{ date = @{} }
-            "Needs Review" = @{ checkbox = @{} }
             "Authorized Source URLs" = @{ rich_text = @{} }
         }
     }
@@ -2713,7 +2707,6 @@ function New-NotionTrackerDatabases {
             "Providers" = @{ rich_text = @{} }
             "Countries" = @{ rich_text = @{} }
             "Source URLs" = @{ rich_text = @{} }
-            "Needs Review" = @{ checkbox = @{} }
         }
     }
 
