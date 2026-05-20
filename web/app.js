@@ -117,6 +117,19 @@ const filmSelections = (film) => (Array.isArray(film.selections) && film.selecti
 const selectionLabel = (selection) =>
   [selection.festival, selection.festivalYear, selection.section].filter(Boolean).join(" - ");
 
+const selectionSummaryLabel = (film) => {
+  const selections = filmSelections(film);
+  const festivals = [...new Set(selections.map((selection) => selection.festival).filter(Boolean))];
+  if (festivals.length > 1) return festivals.slice(0, 3).join(" / ");
+  return selections[0]?.festival || film.festival || "Festival";
+};
+
+const sectionSummaryLabel = (film) => {
+  const selections = filmSelections(film);
+  if (selections.length > 1) return `${selections.length} selections`;
+  return selections[0]?.section || film.section || "Official selection";
+};
+
 const posterMarkup = (film) => {
   const title = escapeHtml(film.title || "Untitled");
   if (film.posterUrl) {
@@ -319,9 +332,9 @@ function renderFilmGrid() {
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
             <p class="film-subtitle">${escapeHtml(film.director || "Unknown director")}</p>
-            <p class="film-section">${escapeHtml(film.selectionSummary || film.section || "Official selection")}</p>
+            <p class="film-section">${escapeHtml(sectionSummaryLabel(film))}</p>
             <div class="film-facts">
-              <span>${escapeHtml(film.selectionLabels?.length > 1 ? `${film.selectionLabels.length} selections` : film.selectionLabels?.[0] || "Selection")}</span>
+              <span>${escapeHtml(selectionSummaryLabel(film))}</span>
               <span>${escapeHtml(ratingLabel(film.tmdbRating))}</span>
             </div>
           </div>
@@ -467,7 +480,10 @@ function openDetail(film) {
               <strong>Available to watch</strong>
               <p>${escapeHtml(availabilitySummary(firstEvent))}</p>
             </div>`
-          : `<p>No legal online availability event recorded yet.</p>`
+          : `<div class="availability-card">
+              <strong>Not available yet</strong>
+              <p>No legal online availability event recorded yet.</p>
+            </div>`
       }
       <h3>Overview</h3>
       <p>${escapeHtml(film.overview || "No overview yet.")}</p>
