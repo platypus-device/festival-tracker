@@ -173,7 +173,8 @@ const cleanDirectorLabel = (director) => {
 
 const cardMetaLabel = (film) => {
   const director = cleanDirectorLabel(film.director);
-  return director || "";
+  const festival = selectionSummaryLabel(film);
+  return [director, festival].filter(Boolean).join(" · ") || festival || "Official selection";
 };
 
 const posterMarkup = (film) => {
@@ -385,7 +386,6 @@ function renderFilmGrid() {
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
             <p class="film-subtitle">${escapeHtml(cardMetaLabel(film))}</p>
             <div class="film-facts">
-              <span>${escapeHtml(selectionSummaryLabel(film))}</span>
               <span>${escapeHtml(primaryRatingLabel(film))}</span>
             </div>
           </div>

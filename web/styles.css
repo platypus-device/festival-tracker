@@ -397,7 +397,7 @@ select:focus-visible {
 
 .film-card {
   display: grid;
-  grid-template-rows: auto minmax(124px, 1fr);
+  grid-template-rows: auto minmax(118px, 1fr);
   min-width: 0;
   width: 100%;
   min-height: 100%;
@@ -518,7 +518,7 @@ select:focus-visible {
 .film-meta {
   display: grid;
   grid-template-rows: auto auto 1fr;
-  gap: 6px;
+  gap: 7px;
   padding-top: 10px;
 }
 
@@ -539,22 +539,22 @@ select:focus-visible {
 
 .film-subtitle {
   display: -webkit-box;
-  min-height: 18px;
+  min-height: 34px;
   overflow: hidden;
   margin: 0;
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.35;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
 }
 
 .film-facts {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-self: end;
-  margin-top: 8px;
+  margin-top: 4px;
   color: var(--color-muted);
   font-size: 11px;
 }
@@ -562,22 +562,10 @@ select:focus-visible {
 .film-facts span,
 .chip {
   min-height: 24px;
-  min-width: 0;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-xs);
   background: rgba(233, 223, 201, 0.035);
   padding: 4px 7px;
-}
-
-.film-facts span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.film-facts span:last-child {
-  justify-self: end;
-  color: var(--color-paper);
 }
 
 .review-table {
@@ -962,7 +950,7 @@ select:focus-visible {
   }
 
   .film-subtitle {
-    min-height: 17px;
+    min-height: 32px;
     font-size: 12px;
   }
 
