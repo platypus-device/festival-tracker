@@ -146,6 +146,7 @@ const sectionSummaryLabel = (film) => {
 const shortFestivalLabel = (festival) => {
   const value = String(festival || "").trim();
   const labels = {
+    "Academy Awards": "Oscars",
     "Taipei Golden Horse Film Festival": "Golden Horse",
     "Taipei Film Festival": "Taipei",
     "Karlovy Vary": "KVIFF",
@@ -444,7 +445,7 @@ function openDetail(film) {
           .map(
             (selection) => `
               <div class="selection-row">
-                <strong>${escapeHtml(selection.festival || "Festival")}</strong>
+                <strong>${escapeHtml(shortFestivalLabel(selection.festival) || "Festival")}</strong>
                 <span>${escapeHtml([selection.festivalYear, selection.section].filter(Boolean).join(" - ") || "Official selection")}</span>
               </div>
             `
