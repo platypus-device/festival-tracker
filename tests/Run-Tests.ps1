@@ -169,6 +169,70 @@ Assert-True (@($oscars | Where-Object { $_.title -eq "One Battle after Another" 
 Assert-True (@($oscars | Where-Object { $_.title -eq "Animated Sample" }).Count -eq 1) "keeps animated feature title"
 Assert-True (@($oscars | Where-Object { $_.title -eq "International Sample" }).Count -eq 1) "keeps international feature title"
 
+$wikipediaOscarsHtml = @"
+<html>
+<body>
+<h3><span class="mw-headline" id="Best_Picture">Best Picture</span></h3>
+<table class="wikitable">
+<tr><th>Film</th><th>Producers</th></tr>
+<tr><td><i><a href="/wiki/Bugonia">Bugonia</a></i></td><td>Producer One</td></tr>
+<tr><td><b><i>Sentimental Value</i></b></td><td>Producer Two</td></tr>
+</table>
+<h3><span class="mw-headline" id="Best_Documentary_Feature_Film">Best Documentary Feature Film</span></h3>
+<table class="wikitable">
+<tr><td><i>Documentary Sample</i></td></tr>
+</table>
+<h3><span class="mw-headline" id="Best_International_Feature_Film">Best International Feature Film</span></h3>
+<table class="wikitable">
+<tr><td>Norway</td><td><i>Sentimental Value</i></td><td>Director</td></tr>
+<tr><td>Brazil</td><td><i>The Secret Agent</i></td><td>Director</td></tr>
+</table>
+<h3><span class="mw-headline" id="Best_Animated_Feature_Film">Best Animated Feature Film</span></h3>
+<table class="wikitable">
+<tr><td><i>Animated Sample</i></td></tr>
+</table>
+<h3><span class="mw-headline" id="Best_Actor">Best Actor</span></h3>
+<table class="wikitable">
+<tr><td>Actor Name</td><td><i>Acting Only Sample</i></td></tr>
+</table>
+</body>
+</html>
+"@
+$wikipediaOscars = @(ConvertFrom-LineupHtml -Html $wikipediaOscarsHtml -Festival "Academy Awards" -Region "United States" -SourceUrl "https://example.test/wiki-oscars" -Parser "wikipedia_oscars_awards" -Year 2026)
+Assert-Equal 4 $wikipediaOscars.Count "parses Wikipedia Oscars target categories"
+Assert-True (@($wikipediaOscars | Where-Object { $_.title -eq "Documentary Sample" }).Count -eq 0) "excludes Wikipedia Oscar documentary category"
+Assert-True (@($wikipediaOscars | Where-Object { $_.title -eq "Acting Only Sample" }).Count -eq 0) "excludes Wikipedia Oscar acting category"
+$sentimentalValue = @($wikipediaOscars | Where-Object { $_.title -eq "Sentimental Value" })
+Assert-Equal 1 $sentimentalValue.Count "deduplicates Wikipedia Oscar cross-category films"
+Assert-Equal "Best Picture; International Feature Film" $sentimentalValue[0].section "merges Wikipedia Oscar sections for cross-category films"
+
+$wikipediaOscarsCombinedTableHtml = @"
+<html>
+<body>
+<table class="wikitable">
+<tr>
+<td><div><b><a href="/wiki/Academy_Award_for_Best_Picture">Best Picture</a></b></div>
+<ul><li><b><i>One Battle After Another</i></b><ul><li><i>Bugonia</i></li></ul></li></ul></td>
+<td><div><b><a href="/wiki/Academy_Award_for_Best_Director">Best Directing</a></b></div>
+<ul><li><b>Director - <i>Director Only Sample</i></b></li></ul></td>
+</tr>
+<tr>
+<td><div><b><a href="/wiki/Academy_Award_for_Best_Animated_Feature">Best Animated Feature Film</a></b></div>
+<ul><li><b><i>Animated Combined Sample</i></b></li></ul></td>
+<td><div><b><a href="/wiki/Academy_Award_for_Best_International_Feature_Film">Best International Feature Film</a></b></div>
+<ul><li><b><i>Bugonia</i></b></li><li><i>International Combined Sample</i></li></ul></td>
+</tr>
+</table>
+</body>
+</html>
+"@
+$wikipediaOscarsCombined = @(ConvertFrom-LineupHtml -Html $wikipediaOscarsCombinedTableHtml -Festival "Academy Awards" -Region "United States" -SourceUrl "https://example.test/wiki-oscars-combined" -Parser "wikipedia_oscars_awards" -Year 2026)
+Assert-Equal 4 $wikipediaOscarsCombined.Count "parses Wikipedia Oscars combined awards table"
+Assert-True (@($wikipediaOscarsCombined | Where-Object { $_.title -eq "Director Only Sample" }).Count -eq 0) "excludes non-target cells in combined Oscars table"
+$bugoniaCombined = @($wikipediaOscarsCombined | Where-Object { $_.title -eq "Bugonia" })
+Assert-Equal 1 $bugoniaCombined.Count "deduplicates combined table cross-category films"
+Assert-Equal "Best Picture; International Feature Film" $bugoniaCombined[0].section "merges combined table Oscar sections"
+
 $sectionScopedHtml = @"
 <html>
 <body>

@@ -25,6 +25,7 @@ Current daily sources are kept in `config/festivals.json`. Historical editions a
 
 Enabled or prepared core sources:
 
+- Academy Awards
 - Cannes
 - Venice
 - Sundance
@@ -39,12 +40,16 @@ Taiwan is handled as its own region. Mainland China festivals are not included.
 
 Disabled sources remain in `config/festivals.json` until they have a stable official source and a strict high-priority section filter.
 
-Academy Awards parsing is implemented for Best Picture, International Feature Film, and Animated Feature Film, but the official ceremony page is currently disabled because it blocks automated requests.
+Academy Awards uses Wikipedia as a stable source because the official ceremony pages block automated requests. It only imports Best Picture, International Feature Film, and Animated Feature Film. Oscars are archived by `Festival Year`, the same as festival selections.
 
 ## Automation
 
-GitHub Actions runs daily and can also be triggered manually from the Actions tab.
-Pushes to `main` publish the current web bundle only; scheduled and manual runs perform Notion sync before deployment.
+GitHub Actions can be triggered manually from the Actions tab. Pushes to `main` publish the current web bundle only and do not write to Notion.
+
+Scheduled runs:
+
+- Daily at 23:30 UTC: `Availability`.
+- Weekly on Monday at 23:45 UTC: `Lineups` with `RespectFestivalWindows`, so only sources whose `lineupWindow` includes the current month are fetched.
 
 Workflow modes:
 

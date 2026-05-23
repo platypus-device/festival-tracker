@@ -4,19 +4,18 @@
       "name": "Academy Awards",
       "region": "United States",
       "enabled": true,
-      "lineupWindow": { "startMonth": 1, "endMonth": 12 },
+      "lineupWindow": { "startMonth": 1, "endMonth": 2 },
       "sources": [
         {
-          "url": "https://www.oscars.org/oscars/ceremonies/2026",
-          "enabled": false,
-          "parser": "oscars_ceremony",
+          "url": "https://en.wikipedia.org/wiki/97th_Academy_Awards",
+          "parser": "wikipedia_oscars_awards",
           "year": 2025,
           "sectionScope": [
             "Best Picture",
             "International Feature Film",
             "Animated Feature Film"
           ],
-          "notes": "Official Oscars ceremony pages currently return 403 to automated requests."
+          "notes": "Wikipedia is used because the official Oscars ceremony pages block automated requests."
         }
       ]
     },

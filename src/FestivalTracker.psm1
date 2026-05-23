@@ -941,6 +941,170 @@ function ConvertFrom-GoldenHorseAwardsText {
     return $records
 }
 
+function Get-WikipediaSectionHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$HeadingId
+    )
+
+    $escapedId = [regex]::Escape($HeadingId)
+    $headingPatterns = @(
+        "(?is)<h[2-4][^>]*\bid\s*=\s*['""]$escapedId['""][^>]*>.*?</h[2-4]>",
+        "(?is)<span[^>]*\bid\s*=\s*['""]$escapedId['""][^>]*>.*?</span>"
+    )
+
+    foreach ($pattern in $headingPatterns) {
+        $match = [regex]::Match($Html, $pattern)
+        if (-not $match.Success) {
+            continue
+        }
+
+        $start = $match.Index + $match.Length
+        $remaining = $Html.Substring($start)
+        $nextHeading = [regex]::Match($remaining, "(?is)<h[2-4][^>]*\bid\s*=\s*['""][^'""]+['""][^>]*>|<span[^>]*\bid\s*=\s*['""][^'""]+['""][^>]*class\s*=\s*['""][^'""]*mw-headline[^'""]*['""][^>]*>")
+        if ($nextHeading.Success) {
+            return $remaining.Substring(0, $nextHeading.Index)
+        }
+
+        return $remaining
+    }
+
+    return ""
+}
+
+function ConvertFrom-WikipediaOscarsHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year,
+        [string[]]$AllowedCategories = @()
+    )
+
+    $categoryAliases = [ordered]@{
+        "Best Picture" = @("Best_Picture")
+        "International Feature Film" = @("Best_International_Feature_Film", "International_Feature_Film")
+        "Animated Feature Film" = @("Best_Animated_Feature_Film", "Animated_Feature_Film")
+    }
+
+    $allowed = @{}
+    if (@($AllowedCategories).Count -gt 0) {
+        foreach ($category in $AllowedCategories) {
+            $allowed[$category] = $true
+            if ($category -notmatch '^Best ' -and $category -ne "International Feature Film" -and $category -ne "Animated Feature Film") {
+                continue
+            }
+        }
+    }
+
+    $recordsByTitle = [ordered]@{}
+    $addTitle = {
+        param(
+            [string]$Title,
+            [string]$Category
+        )
+
+        $cleanTitle = Repair-MojibakeText (($Title -replace '\s+', ' ').Trim())
+        if ([string]::IsNullOrWhiteSpace($cleanTitle)) {
+            return
+        }
+
+        $key = ConvertTo-NormalizedTitle $cleanTitle
+        if (-not $recordsByTitle.Contains($key)) {
+            $record = New-FilmRecord -Title $cleanTitle -Director "" -Festival $Festival -Region $Region -Section $Category -SourceUrl $SourceUrl -Year $Year
+            $recordsByTitle[$key] = [pscustomobject]@{
+                record = $record
+                sections = New-Object System.Collections.Generic.List[string]
+            }
+        }
+
+        if (-not $recordsByTitle[$key].sections.Contains($Category)) {
+            $recordsByTitle[$key].sections.Add($Category) | Out-Null
+        }
+    }
+
+    $categoryLabelAliases = @{
+        "Best Picture" = "Best Picture"
+        "Best International Feature Film" = "International Feature Film"
+        "International Feature Film" = "International Feature Film"
+        "Best Animated Feature Film" = "Animated Feature Film"
+        "Animated Feature Film" = "Animated Feature Film"
+    }
+
+    $awardTableMatch = [regex]::Match($Html, "(?is)<table[^>]*\bwikitable\b[^>]*>.*?</table>")
+    if ($awardTableMatch.Success) {
+        foreach ($cellMatch in [regex]::Matches($awardTableMatch.Value, "(?is)<td\b[^>]*>.*?</td>")) {
+            $cellHtml = $cellMatch.Value
+            $labelMatch = [regex]::Match($cellHtml, "(?is)<div[^>]*>\s*<b>\s*<a[^>]*>(?<label>.*?)</a>\s*</b>\s*</div>")
+            if (-not $labelMatch.Success) {
+                continue
+            }
+
+            $label = ((ConvertTo-PlainText $labelMatch.Groups["label"].Value) -replace '\s+', ' ').Trim()
+            if (-not $categoryLabelAliases.ContainsKey($label)) {
+                continue
+            }
+
+            $canonicalCategory = $categoryLabelAliases[$label]
+            if (@($AllowedCategories).Count -gt 0 -and -not $allowed.ContainsKey($canonicalCategory)) {
+                continue
+            }
+
+            $cellHtml = [regex]::Replace($cellHtml, "(?is)<sup\b.*?</sup>", "")
+            foreach ($titleMatch in [regex]::Matches($cellHtml, "(?is)<i\b[^>]*>(?<title>.*?)</i>")) {
+                $title = ConvertTo-PlainText $titleMatch.Groups["title"].Value
+                & $addTitle $title $canonicalCategory
+            }
+        }
+    }
+
+    foreach ($canonicalCategory in $categoryAliases.Keys) {
+        if (@($AllowedCategories).Count -gt 0 -and -not $allowed.ContainsKey($canonicalCategory)) {
+            continue
+        }
+
+        $sectionHtml = ""
+        foreach ($headingId in $categoryAliases[$canonicalCategory]) {
+            $sectionHtml = Get-WikipediaSectionHtml -Html $Html -HeadingId $headingId
+            if (-not [string]::IsNullOrWhiteSpace($sectionHtml)) {
+                break
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($sectionHtml)) {
+            continue
+        }
+
+        $tableMatch = [regex]::Match($sectionHtml, "(?is)<table[^>]*\bwikitable\b[^>]*>.*?</table>")
+        if (-not $tableMatch.Success) {
+            continue
+        }
+
+        foreach ($rowMatch in [regex]::Matches($tableMatch.Value, "(?is)<tr\b[^>]*>.*?</tr>")) {
+            $rowHtml = [regex]::Replace($rowMatch.Value, "(?is)<sup\b.*?</sup>", "")
+            $titleMatch = [regex]::Match($rowHtml, "(?is)<i\b[^>]*>(?<title>.*?)</i>")
+            if (-not $titleMatch.Success) {
+                continue
+            }
+
+            $title = Repair-MojibakeText ((ConvertTo-PlainText $titleMatch.Groups["title"].Value) -replace '\s+', ' ').Trim()
+            if ([string]::IsNullOrWhiteSpace($title)) {
+                continue
+            }
+
+            & $addTitle $title $canonicalCategory
+        }
+    }
+
+    $records = New-Object System.Collections.Generic.List[object]
+    foreach ($entry in $recordsByTitle.Values) {
+        Set-RecordProperty -Record $entry.record -Name "section" -Value (($entry.sections.ToArray()) -join "; ")
+        $records.Add($entry.record) | Out-Null
+    }
+
+    return $records
+}
+
 function ConvertFrom-NyffMainSlateText {
     param(
         [Parameter(Mandatory = $true)][string]$Text,
@@ -1293,6 +1457,10 @@ function ConvertFrom-LineupHtml {
         "oscars_ceremony" {
             $allowedOscarCategories = if (@($SectionScope).Count -gt 0) { @($SectionScope) } else { @("Best Picture", "International Feature Film", "Animated Feature Film") }
             return ConvertFrom-OscarsText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedCategories $allowedOscarCategories
+        }
+        "wikipedia_oscars_awards" {
+            $allowedOscarCategories = if (@($SectionScope).Count -gt 0) { @($SectionScope) } else { @("Best Picture", "International Feature Film", "Animated Feature Film") }
+            return ConvertFrom-WikipediaOscarsHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedCategories $allowedOscarCategories
         }
         "golden_horse_awards" {
             return ConvertFrom-GoldenHorseAwardsText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year

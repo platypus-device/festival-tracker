@@ -22,6 +22,7 @@ on:
         default: true
   schedule:
     - cron: "30 23 * * *"
+    - cron: "45 23 * * 1"
 
 permissions:
   contents: read
@@ -63,7 +64,15 @@ jobs:
           NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
           $mode = "${{ github.event.inputs.mode }}"
-          if ([string]::IsNullOrWhiteSpace($mode)) {
+          $eventName = "${{ github.event_name }}"
+          $schedule = "${{ github.event.schedule }}"
+          $forceRespectWindows = $false
+
+          if ($eventName -eq "schedule" -and $schedule -eq "45 23 * * 1") {
+            $mode = "Lineups"
+            $forceRespectWindows = $true
+          }
+          elseif ([string]::IsNullOrWhiteSpace($mode)) {
             $mode = "Availability"
           }
 
@@ -72,7 +81,7 @@ jobs:
             UseNotion = $true
           }
           $respectWindows = "${{ github.event.inputs.respect_festival_windows }}"
-          if (($mode -eq "Lineups" -or $mode -eq "All") -and $respectWindows -ne "false") {
+          if ($forceRespectWindows -or (($mode -eq "Lineups" -or $mode -eq "All") -and $respectWindows -ne "false")) {
             $trackerArgs["RespectFestivalWindows"] = $true
           }
 
