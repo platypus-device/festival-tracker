@@ -2250,7 +2250,7 @@ function New-FirstAvailabilityEvent {
     $providers = @($Offers | ForEach-Object { $_.provider } | Where-Object { $_ } | Sort-Object -Unique)
     $countries = @($Offers | ForEach-Object { $_.country } | Where-Object { $_ } | Sort-Object -Unique)
     $urls = @($Offers | ForEach-Object { $_.source_url } | Where-Object { $_ } | Sort-Object -Unique)
-    $canonicalKey = Get-FilmCanonicalKey -Film $Film
+    $canonicalKey = Get-CanonicalFilmKey -Film $Film
     $eventId = New-StableId ("first-availability|{0}" -f $canonicalKey)
 
     [pscustomobject]@{
@@ -2285,6 +2285,50 @@ function Get-FilmCanonicalKey {
 
     $year = if ($null -ne $Film.year) { [string]$Film.year } else { "" }
     return "title:${year}:$(ConvertTo-NormalizedTitle $Film.title)"
+}
+
+function ConvertFrom-NotionEventPage {
+    param([Parameter(Mandatory = $true)][object]$Page)
+
+    $typesText = Get-NotionTextProperty -Page $Page -Name "Availability Types"
+    $typeProperty = Get-ObjectProperty $Page.properties "Availability Types"
+    $types = @()
+    if ($null -ne $typeProperty -and $null -ne $typeProperty.multi_select) {
+        $types = @($typeProperty.multi_select | ForEach-Object { $_.name } | Where-Object { $_ })
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($typesText)) {
+        $types = @($typesText -split '[,\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    }
+
+    $filmRelationIds = @(Get-NotionRelationIds -Page $Page -Name "Film")
+    [pscustomobject]@{
+        id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
+        film_id = Get-NotionTextProperty -Page $Page -Name "Film Tracker ID"
+        film_relation_ids = $filmRelationIds
+        film_title = Get-NotionTextProperty -Page $Page -Name "Film Title"
+        director = Get-NotionTextProperty -Page $Page -Name "Director"
+        festival = Get-NotionTextProperty -Page $Page -Name "Festival"
+        event_date = Get-NotionTextProperty -Page $Page -Name "Event Date"
+        availability_types = $types
+        providers = @((Get-NotionTextProperty -Page $Page -Name "Providers") -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        countries = @((Get-NotionTextProperty -Page $Page -Name "Countries") -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        source_urls = @((Get-NotionTextProperty -Page $Page -Name "Source URLs") -split '[,\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        notion_page_id = $Page.id
+        created_at = $Page.created_time
+    }
+}
+
+function Import-NotionEvents {
+    param([Parameter(Mandatory = $true)][string]$DatabaseId)
+
+    $events = New-Object System.Collections.Generic.List[object]
+    foreach ($page in @(Get-NotionDatabasePages -DatabaseId $DatabaseId)) {
+        $event = ConvertTo-MutableRecord (ConvertFrom-NotionEventPage -Page $page)
+        if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $event "id" ""))) {
+            $events.Add($event)
+        }
+    }
+    return $events
 }
 
 function Get-CanonicalFilmKey {
@@ -3172,10 +3216,94 @@ function Sync-NotionState {
         [object[]]$NewEvents = @()
     )
 
+    $canonicalFilmsDb = Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"
+    $selectionsDb = Get-EnvValue "NOTION_SELECTIONS_DATABASE_ID"
     $filmsDb = Get-EnvValue "NOTION_FILMS_DATABASE_ID"
     $eventsDb = Get-EnvValue "NOTION_EVENTS_DATABASE_ID"
-    if ([string]::IsNullOrWhiteSpace($filmsDb) -or [string]::IsNullOrWhiteSpace($eventsDb)) {
-        throw "Set NOTION_FILMS_DATABASE_ID and NOTION_EVENTS_DATABASE_ID before syncing Notion."
+    if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
+        $selectionsDb = $filmsDb
+    }
+    if ([string]::IsNullOrWhiteSpace($eventsDb)) {
+        throw "Set NOTION_EVENTS_DATABASE_ID before syncing Notion."
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($canonicalFilmsDb)) {
+        if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
+            throw "Set NOTION_SELECTIONS_DATABASE_ID or NOTION_FILMS_DATABASE_ID before syncing three-table Notion state."
+        }
+
+        Ensure-NotionThreeTableSchema -FilmsDatabaseId $canonicalFilmsDb -SelectionsDatabaseId $selectionsDb -EventsDatabaseId $eventsDb
+
+        $filmItems = @($Films)
+        $selectionItems = @($filmItems | Where-Object {
+            -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "festival" "")) -or
+            -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "section" "")) -or
+            -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "source_url" ""))
+        })
+
+        if (@($selectionItems).Count -gt 0) {
+            $canonicalFilms = @(Merge-CanonicalFilmRecords -Selections $selectionItems)
+        }
+        else {
+            $canonicalFilms = $filmItems
+        }
+
+        $syncedCanonicalFilms = New-Object System.Collections.Generic.List[object]
+        $filmPageIdByCanonicalKey = @{}
+        $filmPageIdByTrackerId = @{}
+        foreach ($film in @($canonicalFilms)) {
+            if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $film "canonical_key" ""))) {
+                Set-RecordProperty -Record $film -Name "canonical_key" -Value (Get-CanonicalFilmKey -Film $film)
+            }
+            $synced = Sync-NotionCanonicalFilm -Film $film -DatabaseId $canonicalFilmsDb
+            $syncedCanonicalFilms.Add($synced)
+            $key = [string](Get-ObjectProperty $synced "canonical_key" "")
+            $pageId = [string](Get-ObjectProperty $synced "notion_page_id" "")
+            $trackerId = [string](Get-ObjectProperty $synced "id" "")
+            if (-not [string]::IsNullOrWhiteSpace($key) -and -not [string]::IsNullOrWhiteSpace($pageId)) {
+                $filmPageIdByCanonicalKey[$key] = $pageId
+            }
+            if (-not [string]::IsNullOrWhiteSpace($trackerId) -and -not [string]::IsNullOrWhiteSpace($pageId)) {
+                $filmPageIdByTrackerId[$trackerId] = $pageId
+            }
+        }
+
+        $syncedSelections = New-Object System.Collections.Generic.List[object]
+        foreach ($selection in @($selectionItems)) {
+            $syncedSelection = Sync-NotionFilm -Film $selection -DatabaseId $selectionsDb
+            $syncedSelections.Add($syncedSelection)
+            $key = Get-CanonicalFilmKey -Film $selection
+            if ($filmPageIdByCanonicalKey.ContainsKey($key)) {
+                Set-NotionPageFilmRelation -PageId $syncedSelection.notion_page_id -FilmPageId $filmPageIdByCanonicalKey[$key]
+            }
+        }
+
+        foreach ($selection in @($selectionItems)) {
+            $key = Get-CanonicalFilmKey -Film $selection
+            $trackerId = [string](Get-ObjectProperty $selection "id" "")
+            if (-not [string]::IsNullOrWhiteSpace($trackerId) -and $filmPageIdByCanonicalKey.ContainsKey($key)) {
+                $filmPageIdByTrackerId[$trackerId] = $filmPageIdByCanonicalKey[$key]
+            }
+        }
+
+        $syncedEvents = New-Object System.Collections.Generic.List[object]
+        foreach ($event in @($NewEvents)) {
+            $canonicalKey = [string](Get-ObjectProperty $event "canonical_key" "")
+            if (-not [string]::IsNullOrWhiteSpace($canonicalKey) -and $filmPageIdByCanonicalKey.ContainsKey($canonicalKey)) {
+                Set-RecordProperty -Record $event -Name "film_notion_page_id" -Value $filmPageIdByCanonicalKey[$canonicalKey]
+            }
+            $syncedEvents.Add((Sync-NotionEvent -Event $event -DatabaseId $eventsDb -FilmPageIdByTrackerId $filmPageIdByTrackerId))
+        }
+
+        return [pscustomobject]@{
+            films = @($syncedCanonicalFilms.ToArray())
+            selections = @($syncedSelections.ToArray())
+            events = @($syncedEvents.ToArray())
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($filmsDb)) {
+        throw "Set NOTION_FILMS_DATABASE_ID before syncing legacy Notion state."
     }
 
     Ensure-NotionFilmMetadataProperties -DatabaseId $filmsDb
@@ -3408,16 +3536,33 @@ function Invoke-FestivalTracker {
 
     $films = @()
     $importedFilmsFromNotion = $false
+    $useThreeTableNotion = $UseNotion -and -not [string]::IsNullOrWhiteSpace((Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"))
     if ($UseNotion) {
-        $filmsDb = Get-EnvValue "NOTION_FILMS_DATABASE_ID"
-        if (-not [string]::IsNullOrWhiteSpace($filmsDb)) {
+        if ($useThreeTableNotion -and ($Mode -eq "Availability")) {
+            $canonicalFilmsDb = Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"
             try {
-                $films = @(Import-NotionFilms -DatabaseId $filmsDb)
+                $films = @(Import-NotionCanonicalFilms -DatabaseId $canonicalFilmsDb)
                 $importedFilmsFromNotion = $true
-                Write-Host "Imported $($films.Count) film records from Notion."
+                Write-Host "Imported $($films.Count) canonical film records from Notion."
             }
             catch {
-                Write-Warning "Could not import films from Notion: $($_.Exception.Message)"
+                Write-Warning "Could not import canonical films from Notion: $($_.Exception.Message)"
+            }
+        }
+        else {
+            $filmsDb = if ($useThreeTableNotion) { Get-EnvValue "NOTION_SELECTIONS_DATABASE_ID" } else { Get-EnvValue "NOTION_FILMS_DATABASE_ID" }
+            if ([string]::IsNullOrWhiteSpace($filmsDb)) {
+                $filmsDb = Get-EnvValue "NOTION_FILMS_DATABASE_ID"
+            }
+            if (-not [string]::IsNullOrWhiteSpace($filmsDb)) {
+                try {
+                    $films = if ($useThreeTableNotion) { @(Import-NotionSelections -DatabaseId $filmsDb) } else { @(Import-NotionFilms -DatabaseId $filmsDb) }
+                    $importedFilmsFromNotion = $true
+                    Write-Host "Imported $($films.Count) film records from Notion."
+                }
+                catch {
+                    Write-Warning "Could not import films from Notion: $($_.Exception.Message)"
+                }
             }
         }
     }
@@ -3435,7 +3580,19 @@ function Invoke-FestivalTracker {
 
     $newEvents = @()
     $events = @()
-    if (-not $UseNotion) {
+    if ($UseNotion) {
+        $eventsDb = Get-EnvValue "NOTION_EVENTS_DATABASE_ID"
+        if (-not [string]::IsNullOrWhiteSpace($eventsDb)) {
+            try {
+                $events = @(Import-NotionEvents -DatabaseId $eventsDb)
+                Write-Host "Imported $($events.Count) availability events from Notion."
+            }
+            catch {
+                Write-Warning "Could not import availability events from Notion: $($_.Exception.Message)"
+            }
+        }
+    }
+    else {
         $events = @(Read-JsonFile -Path $eventsPath -Default @())
     }
 
