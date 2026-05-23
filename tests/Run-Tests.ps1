@@ -205,6 +205,7 @@ Assert-True (@($wikipediaOscars | Where-Object { $_.title -eq "Acting Only Sampl
 $sentimentalValue = @($wikipediaOscars | Where-Object { $_.title -eq "Sentimental Value" })
 Assert-Equal 1 $sentimentalValue.Count "deduplicates Wikipedia Oscar cross-category films"
 Assert-Equal "Best Picture; International Feature Film" $sentimentalValue[0].section "merges Wikipedia Oscar sections for cross-category films"
+Assert-Equal 2025 $sentimentalValue[0].film_year "sets Oscar film year from previous eligibility year"
 
 $wikipediaOscarsCombinedTableHtml = @"
 <html>
@@ -232,6 +233,7 @@ Assert-True (@($wikipediaOscarsCombined | Where-Object { $_.title -eq "Director 
 $bugoniaCombined = @($wikipediaOscarsCombined | Where-Object { $_.title -eq "Bugonia" })
 Assert-Equal 1 $bugoniaCombined.Count "deduplicates combined table cross-category films"
 Assert-Equal "Best Picture; International Feature Film" $bugoniaCombined[0].section "merges combined table Oscar sections"
+Assert-Equal 2025 $bugoniaCombined[0].film_year "sets combined table Oscar film year"
 
 $sectionScopedHtml = @"
 <html>

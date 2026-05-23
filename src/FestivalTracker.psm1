@@ -190,7 +190,15 @@ function Read-JsonFile {
         return $Default
     }
 
-    return $content | ConvertFrom-Json
+    $result = $content | ConvertFrom-Json
+    if ($null -ne $result -and
+        $null -ne $result.PSObject.Properties["value"] -and
+        $null -ne $result.PSObject.Properties["Count"] -and
+        $result.value -is [array]) {
+        return @($result.value)
+    }
+
+    return $result
 }
 
 function Write-JsonFile {
@@ -998,6 +1006,7 @@ function ConvertFrom-WikipediaOscarsHtml {
         }
     }
 
+    $filmYear = if ($Year -gt 1) { $Year - 1 } else { $null }
     $recordsByTitle = [ordered]@{}
     $addTitle = {
         param(
@@ -1012,7 +1021,7 @@ function ConvertFrom-WikipediaOscarsHtml {
 
         $key = ConvertTo-NormalizedTitle $cleanTitle
         if (-not $recordsByTitle.Contains($key)) {
-            $record = New-FilmRecord -Title $cleanTitle -Director "" -Festival $Festival -Region $Region -Section $Category -SourceUrl $SourceUrl -Year $Year
+            $record = New-FilmRecord -Title $cleanTitle -Director "" -Festival $Festival -Region $Region -Section $Category -SourceUrl $SourceUrl -Year $Year -FilmYear $filmYear
             $recordsByTitle[$key] = [pscustomobject]@{
                 record = $record
                 sections = New-Object System.Collections.Generic.List[string]
@@ -1637,7 +1646,7 @@ function Merge-FilmRecords {
 
         if ($byId.ContainsKey($film.id)) {
             $existingFilm = $byId[$film.id]
-            foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "year")) {
+            foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "year", "film_year")) {
                 $incomingValue = Get-ObjectProperty $film $name
                 if ($null -ne $incomingValue -and -not [string]::IsNullOrWhiteSpace([string]$incomingValue)) {
                     if ($name -eq "section") {
@@ -1647,7 +1656,7 @@ function Merge-FilmRecords {
                         Set-RecordProperty -Record $existingFilm -Name "section" -Value ($sections -join '; ')
                     }
                     else {
-                        $existingFilm.$name = $incomingValue
+                        Set-RecordProperty -Record $existingFilm -Name $name -Value $incomingValue
                     }
                 }
             }
@@ -1718,7 +1727,15 @@ function Get-TmdbMovieMatch {
         "language" = "en-US"
         "page" = "1"
     }
-    $filmYear = ConvertTo-OptionalInt $Film.year
+    $festivalName = [string](Get-ObjectProperty $Film "festival" "")
+    $festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festival_year" (Get-ObjectProperty $Film "year" $null))
+    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
+    if ($festivalName -eq "Academy Awards" -and $null -ne $festivalYear -and $festivalYear -gt 1) {
+        $filmYear = $festivalYear - 1
+    }
+    elseif ($null -eq $filmYear) {
+        $filmYear = ConvertTo-OptionalInt $Film.year
+    }
     if ($null -ne $filmYear -and $filmYear -gt 0) {
         $query["year"] = [string]$filmYear
     }
@@ -1836,14 +1853,22 @@ function Update-FilmMatches {
 
     foreach ($film in @($Films)) {
         $existingTmdbId = ConvertTo-OptionalInt $film.tmdb_id
+        $existingConfidence = ConvertTo-OptionalDouble (Get-ObjectProperty $film "match_confidence" $null)
+        $existingImdbId = [string](Get-ObjectProperty $film "imdb_id" "")
         if ($null -ne $existingTmdbId -and $existingTmdbId -gt 0) {
-            try {
-                Update-FilmMetadataFromTmdb -Film $film -TmdbId $existingTmdbId | Out-Null
+            $shouldRematch = (
+                ($null -ne $existingConfidence -and $existingConfidence -lt 0.8) -and
+                [string]::IsNullOrWhiteSpace($existingImdbId)
+            )
+            if (-not $shouldRematch) {
+                try {
+                    Update-FilmMetadataFromTmdb -Film $film -TmdbId $existingTmdbId | Out-Null
+                }
+                catch {
+                    Write-Warning "TMDb metadata update failed for '$($film.title)': $($_.Exception.Message)"
+                }
+                continue
             }
-            catch {
-                Write-Warning "TMDb metadata update failed for '$($film.title)': $($_.Exception.Message)"
-            }
-            continue
         }
         if ((Get-ObjectProperty $film "tracking_status" "pending") -eq "available_found") {
             continue
