@@ -335,6 +335,9 @@ if ($UseNotion) {
             if ($selectionsByFilmPageId.ContainsKey($_.notion_page_id)) {
                 $filmSelections = @($selectionsByFilmPageId[$_.notion_page_id].ToArray())
             }
+            if (@($filmSelections).Count -eq 0) {
+                return
+            }
             ConvertTo-WebCanonicalFilm -Film $_ -Selections $filmSelections -Events $events
         })
     }
