@@ -61,13 +61,23 @@ Workflow modes:
 
 - `NOTION_TOKEN`
 - `TMDB_BEARER_TOKEN`
-- `NOTION_FILMS_DATABASE_ID`
+- `NOTION_CANONICAL_FILMS_DATABASE_ID`
+- `NOTION_SELECTIONS_DATABASE_ID`
 - `NOTION_EVENTS_DATABASE_ID`
 
 Optional:
 
+- `NOTION_FILMS_DATABASE_ID` legacy fallback for the old single-table selections database name.
 - `OMDB_API_KEY`
 - `WATCHMODE_API_KEY`
+
+Current Notion model:
+
+- `Films`: canonical film records and metadata.
+- `Festival Selections`: festival-specific lineup records. In code and secrets this is `NOTION_SELECTIONS_DATABASE_ID`.
+- `First Legal Availability Events`: first legal availability events.
+
+`Festival Selections` still contains some legacy film metadata columns from the old single-table model. Treat `Films` as the source of truth for title metadata, director, TMDb/IMDb IDs, poster, overview, ratings, and tracking status.
 
 ## Local Commands
 
@@ -81,6 +91,13 @@ Export Notion data for the web UI:
 
 ```powershell
 .\scripts\Export-TrackerData.ps1 -UseNotion
+```
+
+Check and repair duplicate canonical Films after a migration or a large lineup import:
+
+```powershell
+.\scripts\Reconcile-NotionFilms.ps1
+.\scripts\Reconcile-NotionFilms.ps1 -Apply -ArchiveDuplicates
 ```
 
 Backfill a historical year after a dry-run:
