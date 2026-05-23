@@ -100,6 +100,13 @@ Check and repair duplicate canonical Films after a migration or a large lineup i
 .\scripts\Reconcile-NotionFilms.ps1 -Apply -ArchiveDuplicates
 ```
 
+Archive selections that are outside the current restrained scope:
+
+```powershell
+.\scripts\Archive-OutOfScopeSelections.ps1
+.\scripts\Archive-OutOfScopeSelections.ps1 -Apply -ArchiveOrphanFilms
+```
+
 Backfill a historical year after a dry-run:
 
 ```powershell

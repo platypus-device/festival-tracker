@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $modulePath = Join-Path $PSScriptRoot "..\src\FestivalTracker.psm1"
 Import-Module $modulePath -Force
 
@@ -58,6 +58,23 @@ Assert-Equal 2 $cannes.Count "parses Cannes title-by-director records"
 Assert-Equal "THE PHOENICIAN SCHEME" $cannes[0].title "keeps Cannes title"
 Assert-Equal "Wes ANDERSON" $cannes[0].director "keeps Cannes director"
 Assert-Equal "In Competition - Feature films" $cannes[0].section "captures section heading"
+
+$cannesScopedHtml = @"
+<html>
+<body>
+<h2>In Competition</h2>
+<p>Feature films</p>
+<p>COMPETITION SAMPLE by Competition DIRECTOR</p>
+<h2>Un Certain Regard</h2>
+<p>UCR SAMPLE by UCR DIRECTOR</p>
+<h2>Directors' Fortnight</h2>
+<p>FORTNIGHT SAMPLE by Fortnight DIRECTOR</p>
+</body>
+</html>
+"@
+$cannesScoped = @(ConvertFrom-LineupHtml -Html $cannesScopedHtml -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Parser "cannes_selection" -Year 2026)
+Assert-Equal 2 $cannesScoped.Count "keeps Cannes core sections only"
+Assert-True (@($cannesScoped | Where-Object { $_.title -eq "FORTNIGHT SAMPLE" }).Count -eq 0) "excludes Cannes non-core sections after UCR"
 
 $byInTitleHtml = @"
 <html>
@@ -135,7 +152,7 @@ $oscarsHtml = @"
 <p>Michael B. Jordan</p>
 <p>Sinners</p>
 <p>Nominees</p>
-<p>Timothée Chalamet</p>
+<p>Timoth茅e Chalamet</p>
 <p>Marty Supreme</p>
 <h2>Animated Feature Film</h2>
 <p>Nominees</p>
@@ -322,13 +339,28 @@ Assert-Equal "Better Go Mad in the Wild" $kviff[0].title "keeps KVIFF title"
 Assert-Equal "Miro Remo" $kviff[0].director "extracts KVIFF director"
 Assert-Equal "Crystal Globe Competition" $kviff[0].section "maps KVIFF source URL to section"
 
+$taipeiBestNarrativeFeature = New-StringFromCodePoints @(0x6700, 0x4f73, 0x5287, 0x60c5, 0x9577, 0x7247)
+$taipeiBestDocumentary = New-StringFromCodePoints @(0x6700, 0x4f73, 0x7d00, 0x9304, 0x7247)
+$taipeiBestAnimation = New-StringFromCodePoints @(0x6700, 0x4f73, 0x52d5, 0x756b, 0x7247)
 $taipeiAwardsData = [pscustomobject]@{
     awardAry = @(
         [pscustomobject]@{
-            title = "Sample Feature"
+            title = "Sample Narrative Feature"
             awards_with_winners = @(
-                [pscustomobject]@{ award_name = "Best Feature"; winner = "Producer" },
+                [pscustomobject]@{ award_name = $taipeiBestNarrativeFeature; winner = "Producer" },
                 [pscustomobject]@{ award_name = "Best Director"; winner = "Sample Director" }
+            )
+        },
+        [pscustomobject]@{
+            title = "Sample Documentary Feature"
+            awards_with_winners = @(
+                [pscustomobject]@{ award_name = $taipeiBestDocumentary; winner = "Doc Producer" }
+            )
+        },
+        [pscustomobject]@{
+            title = "Sample Animated Feature"
+            awards_with_winners = @(
+                [pscustomobject]@{ award_name = $taipeiBestAnimation; winner = "Animation Producer" }
             )
         },
         [pscustomobject]@{
@@ -339,9 +371,9 @@ $taipeiAwardsData = [pscustomobject]@{
         }
     )
 }
-$taipeiAwards = @(ConvertFrom-TaipeiFilmAwardsData -Data $taipeiAwardsData -Festival "Taipei Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/tfa" -Year 2026 -AllowedAwardPatterns @("Best Feature", "Grand Prize", "\u5287\u60c5\u9577\u7247", "\u6700\u4f73\u5287\u60c5\u9577\u7247", "\u9577\u7247"))
-Assert-Equal 1 $taipeiAwards.Count "filters Taipei Film Awards to feature-related awards"
-Assert-Equal "Sample Feature" $taipeiAwards[0].title "keeps Taipei Film Awards title"
+$taipeiAwards = @(ConvertFrom-TaipeiFilmAwardsData -Data $taipeiAwardsData -Festival "Taipei Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/tfa" -Year 2026 -AllowedAwardPatterns @("^Best Narrative Feature$", "^\u6700\u4f73\u5287\u60c5\u9577\u7247$"))
+Assert-Equal 1 $taipeiAwards.Count "filters Taipei Film Awards to narrative feature only"
+Assert-Equal "Sample Narrative Feature" $taipeiAwards[0].title "keeps Taipei narrative feature title"
 
 $taipeiNewTalentData = [pscustomobject]@{
     awardAry = @(

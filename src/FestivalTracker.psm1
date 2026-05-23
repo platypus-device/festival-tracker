@@ -340,7 +340,7 @@ function ConvertFrom-TitleByDirectorText {
             continue
         }
 
-        if ($line.Length -lt 80 -and $line -match '(?i)^(in competition|competition|encounters|panorama|forum|premieres|midnight|midnight screenings|cannes premiere|spotlight|shorts|special screenings|out of competition|uncertain regard|un certain regard|main slate|galas|discovery|wavelengths|platform|proxima|competition films|new currents|best feature film|best narrative feature|golden horse awards)$') {
+        if ($line.Length -lt 80 -and $line -match '(?i)^(in competition|competition|encounters|panorama|forum|premieres|midnight|midnight screenings|cannes premiere|spotlight|shorts|special screenings|out of competition|uncertain regard|un certain regard|directors'' fortnight|quinzaine des cinéastes|critics'' week|semaine de la critique|cannes classics|cinéma de la plage|immersive competition|acide|main slate|galas|discovery|wavelengths|platform|proxima|competition films|new currents|best feature film|best narrative feature|golden horse awards)$') {
             $section = $line
             $subSection = $null
             $pendingTitle = $null
@@ -1413,7 +1413,7 @@ function ConvertFrom-TaipeiFilmAwardsHtml {
         throw "Taipei Film Awards API returned status '$($data.status)'."
     }
 
-    return ConvertFrom-TaipeiFilmAwardsData -Data $data -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedAwardPatterns @("Best Feature", "Grand Prize", "\u5287\u60c5\u9577\u7247", "\u6700\u4f73\u5287\u60c5\u9577\u7247", "\u9577\u7247")
+    return ConvertFrom-TaipeiFilmAwardsData -Data $data -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedAwardPatterns @("^Best Narrative Feature$", "^\u6700\u4f73\u5287\u60c5\u9577\u7247$")
 }
 
 function ConvertFrom-TaipeiNewTalentHtml {
