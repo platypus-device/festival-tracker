@@ -1888,6 +1888,9 @@ function Update-FilmMatches {
             if ($null -ne $match) {
                 Set-RecordProperty -Record $film -Name "tmdb_id" -Value $match.tmdb_id
                 Set-RecordProperty -Record $film -Name "imdb_id" -Value $match.imdb_id
+                if (-not [string]::IsNullOrWhiteSpace([string]$match.director)) {
+                    Set-RecordProperty -Record $film -Name "director" -Value $match.director
+                }
                 Set-RecordProperty -Record $film -Name "match_confidence" -Value $match.confidence
                 Set-RecordProperty -Record $film -Name "poster_url" -Value $match.poster_url
                 Set-RecordProperty -Record $film -Name "overview" -Value (Repair-MojibakeText $match.overview)

@@ -363,7 +363,7 @@ else {
 
 $usingCanonicalFilms = $UseNotion -and -not [string]::IsNullOrWhiteSpace((Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"))
 $selectionRecords = if ($usingCanonicalFilms) { @($films) } else { @($films | ForEach-Object { ConvertTo-WebFilm -Film $_ -Events $events }) }
-$webFilms = if ($usingCanonicalFilms) { @($selectionRecords) } else { @(Merge-WebFilms -Films $selectionRecords) }
+$webFilms = @(Merge-WebFilms -Films $selectionRecords)
 if ($usingCanonicalFilms) {
     foreach ($film in @($webFilms)) {
         $selectionFestivals = @($film.selections | ForEach-Object { $_.festival } | Where-Object { $_ } | Select-Object -Unique)
