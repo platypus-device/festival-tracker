@@ -116,16 +116,46 @@ function Get-SelectionLabel {
 function Merge-WebFilms {
     param([object[]]$Films)
 
-    $byKey = [ordered]@{}
+    $normalizedFilms = @()
+    $canonicalByFallback = @{}
     foreach ($film in @($Films)) {
         $key = Get-WebCanonicalFilmKey -Film $film
+        $fallbackKey = "title:$(ConvertTo-NormalizedTitle $film.title)"
+        $strongKey = $null
+        if ($key.StartsWith("tmdb:") -or $key.StartsWith("imdb:")) {
+            $strongKey = $key
+        }
+        elseif ($canonicalByFallback.ContainsKey($fallbackKey)) {
+            $key = $canonicalByFallback[$fallbackKey]
+        }
+
+        if ($null -ne $strongKey) {
+            $canonicalByFallback[$fallbackKey] = $strongKey
+        }
+
+        Add-Member -InputObject $film -NotePropertyName "_mergeKey" -NotePropertyValue $key -Force
+        $normalizedFilms += $film
+    }
+
+    foreach ($film in @($normalizedFilms)) {
+        $fallbackKey = "title:$(ConvertTo-NormalizedTitle $film.title)"
+        if (-not $film._mergeKey.StartsWith("tmdb:") -and -not $film._mergeKey.StartsWith("imdb:") -and $canonicalByFallback.ContainsKey($fallbackKey)) {
+            $film._mergeKey = $canonicalByFallback[$fallbackKey]
+        }
+    }
+
+    $byKey = [ordered]@{}
+    foreach ($film in @($normalizedFilms)) {
+        $key = [string]$film._mergeKey
         if (-not $byKey.Contains($key)) {
             $film.id = New-StableId "web-film|$key"
             Add-Member -InputObject $film -NotePropertyName "canonicalFilmKey" -NotePropertyValue $key -Force
+            $film.PSObject.Properties.Remove("_mergeKey")
             $byKey[$key] = $film
             continue
         }
 
+        $film.PSObject.Properties.Remove("_mergeKey")
         $existing = $byKey[$key]
         $existing.selections = @(
             @($existing.selections) + @($film.selections) |
@@ -136,7 +166,7 @@ function Merge-WebFilms {
                 Sort-Object event_date, id -Unique
         )
 
-        foreach ($name in @("posterUrl", "overview", "imdbId", "imdbUrl", "tmdbUrl")) {
+        foreach ($name in @("posterUrl", "overview", "imdbId", "imdbUrl", "tmdbUrl", "director")) {
             $existingValue = [string](Get-ObjectProperty $existing $name "")
             $incomingValue = [string](Get-ObjectProperty $film $name "")
             if ([string]::IsNullOrWhiteSpace($existingValue) -and -not [string]::IsNullOrWhiteSpace($incomingValue)) {

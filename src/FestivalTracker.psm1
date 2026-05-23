@@ -1811,6 +1811,9 @@ function Get-TmdbMovieMatch {
             if ($null -ne $details.vote_average) {
                 $best.tmdb_rating = [Math]::Round([double]$details.vote_average, 1)
             }
+            if ([string]::IsNullOrWhiteSpace([string]$best.director)) {
+                $best.director = Get-TmdbMovieCreditsDirector -MovieId ([int]$best.tmdb_id)
+            }
         }
         catch {
             # External ids are useful but not required for tracking.
@@ -1836,6 +1839,12 @@ function Update-FilmMetadataFromTmdb {
     }
     if (-not [string]::IsNullOrWhiteSpace([string]$details.overview)) {
         Set-RecordProperty -Record $Film -Name "overview" -Value ([string]$details.overview)
+    }
+    if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "director" ""))) {
+        $director = Get-TmdbMovieCreditsDirector -MovieId $TmdbId
+        if (-not [string]::IsNullOrWhiteSpace($director)) {
+            Set-RecordProperty -Record $Film -Name "director" -Value $director
+        }
     }
     if ($null -ne $details.vote_average) {
         Set-RecordProperty -Record $Film -Name "tmdb_rating" -Value ([Math]::Round([double]$details.vote_average, 1))
