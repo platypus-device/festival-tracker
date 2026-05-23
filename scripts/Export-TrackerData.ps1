@@ -84,6 +84,63 @@ function ConvertTo-WebFilm {
     }
 }
 
+function ConvertTo-WebCanonicalFilm {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [object[]]$Selections = @(),
+        [object[]]$Events = @()
+    )
+
+    $tmdbId = ConvertTo-OptionalInt $Film.tmdb_id
+    $imdbId = [string](Get-ObjectProperty $Film "imdb_id" "")
+    $selectionIds = @($Selections | ForEach-Object { $_.id })
+    $availability = @($Events | Where-Object { $_.film_id -eq $Film.id -or $selectionIds -contains $_.film_id })
+    $festivalYears = @($Selections | ForEach-Object { ConvertTo-OptionalInt (Get-ObjectProperty $_ "festival_year" (Get-ObjectProperty $_ "year" $null)) } | Where-Object { $null -ne $_ })
+    $primaryFestivalYear = if (@($festivalYears).Count -gt 0) { @($festivalYears | Sort-Object -Descending)[0] } else { $null }
+
+    [pscustomobject]@{
+        id = $Film.id
+        title = $Film.title
+        originalTitle = $Film.original_title
+        director = $Film.director
+        year = $primaryFestivalYear
+        festivalYear = $primaryFestivalYear
+        filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
+        festival = ""
+        region = ""
+        section = ""
+        sourceUrl = ""
+        tmdbId = $tmdbId
+        imdbId = $imdbId
+        imdbUrl = if ([string]::IsNullOrWhiteSpace($imdbId)) { "" } else { "https://www.imdb.com/title/$imdbId/" }
+        tmdbUrl = if ($null -eq $tmdbId -or $tmdbId -le 0) { "" } else { "https://www.themoviedb.org/movie/$tmdbId" }
+        matchConfidence = ConvertTo-OptionalDouble $Film.match_confidence
+        posterUrl = [string](Get-ObjectProperty $Film "poster_url" "")
+        overview = [string](Get-ObjectProperty $Film "overview" "")
+        tmdbRating = ConvertTo-OptionalDouble $Film.tmdb_rating
+        imdbRating = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "imdb_rating" $null)
+        imdbVotes = ConvertTo-OptionalInt (Get-ObjectProperty $Film "imdb_votes" $null)
+        imdbRatingCheckedAt = [string](Get-ObjectProperty $Film "imdb_rating_checked_at" "")
+        ratingSource = [string](Get-ObjectProperty $Film "rating_source" "")
+        trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
+        firstAvailableDate = [string](Get-ObjectProperty $Film "first_available_date" "")
+        lastChecked = [string](Get-ObjectProperty $Film "last_checked" "")
+        lowConfidence = [bool](Get-ObjectProperty $Film "needs_review" $false)
+        availability = @($availability)
+        selections = @($Selections | ForEach-Object {
+            [pscustomobject]@{
+                id = $_.id
+                festival = $_.festival
+                region = $_.region
+                section = $_.section
+                festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $_ "festival_year" (Get-ObjectProperty $_ "year" $null))
+                sourceUrl = $_.source_url
+            }
+        })
+        canonicalFilmKey = [string](Get-ObjectProperty $Film "canonical_key" "")
+    }
+}
+
 function Get-WebCanonicalFilmKey {
     param([Parameter(Mandatory = $true)][object]$Film)
 
@@ -245,14 +302,48 @@ $films = @()
 $events = @()
 
 if ($UseNotion) {
+    $canonicalFilmsDb = Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"
+    $selectionsDb = Get-EnvValue "NOTION_SELECTIONS_DATABASE_ID"
     $filmsDb = Get-EnvValue "NOTION_FILMS_DATABASE_ID"
     $eventsDb = Get-EnvValue "NOTION_EVENTS_DATABASE_ID"
-    if ([string]::IsNullOrWhiteSpace($filmsDb) -or [string]::IsNullOrWhiteSpace($eventsDb)) {
-        throw "Set NOTION_FILMS_DATABASE_ID and NOTION_EVENTS_DATABASE_ID before exporting from Notion."
+    if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
+        $selectionsDb = $filmsDb
+    }
+    if ([string]::IsNullOrWhiteSpace($eventsDb)) {
+        throw "Set NOTION_EVENTS_DATABASE_ID before exporting from Notion."
     }
 
-    $films = @(Import-NotionFilms -DatabaseId $filmsDb)
     $events = @(Get-NotionDatabasePages -DatabaseId $eventsDb | ForEach-Object { ConvertTo-EventRecord -Page $_ })
+    if (-not [string]::IsNullOrWhiteSpace($canonicalFilmsDb)) {
+        if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
+            throw "Set NOTION_SELECTIONS_DATABASE_ID or NOTION_FILMS_DATABASE_ID before exporting selections from Notion."
+        }
+        $canonicalFilms = @(Import-NotionCanonicalFilms -DatabaseId $canonicalFilmsDb)
+        $selections = @(Import-NotionSelections -DatabaseId $selectionsDb)
+        $selectionsByFilmPageId = @{}
+        foreach ($selection in $selections) {
+            foreach ($filmPageId in @($selection.film_relation_ids)) {
+                if (-not $selectionsByFilmPageId.ContainsKey($filmPageId)) {
+                    $selectionsByFilmPageId[$filmPageId] = New-Object System.Collections.Generic.List[object]
+                }
+                $selectionsByFilmPageId[$filmPageId].Add($selection) | Out-Null
+            }
+        }
+
+        $films = @($canonicalFilms | ForEach-Object {
+            $filmSelections = @()
+            if ($selectionsByFilmPageId.ContainsKey($_.notion_page_id)) {
+                $filmSelections = @($selectionsByFilmPageId[$_.notion_page_id].ToArray())
+            }
+            ConvertTo-WebCanonicalFilm -Film $_ -Selections $filmSelections -Events $events
+        })
+    }
+    else {
+        if ([string]::IsNullOrWhiteSpace($filmsDb)) {
+            throw "Set NOTION_FILMS_DATABASE_ID before exporting from legacy Notion schema."
+        }
+        $films = @(Import-NotionFilms -DatabaseId $filmsDb)
+    }
 }
 else {
     $filmsPath = Join-Path $StateDir "films.json"
@@ -267,8 +358,18 @@ else {
     }
 }
 
-$selectionRecords = @($films | ForEach-Object { ConvertTo-WebFilm -Film $_ -Events $events })
-$webFilms = @(Merge-WebFilms -Films $selectionRecords)
+$usingCanonicalFilms = $UseNotion -and -not [string]::IsNullOrWhiteSpace((Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"))
+$selectionRecords = if ($usingCanonicalFilms) { @($films) } else { @($films | ForEach-Object { ConvertTo-WebFilm -Film $_ -Events $events }) }
+$webFilms = if ($usingCanonicalFilms) { @($selectionRecords) } else { @(Merge-WebFilms -Films $selectionRecords) }
+if ($usingCanonicalFilms) {
+    foreach ($film in @($webFilms)) {
+        $selectionFestivals = @($film.selections | ForEach-Object { $_.festival } | Where-Object { $_ } | Select-Object -Unique)
+        $film.festival = ($selectionFestivals -join ", ")
+        $film.section = if (@($film.selections).Count -eq 1) { $film.selections[0].section } else { "$(@($film.selections).Count) selections" }
+        Add-Member -InputObject $film -NotePropertyName "selectionSummary" -NotePropertyValue $(if (@($selectionFestivals).Count -gt 0) { $selectionFestivals -join " / " } else { "Official selection" }) -Force
+        Add-Member -InputObject $film -NotePropertyName "selectionLabels" -NotePropertyValue @($film.selections | ForEach-Object { Get-SelectionLabel -Selection $_ } | Where-Object { $_ }) -Force
+    }
+}
 $years = @(
     $selectionRecords |
         ForEach-Object { ConvertTo-OptionalInt $_.festivalYear } |
@@ -285,10 +386,10 @@ $festivals = @(
 $payload = [pscustomobject]@{
     generatedAt = (Get-Date).ToString("o")
     totals = [pscustomobject]@{
-        films = $webFilms.Count
-        selections = $selectionRecords.Count
+        films = @($webFilms).Count
+        selections = @($selectionRecords).Count
         available = @($webFilms | Where-Object { $_.trackingStatus -eq "available_found" }).Count
-        events = $events.Count
+        events = @($events).Count
     }
     diagnostics = [pscustomobject]@{
         lowConfidence = @($webFilms | Where-Object { $_.lowConfidence }).Count
@@ -301,9 +402,9 @@ $payload = [pscustomobject]@{
     festivals = $festivals
     years = $years
     festivalYears = $years
-    selectionCount = $selectionRecords.Count
-    films = $webFilms
-    events = $events
+    selectionCount = @($selectionRecords).Count
+    films = @($webFilms)
+    events = @($events)
 }
 
 $outputDirectory = Split-Path -Parent $OutputPath
@@ -312,4 +413,4 @@ if (-not (Test-Path $outputDirectory)) {
 }
 
 $payload | ConvertTo-Json -Depth 20 | Set-Content -Path $OutputPath -Encoding UTF8
-Write-Host "Exported $($webFilms.Count) films and $($events.Count) events to $OutputPath"
+Write-Host "Exported $(@($webFilms).Count) films and $(@($events).Count) events to $OutputPath"

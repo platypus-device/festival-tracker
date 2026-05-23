@@ -2287,6 +2287,95 @@ function Get-FilmCanonicalKey {
     return "title:${year}:$(ConvertTo-NormalizedTitle $Film.title)"
 }
 
+function Get-CanonicalFilmKey {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $filmTmdbId = ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdb_id" $null)
+    if ($null -ne $filmTmdbId -and $filmTmdbId -gt 0) {
+        return "tmdb:$filmTmdbId"
+    }
+
+    $imdbId = [string](Get-ObjectProperty $Film "imdb_id" "")
+    if (-not [string]::IsNullOrWhiteSpace($imdbId)) {
+        return "imdb:$($imdbId.Trim().ToLowerInvariant())"
+    }
+
+    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
+    $yearPart = if ($null -ne $filmYear -and $filmYear -gt 0) { [string]$filmYear } else { "" }
+    $director = [string](Get-ObjectProperty $Film "director" "")
+    return "title:${yearPart}:$(ConvertTo-NormalizedTitle $Film.title):$(ConvertTo-NormalizedTitle $director)"
+}
+
+function New-CanonicalFilmFromSelection {
+    param([Parameter(Mandatory = $true)][object]$Selection)
+
+    $canonicalKey = Get-CanonicalFilmKey -Film $Selection
+    [pscustomobject]@{
+        id = New-StableId "film|$canonicalKey"
+        canonical_key = $canonicalKey
+        title = [string](Get-ObjectProperty $Selection "title" "")
+        original_title = [string](Get-ObjectProperty $Selection "original_title" (Get-ObjectProperty $Selection "title" ""))
+        director = [string](Get-ObjectProperty $Selection "director" "")
+        film_year = ConvertTo-OptionalInt (Get-ObjectProperty $Selection "film_year" $null)
+        tmdb_id = ConvertTo-OptionalInt (Get-ObjectProperty $Selection "tmdb_id" $null)
+        imdb_id = [string](Get-ObjectProperty $Selection "imdb_id" "")
+        match_confidence = ConvertTo-OptionalDouble (Get-ObjectProperty $Selection "match_confidence" $null)
+        poster_url = [string](Get-ObjectProperty $Selection "poster_url" "")
+        overview = [string](Get-ObjectProperty $Selection "overview" "")
+        tmdb_rating = ConvertTo-OptionalDouble (Get-ObjectProperty $Selection "tmdb_rating" $null)
+        imdb_rating = ConvertTo-OptionalDouble (Get-ObjectProperty $Selection "imdb_rating" $null)
+        imdb_votes = ConvertTo-OptionalInt (Get-ObjectProperty $Selection "imdb_votes" $null)
+        imdb_rating_checked_at = [string](Get-ObjectProperty $Selection "imdb_rating_checked_at" "")
+        rating_source = [string](Get-ObjectProperty $Selection "rating_source" "")
+        tracking_status = [string](Get-ObjectProperty $Selection "tracking_status" "pending")
+        first_available_date = [string](Get-ObjectProperty $Selection "first_available_date" "")
+        last_checked = [string](Get-ObjectProperty $Selection "last_checked" "")
+        needs_review = [bool](Get-ObjectProperty $Selection "needs_review" $false)
+        authorized_source_urls = @((Get-ObjectProperty $Selection "authorized_source_urls" @()) | Where-Object { $_ })
+        notion_page_id = $null
+        created_at = (Get-Date).ToString("o")
+        updated_at = (Get-Date).ToString("o")
+    }
+}
+
+function Merge-CanonicalFilmRecords {
+    param([object[]]$Selections)
+
+    $byKey = [ordered]@{}
+    foreach ($selection in @($Selections)) {
+        $film = New-CanonicalFilmFromSelection -Selection $selection
+        $key = $film.canonical_key
+        if (-not $byKey.Contains($key)) {
+            $byKey[$key] = $film
+            continue
+        }
+
+        $existing = $byKey[$key]
+        foreach ($name in @("title", "original_title", "director", "imdb_id", "poster_url", "overview", "rating_source", "imdb_rating_checked_at", "first_available_date", "last_checked")) {
+            $existingValue = [string](Get-ObjectProperty $existing $name "")
+            $incomingValue = [string](Get-ObjectProperty $film $name "")
+            if ([string]::IsNullOrWhiteSpace($existingValue) -and -not [string]::IsNullOrWhiteSpace($incomingValue)) {
+                Set-RecordProperty -Record $existing -Name $name -Value $incomingValue
+            }
+        }
+
+        foreach ($name in @("film_year", "tmdb_id", "match_confidence", "tmdb_rating", "imdb_rating", "imdb_votes")) {
+            $existingValue = ConvertTo-OptionalDouble (Get-ObjectProperty $existing $name $null)
+            $incomingValue = ConvertTo-OptionalDouble (Get-ObjectProperty $film $name $null)
+            if (($null -eq $existingValue -or $existingValue -le 0) -and $null -ne $incomingValue -and $incomingValue -gt 0) {
+                Set-RecordProperty -Record $existing -Name $name -Value (Get-ObjectProperty $film $name $null)
+            }
+        }
+
+        if ((Get-ObjectProperty $existing "tracking_status" "pending") -ne "available_found" -and (Get-ObjectProperty $film "tracking_status" "pending") -eq "available_found") {
+            Set-RecordProperty -Record $existing -Name "tracking_status" -Value "available_found"
+        }
+        Set-RecordProperty -Record $existing -Name "needs_review" -Value ([bool](Get-ObjectProperty $existing "needs_review" $false) -or [bool](Get-ObjectProperty $film "needs_review" $false))
+    }
+
+    return @($byKey.Values)
+}
+
 function Add-FirstAvailabilityEvents {
     param(
         [object]$Films = @(),
@@ -2523,6 +2612,89 @@ function Import-NotionFilms {
     return $films
 }
 
+function ConvertFrom-NotionCanonicalFilmPage {
+    param([Parameter(Mandatory = $true)][object]$Page)
+
+    $tmdbText = Get-NotionTextProperty -Page $Page -Name "TMDb ID"
+    $tmdbValue = $null
+    if ($tmdbText -match '\d+') { $tmdbValue = [int]$Matches[0] }
+
+    $filmYearText = Get-NotionTextProperty -Page $Page -Name "Film Year"
+    $filmYearValue = $null
+    if ($filmYearText -match '\d{4}') { $filmYearValue = [int]$Matches[0] }
+
+    $record = [pscustomobject]@{
+        id = Get-NotionTextProperty -Page $Page -Name "Film ID"
+        canonical_key = Get-NotionTextProperty -Page $Page -Name "Canonical Key"
+        title = Get-NotionTextProperty -Page $Page -Name "Film Title"
+        original_title = Get-NotionTextProperty -Page $Page -Name "Original Title"
+        director = Get-NotionTextProperty -Page $Page -Name "Director"
+        film_year = $filmYearValue
+        tmdb_id = $tmdbValue
+        imdb_id = Get-NotionTextProperty -Page $Page -Name "IMDb ID"
+        match_confidence = ConvertTo-OptionalDouble (Get-NotionTextProperty -Page $Page -Name "Match Confidence")
+        poster_url = Get-NotionTextProperty -Page $Page -Name "Poster URL"
+        overview = Get-NotionTextProperty -Page $Page -Name "Overview"
+        tmdb_rating = ConvertTo-OptionalDouble (Get-NotionTextProperty -Page $Page -Name "TMDb Rating")
+        imdb_rating = ConvertTo-OptionalDouble (Get-NotionTextProperty -Page $Page -Name "IMDb Rating")
+        imdb_votes = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "IMDb Votes")
+        imdb_rating_checked_at = Get-NotionTextProperty -Page $Page -Name "IMDb Rating Checked At"
+        rating_source = Get-NotionTextProperty -Page $Page -Name "Rating Source"
+        tracking_status = Get-NotionTextProperty -Page $Page -Name "Tracking Status"
+        first_available_date = Get-NotionTextProperty -Page $Page -Name "First Available Date"
+        last_checked = Get-NotionTextProperty -Page $Page -Name "Last Checked"
+        needs_review = [bool](Get-ObjectProperty (Get-ObjectProperty $Page.properties "Needs Review") "checkbox" $false)
+        notion_page_id = $Page.id
+        created_at = $Page.created_time
+        updated_at = $Page.last_edited_time
+    }
+    if ([string]::IsNullOrWhiteSpace($record.id)) {
+        $record.id = New-StableId ("film|$($record.canonical_key)")
+    }
+    if ([string]::IsNullOrWhiteSpace($record.tracking_status)) {
+        $record.tracking_status = "pending"
+    }
+    return Repair-RecordTextFields -Record $record
+}
+
+function Import-NotionCanonicalFilms {
+    param([Parameter(Mandatory = $true)][string]$DatabaseId)
+
+    $films = New-Object System.Collections.Generic.List[object]
+    foreach ($page in @(Get-NotionDatabasePages -DatabaseId $DatabaseId)) {
+        $film = ConvertTo-MutableRecord (ConvertFrom-NotionCanonicalFilmPage -Page $page)
+        if (-not [string]::IsNullOrWhiteSpace($film.canonical_key)) {
+            $films.Add($film)
+        }
+    }
+    return $films
+}
+
+function Get-NotionRelationIds {
+    param(
+        [Parameter(Mandatory = $true)][object]$Page,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $property = Get-ObjectProperty $Page.properties $Name
+    if ($null -eq $property) { return @() }
+    return @($property.relation | ForEach-Object { $_.id } | Where-Object { $_ })
+}
+
+function Import-NotionSelections {
+    param([Parameter(Mandatory = $true)][string]$DatabaseId)
+
+    $selections = New-Object System.Collections.Generic.List[object]
+    foreach ($page in @(Get-NotionDatabasePages -DatabaseId $DatabaseId)) {
+        $selection = ConvertTo-MutableRecord (ConvertFrom-NotionFilmPage -Page $page)
+        Set-RecordProperty -Record $selection -Name "film_relation_ids" -Value @(Get-NotionRelationIds -Page $page -Name "Film")
+        if (-not [string]::IsNullOrWhiteSpace($selection.id)) {
+            $selections.Add($selection)
+        }
+    }
+    return $selections
+}
+
 function New-RichTextProperty {
     param([AllowNull()][string]$Text)
     if ([string]::IsNullOrWhiteSpace($Text)) {
@@ -2632,6 +2804,53 @@ function ConvertTo-NotionFilmProperties {
     return $properties
 }
 
+function ConvertTo-NotionCanonicalFilmProperties {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    Repair-RecordTextFields -Record $Film | Out-Null
+    $trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
+    if ([string]::IsNullOrWhiteSpace($trackingStatus)) { $trackingStatus = "pending" }
+
+    $properties = @{
+        "Film Title" = New-TitleProperty ([string](Get-ObjectProperty $Film "title" ""))
+        "Film ID" = New-RichTextProperty ([string](Get-ObjectProperty $Film "id" ""))
+        "Canonical Key" = New-RichTextProperty ([string](Get-ObjectProperty $Film "canonical_key" ""))
+        "Original Title" = New-RichTextProperty ([string](Get-ObjectProperty $Film "original_title" ""))
+        "Director" = New-RichTextProperty ([string](Get-ObjectProperty $Film "director" ""))
+        "IMDb ID" = New-RichTextProperty ([string](Get-ObjectProperty $Film "imdb_id" ""))
+        "Poster URL" = New-UrlProperty ([string](Get-ObjectProperty $Film "poster_url" ""))
+        "Overview" = New-RichTextProperty ([string](Get-ObjectProperty $Film "overview" ""))
+        "Rating Source" = New-RichTextProperty ([string](Get-ObjectProperty $Film "rating_source" ""))
+        "Tracking Status" = @{ select = @{ name = $trackingStatus } }
+        "Needs Review" = @{ checkbox = [bool](Get-ObjectProperty $Film "needs_review" $false) }
+    }
+
+    foreach ($pair in @(
+        @{ name = "Film Year"; value = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null) },
+        @{ name = "TMDb ID"; value = ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdb_id" $null) },
+        @{ name = "Match Confidence"; value = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "match_confidence" $null) },
+        @{ name = "TMDb Rating"; value = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "tmdb_rating" $null) },
+        @{ name = "IMDb Rating"; value = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "imdb_rating" $null) },
+        @{ name = "IMDb Votes"; value = ConvertTo-OptionalInt (Get-ObjectProperty $Film "imdb_votes" $null) }
+    )) {
+        if ($null -ne $pair.value) {
+            $properties[$pair.name] = @{ number = $pair.value }
+        }
+    }
+
+    foreach ($pair in @(
+        @{ name = "IMDb Rating Checked At"; value = [string](Get-ObjectProperty $Film "imdb_rating_checked_at" "") },
+        @{ name = "First Available Date"; value = [string](Get-ObjectProperty $Film "first_available_date" "") },
+        @{ name = "Last Checked"; value = [string](Get-ObjectProperty $Film "last_checked" "") }
+    )) {
+        if (-not [string]::IsNullOrWhiteSpace($pair.value)) {
+            $properties[$pair.name] = @{ date = @{ start = $pair.value } }
+        }
+    }
+
+    return $properties
+}
+
 function Get-NotionPageCover {
     param([Parameter(Mandatory = $true)][object]$Film)
 
@@ -2661,6 +2880,69 @@ function Find-NotionPageByTrackerId {
         return $response.results[0]
     }
     return $null
+}
+
+function Find-NotionCanonicalFilmPage {
+    param(
+        [Parameter(Mandatory = $true)][string]$DatabaseId,
+        [Parameter(Mandatory = $true)][string]$CanonicalKey
+    )
+
+    $body = @{
+        page_size = 1
+        filter = @{
+            property = "Canonical Key"
+            rich_text = @{ equals = $CanonicalKey }
+        }
+    }
+    $response = Invoke-NotionRequest -Method "POST" -Path "/v1/databases/$DatabaseId/query" -Body $body
+    if (@($response.results).Count -gt 0) { return $response.results[0] }
+    return $null
+}
+
+function Sync-NotionCanonicalFilm {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [Parameter(Mandatory = $true)][string]$DatabaseId
+    )
+
+    $properties = ConvertTo-NotionCanonicalFilmProperties -Film $Film
+    $page = $null
+    if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "notion_page_id" ""))) {
+        $page = [pscustomobject]@{ id = $Film.notion_page_id }
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "canonical_key" ""))) {
+        $page = Find-NotionCanonicalFilmPage -DatabaseId $DatabaseId -CanonicalKey $Film.canonical_key
+    }
+
+    $cover = Get-NotionPageCover -Film $Film
+    if ($null -eq $page) {
+        $body = @{ parent = @{ database_id = $DatabaseId }; properties = $properties }
+        if ($null -ne $cover) { $body["cover"] = $cover }
+        $created = Invoke-NotionRequest -Method "POST" -Path "/v1/pages" -Body $body
+        Set-RecordProperty -Record $Film -Name "notion_page_id" -Value $created.id
+    }
+    else {
+        $body = @{ properties = $properties }
+        if ($null -ne $cover) { $body["cover"] = $cover }
+        $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body $body
+        Set-RecordProperty -Record $Film -Name "notion_page_id" -Value $updated.id
+    }
+
+    return $Film
+}
+
+function Set-NotionPageFilmRelation {
+    param(
+        [Parameter(Mandatory = $true)][string]$PageId,
+        [Parameter(Mandatory = $true)][string]$FilmPageId
+    )
+
+    Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$PageId" -Body @{
+        properties = @{
+            "Film" = @{ relation = @(@{ id = $FilmPageId }) }
+        }
+    } | Out-Null
 }
 
 function Sync-NotionFilm {
@@ -2800,6 +3082,90 @@ function Ensure-NotionEventRelationProperty {
     Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$EventsDatabaseId" -Body $body | Out-Null
 }
 
+function Ensure-NotionThreeTableSchema {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilmsDatabaseId,
+        [Parameter(Mandatory = $true)][string]$SelectionsDatabaseId,
+        [Parameter(Mandatory = $true)][string]$EventsDatabaseId
+    )
+
+    $filmProperties = @{
+        "Film ID" = @{ rich_text = @{} }
+        "Canonical Key" = @{ rich_text = @{} }
+        "Original Title" = @{ rich_text = @{} }
+        "Director" = @{ rich_text = @{} }
+        "Film Year" = @{ number = @{ format = "number" } }
+        "TMDb ID" = @{ number = @{ format = "number" } }
+        "IMDb ID" = @{ rich_text = @{} }
+        "Match Confidence" = @{ number = @{ format = "number" } }
+        "Poster URL" = @{ url = @{} }
+        "Overview" = @{ rich_text = @{} }
+        "TMDb Rating" = @{ number = @{ format = "number" } }
+        "IMDb Rating" = @{ number = @{ format = "number" } }
+        "IMDb Votes" = @{ number = @{ format = "number" } }
+        "IMDb Rating Checked At" = @{ date = @{} }
+        "Rating Source" = @{ rich_text = @{} }
+        "Tracking Status" = @{ select = @{ options = @(
+            @{ name = "pending"; color = "yellow" },
+            @{ name = "available_found"; color = "green" },
+            @{ name = "needs_review"; color = "red" }
+        ) } }
+        "First Available Date" = @{ date = @{} }
+        "Last Checked" = @{ date = @{} }
+        "Needs Review" = @{ checkbox = @{} }
+    }
+    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$FilmsDatabaseId" -Body @{ properties = $filmProperties } | Out-Null
+
+    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$SelectionsDatabaseId" -Body @{
+        properties = @{
+            "Film" = @{
+                relation = @{
+                    database_id = $FilmsDatabaseId
+                    type = "single_property"
+                    single_property = @{}
+                }
+            }
+        }
+    } | Out-Null
+
+    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$EventsDatabaseId" -Body @{
+        properties = @{
+            "Film" = @{
+                relation = @{
+                    database_id = $FilmsDatabaseId
+                    type = "single_property"
+                    single_property = @{}
+                }
+            }
+        }
+    } | Out-Null
+}
+
+function New-NotionCanonicalFilmsDatabase {
+    param(
+        [Parameter(Mandatory = $true)][string]$SelectionsDatabaseId,
+        [string]$Title = "Films"
+    )
+
+    $selectionDb = Invoke-NotionRequest -Method "GET" -Path "/v1/databases/$SelectionsDatabaseId"
+    $parent = $selectionDb.parent
+    if ($null -eq $parent) {
+        throw "Could not determine parent for selections database $SelectionsDatabaseId."
+    }
+
+    $body = @{
+        parent = $parent
+        title = @(@{ type = "text"; text = @{ content = $Title } })
+        properties = @{
+            "Film Title" = @{ title = @{} }
+            "Film ID" = @{ rich_text = @{} }
+            "Canonical Key" = @{ rich_text = @{} }
+        }
+    }
+    $created = Invoke-NotionRequest -Method "POST" -Path "/v1/databases" -Body $body
+    return $created
+}
+
 function Sync-NotionState {
     param(
         [object[]]$Films = @(),
@@ -2837,6 +3203,101 @@ function Sync-NotionState {
     return [pscustomobject]@{
         films = @($syncedFilms.ToArray())
         events = @($syncedEvents.ToArray())
+    }
+}
+
+function Invoke-NotionThreeTableMigration {
+    param(
+        [string]$FilmsDatabaseId = (Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"),
+        [string]$SelectionsDatabaseId = (Get-EnvValue "NOTION_SELECTIONS_DATABASE_ID"),
+        [string]$EventsDatabaseId = (Get-EnvValue "NOTION_EVENTS_DATABASE_ID"),
+        [switch]$Apply
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SelectionsDatabaseId)) {
+        $SelectionsDatabaseId = Get-EnvValue "NOTION_FILMS_DATABASE_ID"
+    }
+    if ([string]::IsNullOrWhiteSpace($SelectionsDatabaseId) -or [string]::IsNullOrWhiteSpace($EventsDatabaseId)) {
+        throw "Set NOTION_SELECTIONS_DATABASE_ID (or NOTION_FILMS_DATABASE_ID) and NOTION_EVENTS_DATABASE_ID before migration."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($FilmsDatabaseId) -and $Apply) {
+        $created = New-NotionCanonicalFilmsDatabase -SelectionsDatabaseId $SelectionsDatabaseId
+        $FilmsDatabaseId = $created.id
+    }
+    if ([string]::IsNullOrWhiteSpace($FilmsDatabaseId)) {
+        $FilmsDatabaseId = "DRY_RUN_WOULD_CREATE_FILMS_DATABASE"
+    }
+
+    $selections = @(Import-NotionSelections -DatabaseId $SelectionsDatabaseId)
+    $canonicalFilms = @(Merge-CanonicalFilmRecords -Selections $selections)
+    $conflicts = @(
+        $selections |
+            Group-Object { Get-CanonicalFilmKey -Film $_ } |
+            Where-Object { @($_.Group | Select-Object -ExpandProperty title -Unique).Count -gt 1 -or @($_.Group | Select-Object -ExpandProperty director -Unique).Count -gt 1 } |
+            ForEach-Object {
+                [pscustomobject]@{
+                    canonical_key = $_.Name
+                    count = $_.Count
+                    titles = @($_.Group | Select-Object -ExpandProperty title -Unique)
+                    directors = @($_.Group | Select-Object -ExpandProperty director -Unique)
+                }
+            }
+    )
+
+    if (-not $Apply) {
+        return [pscustomobject]@{
+            mode = "dry_run"
+            films_database_id = $FilmsDatabaseId
+            selections_database_id = $SelectionsDatabaseId
+            events_database_id = $EventsDatabaseId
+            selections = $selections.Count
+            films = $canonicalFilms.Count
+            relations_to_write = @($selections | Where-Object { @($_.film_relation_ids).Count -eq 0 }).Count
+            conflicts = $conflicts
+        }
+    }
+
+    Ensure-NotionThreeTableSchema -FilmsDatabaseId $FilmsDatabaseId -SelectionsDatabaseId $SelectionsDatabaseId -EventsDatabaseId $EventsDatabaseId
+
+    $filmPageIdByCanonicalKey = @{}
+    foreach ($film in $canonicalFilms) {
+        $synced = Sync-NotionCanonicalFilm -Film $film -DatabaseId $FilmsDatabaseId
+        $filmPageIdByCanonicalKey[$synced.canonical_key] = $synced.notion_page_id
+    }
+
+    $selectionRelations = 0
+    $selectionIdToFilmPageId = @{}
+    foreach ($selection in $selections) {
+        $key = Get-CanonicalFilmKey -Film $selection
+        if (-not $filmPageIdByCanonicalKey.ContainsKey($key)) { continue }
+        $filmPageId = $filmPageIdByCanonicalKey[$key]
+        $selectionIdToFilmPageId[$selection.id] = $filmPageId
+        if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $selection "notion_page_id" ""))) {
+            Set-NotionPageFilmRelation -PageId $selection.notion_page_id -FilmPageId $filmPageId
+            $selectionRelations++
+        }
+    }
+
+    $eventRelations = 0
+    foreach ($eventPage in @(Get-NotionDatabasePages -DatabaseId $EventsDatabaseId)) {
+        $filmTrackerId = Get-NotionTextProperty -Page $eventPage -Name "Film Tracker ID"
+        if (-not [string]::IsNullOrWhiteSpace($filmTrackerId) -and $selectionIdToFilmPageId.ContainsKey($filmTrackerId)) {
+            Set-NotionPageFilmRelation -PageId $eventPage.id -FilmPageId $selectionIdToFilmPageId[$filmTrackerId]
+            $eventRelations++
+        }
+    }
+
+    return [pscustomobject]@{
+        mode = "apply"
+        films_database_id = $FilmsDatabaseId
+        selections_database_id = $SelectionsDatabaseId
+        events_database_id = $EventsDatabaseId
+        selections = $selections.Count
+        films = $canonicalFilms.Count
+        selection_relations_written = $selectionRelations
+        event_relations_written = $eventRelations
+        conflicts = $conflicts
     }
 }
 
