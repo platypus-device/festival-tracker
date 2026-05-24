@@ -513,8 +513,11 @@ ConvertTo-Json -InputObject $duplicateFestivalFilms -Depth 10 | Set-Content -Pat
 ConvertTo-Json -InputObject $duplicateEvents -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "events.json") -Encoding UTF8
 & (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir | Out-Null
 $exportedWebData = Get-Content $exportOutput -Raw | ConvertFrom-Json
+$exportedSelectionCount = @($exportedWebData.films | ForEach-Object { @($_.selections) }).Count
 Assert-Equal 1 $exportedWebData.totals.films "exports one web card for duplicate TMDb selections"
 Assert-Equal 2 $exportedWebData.totals.selections "keeps both festival selections in export totals"
+Assert-Equal $exportedSelectionCount $exportedWebData.totals.selections "keeps totals selections aligned with exported selection records"
+Assert-Equal $exportedSelectionCount $exportedWebData.selectionCount "keeps legacy selectionCount aligned with exported selection records"
 Assert-True ($null -eq $exportedWebData.totals.needsReview) "does not expose legacy review count in main totals"
 Assert-Equal 1 $exportedWebData.diagnostics.lowConfidence "exports low confidence as diagnostics"
 Assert-Equal 2 $exportedWebData.films[0].selections.Count "keeps duplicate selections on merged web card"

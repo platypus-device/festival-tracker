@@ -375,15 +375,18 @@ if ($usingCanonicalFilms) {
         Add-Member -InputObject $film -NotePropertyName "selectionLabels" -NotePropertyValue @($film.selections | ForEach-Object { Get-SelectionLabel -Selection $_ } | Where-Object { $_ }) -Force
     }
 }
+$allSelections = @(
+    $webFilms |
+        ForEach-Object { @($_.selections) }
+)
 $years = @(
-    $selectionRecords |
-        ForEach-Object { ConvertTo-OptionalInt $_.festivalYear } |
+    $allSelections |
+        ForEach-Object { ConvertTo-OptionalInt (Get-ObjectProperty $_ "festivalYear" $null) } |
         Where-Object { $null -ne $_ } |
         Sort-Object -Descending -Unique
 )
 $festivals = @(
-    $webFilms |
-        ForEach-Object { @($_.selections) } |
+    $allSelections |
         ForEach-Object { $_.festival } |
         Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } |
         Sort-Object -Unique
@@ -423,7 +426,7 @@ $payload = [pscustomobject]@{
     generatedAt = (Get-Date).ToString("o")
     totals = [pscustomobject]@{
         films = @($webFilms).Count
-        selections = @($selectionRecords).Count
+        selections = $allSelections.Count
         available = @($webFilms | Where-Object { $_.trackingStatus -eq "available_found" }).Count
         events = @($events).Count
     }
@@ -446,7 +449,7 @@ $payload = [pscustomobject]@{
     festivals = $festivals
     years = $years
     festivalYears = $years
-    selectionCount = @($selectionRecords).Count
+    selectionCount = $allSelections.Count
     films = @($webFilms)
     events = @($events)
 }
