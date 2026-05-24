@@ -2462,6 +2462,7 @@ function New-FirstAvailabilityEvent {
     $providers = @($Offers | ForEach-Object { $_.provider } | Where-Object { $_ } | Sort-Object -Unique)
     $countries = @($Offers | ForEach-Object { $_.country } | Where-Object { $_ } | Sort-Object -Unique)
     $urls = @($Offers | ForEach-Object { $_.source_url } | Where-Object { $_ } | Sort-Object -Unique)
+    $primarySourceUrl = if ($urls.Count -gt 0) { [string]$urls[0] } else { "" }
     $canonicalKey = Get-CanonicalFilmKey -Film $Film
     $eventId = New-StableId ("first-availability|{0}" -f $canonicalKey)
 
@@ -2476,6 +2477,10 @@ function New-FirstAvailabilityEvent {
         availability_types = $types
         providers = $providers
         countries = $countries
+        primary_source_url = $primarySourceUrl
+        source_url_count = $urls.Count
+        provider_count = $providers.Count
+        country_count = $countries.Count
         source_urls = $urls
         offers = $Offers
         needs_review = [bool]$Film.needs_review
@@ -2513,6 +2518,17 @@ function ConvertFrom-NotionEventPage {
     }
 
     $filmRelationIds = @(Get-NotionRelationIds -Page $Page -Name "Film")
+    $primarySourceUrl = Get-NotionTextProperty -Page $Page -Name "Primary Source URL"
+    $legacySourceUrls = @((Get-NotionTextProperty -Page $Page -Name "Source URLs") -split '[,\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -ne "[truncated]" })
+    if ([string]::IsNullOrWhiteSpace($primarySourceUrl) -and $legacySourceUrls.Count -gt 0) {
+        $primarySourceUrl = [string]$legacySourceUrls[0]
+    }
+    $sourceUrls = if ([string]::IsNullOrWhiteSpace($primarySourceUrl)) { @($legacySourceUrls) } else { @($primarySourceUrl) }
+    $sourceUrlCount = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "Source URL Count")
+    if ($null -eq $sourceUrlCount) { $sourceUrlCount = $legacySourceUrls.Count }
+    $providerCount = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "Provider Count")
+    $countryCount = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "Country Count")
+
     [pscustomobject]@{
         id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
         film_id = Get-NotionTextProperty -Page $Page -Name "Film Tracker ID"
@@ -2524,7 +2540,11 @@ function ConvertFrom-NotionEventPage {
         availability_types = $types
         providers = @((Get-NotionTextProperty -Page $Page -Name "Providers") -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
         countries = @((Get-NotionTextProperty -Page $Page -Name "Countries") -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-        source_urls = @((Get-NotionTextProperty -Page $Page -Name "Source URLs") -split '[,\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        primary_source_url = $primarySourceUrl
+        source_url_count = $sourceUrlCount
+        provider_count = $providerCount
+        country_count = $countryCount
+        source_urls = $sourceUrls
         notion_page_id = $Page.id
         created_at = $Page.created_time
     }
@@ -2903,6 +2923,7 @@ function ConvertFrom-NotionCanonicalFilmPage {
         imdb_votes = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "IMDb Votes")
         imdb_rating_checked_at = Get-NotionTextProperty -Page $Page -Name "IMDb Rating Checked At"
         rating_source = Get-NotionTextProperty -Page $Page -Name "Rating Source"
+        authorized_source_urls = @((Get-NotionTextProperty -Page $Page -Name "Authorized Source URLs") -split '[,\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
         tracking_status = Get-NotionTextProperty -Page $Page -Name "Tracking Status"
         first_available_date = Get-NotionTextProperty -Page $Page -Name "First Available Date"
         last_checked = Get-NotionTextProperty -Page $Page -Name "Last Checked"
@@ -2944,12 +2965,50 @@ function Get-NotionRelationIds {
     return @($property.relation | ForEach-Object { $_.id } | Where-Object { $_ })
 }
 
+function ConvertFrom-NotionSelectionPage {
+    param([Parameter(Mandatory = $true)][object]$Page)
+
+    $festivalYearText = Get-NotionTextProperty -Page $Page -Name "Festival Year"
+    $festivalYearValue = $null
+    if ($festivalYearText -match '\d{4}') { $festivalYearValue = [int]$Matches[0] }
+
+    $record = [pscustomobject]@{
+        id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
+        title = Get-NotionTextProperty -Page $Page -Name "Film Title"
+        original_title = ""
+        director = Get-NotionTextProperty -Page $Page -Name "Director"
+        festival = Get-NotionTextProperty -Page $Page -Name "Festival"
+        region = Get-NotionTextProperty -Page $Page -Name "Region"
+        section = Get-NotionTextProperty -Page $Page -Name "Section"
+        source_url = Get-NotionTextProperty -Page $Page -Name "Source URL"
+        year = $festivalYearValue
+        festival_year = $festivalYearValue
+        film_year = $null
+        tmdb_id = $null
+        imdb_id = ""
+        match_confidence = $null
+        poster_url = ""
+        overview = ""
+        tmdb_rating = $null
+        imdb_rating = $null
+        imdb_votes = $null
+        tracking_status = "pending"
+        first_available_date = ""
+        last_checked = ""
+        needs_review = $false
+        notion_page_id = $Page.id
+        created_at = $Page.created_time
+        updated_at = $Page.last_edited_time
+    }
+    return Repair-RecordTextFields -Record $record
+}
+
 function Import-NotionSelections {
     param([Parameter(Mandatory = $true)][string]$DatabaseId)
 
     $selections = New-Object System.Collections.Generic.List[object]
     foreach ($page in @(Get-NotionDatabasePages -DatabaseId $DatabaseId)) {
-        $selection = ConvertTo-MutableRecord (ConvertFrom-NotionFilmPage -Page $page)
+        $selection = ConvertTo-MutableRecord (ConvertFrom-NotionSelectionPage -Page $page)
         Set-RecordProperty -Record $selection -Name "film_relation_ids" -Value @(Get-NotionRelationIds -Page $page -Name "Film")
         if (-not [string]::IsNullOrWhiteSpace($selection.id)) {
             $selections.Add($selection)
@@ -3067,6 +3126,28 @@ function ConvertTo-NotionFilmProperties {
     return $properties
 }
 
+function ConvertTo-NotionSelectionProperties {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    Repair-RecordTextFields -Record $Film | Out-Null
+    $properties = @{
+        "Film Title" = New-TitleProperty ([string](ConvertTo-Scalar $Film.title))
+        "Tracker ID" = New-RichTextProperty ([string](ConvertTo-Scalar $Film.id))
+        "Director" = New-RichTextProperty ([string](ConvertTo-Scalar $Film.director))
+        "Festival" = New-RichTextProperty ([string](ConvertTo-Scalar $Film.festival))
+        "Region" = New-RichTextProperty ([string](ConvertTo-Scalar $Film.region))
+        "Section" = New-RichTextProperty ([string](ConvertTo-Scalar $Film.section))
+        "Source URL" = New-UrlProperty ([string](ConvertTo-Scalar $Film.source_url))
+    }
+
+    $festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festival_year" (Get-ObjectProperty $Film "year" $null))
+    if ($null -ne $festivalYear -and $festivalYear -gt 0) {
+        $properties["Festival Year"] = @{ number = $festivalYear }
+    }
+
+    return $properties
+}
+
 function ConvertTo-NotionCanonicalFilmProperties {
     param([Parameter(Mandatory = $true)][object]$Film)
 
@@ -3085,6 +3166,7 @@ function ConvertTo-NotionCanonicalFilmProperties {
         "Overview" = New-RichTextProperty ([string](Get-ObjectProperty $Film "overview" ""))
         "Rating Source" = New-RichTextProperty ([string](Get-ObjectProperty $Film "rating_source" ""))
         "Metadata Source" = New-RichTextProperty ([string](Get-ObjectProperty $Film "metadata_source" ""))
+        "Authorized Source URLs" = New-RichTextProperty ((@((Get-ObjectProperty $Film "authorized_source_urls" @())) | Where-Object { $_ }) -join "`n")
         "Tracking Status" = @{ select = @{ name = $trackingStatus } }
         "Needs Review" = @{ checkbox = [bool](Get-ObjectProperty $Film "needs_review" $false) }
     }
@@ -3430,10 +3512,11 @@ function Sync-NotionFilm {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
         [Parameter(Mandatory = $true)][string]$DatabaseId,
-        [object]$Context = $null
+        [object]$Context = $null,
+        [switch]$SelectionOnly
     )
 
-    $properties = ConvertTo-NotionFilmProperties -Film $Film
+    $properties = if ($SelectionOnly) { ConvertTo-NotionSelectionProperties -Film $Film } else { ConvertTo-NotionFilmProperties -Film $Film }
     $page = $null
     if (-not [string]::IsNullOrWhiteSpace($Film.notion_page_id)) {
         $pageId = [string]$Film.notion_page_id
@@ -3496,6 +3579,18 @@ function ConvertTo-NotionEventProperties {
 
     $title = "{0} - {1}" -f $Event.film_title, $Event.event_date
     $multiSelect = @($Event.availability_types | ForEach-Object { @{ name = [string]$_ } })
+    $primarySourceUrl = [string](Get-ObjectProperty $Event "primary_source_url" "")
+    if ([string]::IsNullOrWhiteSpace($primarySourceUrl)) {
+        $sourceUrls = @((Get-ObjectProperty $Event "source_urls" @()) | Where-Object { $_ })
+        if ($sourceUrls.Count -gt 0) { $primarySourceUrl = [string]$sourceUrls[0] }
+    }
+    $sourceUrlCount = ConvertTo-OptionalInt (Get-ObjectProperty $Event "source_url_count" $null)
+    if ($null -eq $sourceUrlCount) { $sourceUrlCount = @((Get-ObjectProperty $Event "source_urls" @()) | Where-Object { $_ }).Count }
+    $providerCount = ConvertTo-OptionalInt (Get-ObjectProperty $Event "provider_count" $null)
+    if ($null -eq $providerCount) { $providerCount = @($Event.providers | Where-Object { $_ }).Count }
+    $countryCount = ConvertTo-OptionalInt (Get-ObjectProperty $Event "country_count" $null)
+    if ($null -eq $countryCount) { $countryCount = @($Event.countries | Where-Object { $_ }).Count }
+
     $properties = @{
         "Event Title" = New-TitleProperty $title
         "Tracker ID" = New-RichTextProperty $Event.id
@@ -3507,7 +3602,10 @@ function ConvertTo-NotionEventProperties {
         "Availability Types" = @{ multi_select = $multiSelect }
         "Providers" = New-RichTextProperty ((@($Event.providers) | Where-Object { $_ }) -join ", ")
         "Countries" = New-RichTextProperty ((@($Event.countries) | Where-Object { $_ }) -join ", ")
-        "Source URLs" = New-RichTextProperty ((@($Event.source_urls) | Where-Object { $_ }) -join "`n")
+        "Primary Source URL" = New-UrlProperty $primarySourceUrl
+        "Source URL Count" = @{ number = $sourceUrlCount }
+        "Provider Count" = @{ number = $providerCount }
+        "Country Count" = @{ number = $countryCount }
     }
 
     $filmNotionPageId = [string](Get-ObjectProperty $Event "film_notion_page_id" "")
@@ -3609,6 +3707,21 @@ function Ensure-NotionEventRelationProperty {
     Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$EventsDatabaseId" -Body $body | Out-Null
 }
 
+function Ensure-NotionSelectionSchema {
+    param([Parameter(Mandatory = $true)][string]$SelectionsDatabaseId)
+
+    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$SelectionsDatabaseId" -Body @{
+        properties = @{
+            "Director" = @{ rich_text = @{} }
+            "Festival" = @{ rich_text = @{} }
+            "Region" = @{ rich_text = @{} }
+            "Section" = @{ rich_text = @{} }
+            "Source URL" = @{ url = @{} }
+            "Festival Year" = @{ number = @{ format = "number" } }
+        }
+    } | Out-Null
+}
+
 function Ensure-NotionThreeTableSchema {
     param(
         [Parameter(Mandatory = $true)][string]$FilmsDatabaseId,
@@ -3633,6 +3746,7 @@ function Ensure-NotionThreeTableSchema {
         "IMDb Rating Checked At" = @{ date = @{} }
         "Rating Source" = @{ rich_text = @{} }
         "Metadata Source" = @{ rich_text = @{} }
+        "Authorized Source URLs" = @{ rich_text = @{} }
         "Tracking Status" = @{ select = @{ options = @(
             @{ name = "pending"; color = "yellow" },
             @{ name = "available_found"; color = "green" },
@@ -3643,6 +3757,8 @@ function Ensure-NotionThreeTableSchema {
         "Needs Review" = @{ checkbox = @{} }
     }
     Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$FilmsDatabaseId" -Body @{ properties = $filmProperties } | Out-Null
+
+    Ensure-NotionSelectionSchema -SelectionsDatabaseId $SelectionsDatabaseId
 
     Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$SelectionsDatabaseId" -Body @{
         properties = @{
@@ -3665,6 +3781,10 @@ function Ensure-NotionThreeTableSchema {
                     single_property = @{}
                 }
             }
+            "Primary Source URL" = @{ url = @{} }
+            "Source URL Count" = @{ number = @{ format = "number" } }
+            "Provider Count" = @{ number = @{ format = "number" } }
+            "Country Count" = @{ number = @{ format = "number" } }
         }
     } | Out-Null
 }
@@ -3761,7 +3881,7 @@ function Sync-NotionState {
 
         $syncedSelections = New-Object System.Collections.Generic.List[object]
         foreach ($selection in @($selectionItems)) {
-            $syncedSelection = Sync-NotionFilm -Film $selection -DatabaseId $selectionsDb -Context $syncContext
+            $syncedSelection = Sync-NotionFilm -Film $selection -DatabaseId $selectionsDb -Context $syncContext -SelectionOnly
             $syncedSelections.Add($syncedSelection)
             $key = Get-CanonicalFilmKey -Film $selection
             if ($filmPageIdByCanonicalKey.ContainsKey($key)) {
@@ -4004,7 +4124,10 @@ function New-NotionTrackerDatabases {
             ) } }
             "Providers" = @{ rich_text = @{} }
             "Countries" = @{ rich_text = @{} }
-            "Source URLs" = @{ rich_text = @{} }
+            "Primary Source URL" = @{ url = @{} }
+            "Source URL Count" = @{ number = @{ format = "number" } }
+            "Provider Count" = @{ number = @{ format = "number" } }
+            "Country Count" = @{ number = @{ format = "number" } }
         }
     }
 

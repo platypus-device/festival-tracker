@@ -571,6 +571,19 @@ Assert-Equal "authorized_download" $event.availability_types[0] "records event a
 Set-RecordProperty -Record $event -Name "film_notion_page_id" -Value "00000000-0000-0000-0000-000000000001"
 $eventProperties = ConvertTo-NotionEventProperties -Event $event
 Assert-Equal "00000000-0000-0000-0000-000000000001" $eventProperties["Film"].relation[0].id "adds Notion film relation to event properties"
+Assert-Equal "https://example.test/download" $eventProperties["Primary Source URL"].url "stores primary source URL on event"
+Assert-Equal 1 $eventProperties["Source URL Count"].number "stores source URL count on event"
+Assert-Equal 1 $eventProperties["Provider Count"].number "stores provider count on event"
+Assert-Equal 0 $eventProperties["Country Count"].number "stores country count on event"
+Assert-True (-not $eventProperties.ContainsKey("Source URLs")) "does not write legacy event source URL text field"
+
+$film.authorized_source_urls = @("https://example.org/download.mp4")
+$canonicalFilmProperties = ConvertTo-NotionCanonicalFilmProperties -Film $film
+Assert-Equal "https://example.org/download.mp4" $canonicalFilmProperties["Authorized Source URLs"].rich_text[0].text.content "stores authorized URLs on canonical film"
+
+$selectionProperties = ConvertTo-NotionSelectionProperties -Film $film
+Assert-True (-not $selectionProperties.ContainsKey("TMDb ID")) "selection properties omit canonical metadata"
+Assert-True (-not $selectionProperties.ContainsKey("Authorized Source URLs")) "selection properties omit authorized source URLs"
 
 $duplicateA = New-FilmRecord -Title "Duplicate Film" -Director "A Director" -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Year 2025
 $duplicateA.tmdb_id = 12345

@@ -17,6 +17,15 @@ function ConvertTo-EventRecord {
         $types = @($typesProperty.multi_select | ForEach-Object { $_.name } | Where-Object { $_ })
     }
 
+    $primarySourceUrl = Get-NotionTextProperty -Page $Page -Name "Primary Source URL"
+    $legacySourceUrls = @((Get-NotionTextProperty -Page $Page -Name "Source URLs") -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -ne "[truncated]" })
+    if ([string]::IsNullOrWhiteSpace($primarySourceUrl) -and $legacySourceUrls.Count -gt 0) {
+        $primarySourceUrl = [string]$legacySourceUrls[0]
+    }
+    $sourceUrlCount = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "Source URL Count")
+    if ($null -eq $sourceUrlCount) { $sourceUrlCount = $legacySourceUrls.Count }
+    $sourceUrls = if ([string]::IsNullOrWhiteSpace($primarySourceUrl)) { @($legacySourceUrls) } else { @($primarySourceUrl) }
+
     [pscustomobject]@{
         id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
         film_id = Get-NotionTextProperty -Page $Page -Name "Film Tracker ID"
@@ -27,7 +36,11 @@ function ConvertTo-EventRecord {
         availability_types = $types
         providers = @((Get-NotionTextProperty -Page $Page -Name "Providers") -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ })
         countries = @((Get-NotionTextProperty -Page $Page -Name "Countries") -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-        source_urls = @((Get-NotionTextProperty -Page $Page -Name "Source URLs") -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        primary_source_url = $primarySourceUrl
+        source_url_count = $sourceUrlCount
+        provider_count = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "Provider Count")
+        country_count = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "Country Count")
+        source_urls = $sourceUrls
         needs_review = $false
     }
 }
