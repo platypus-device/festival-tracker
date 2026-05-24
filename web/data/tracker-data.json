@@ -1,5 +1,5 @@
 ﻿{
-    "generatedAt":  "2026-05-24T17:37:12.8781187+08:00",
+    "generatedAt":  "2026-05-24T18:05:43.3701670+08:00",
     "totals":  {
                    "films":  220,
                    "selections":  220,
@@ -13,7 +13,1233 @@
                         "missingPoster":  17,
                         "missingTmdb":  26,
                         "missingDirector":  1,
-                        "duplicateCanonical":  0
+                        "duplicateCanonical":  0,
+                        "missingPosterFilms":  [
+                                                   {
+                                                       "title":  "Below the Clouds / Sotto le nuvole",
+                                                       "director":  "Gianfranco Rosi",
+                                                       "festival":  "NYFF",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::below the clouds sotto le nuvole:gianfranco rosi",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "NYFF 2025 Main Slate"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Eojjeol suga eopda (No Other Choice)",
+                                                       "director":  "Park Chan-wook",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::eojjeol suga eopda no other choice:park chan wook",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Venezia Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Future Future",
+                                                       "director":  "Davi Pretto",
+                                                       "festival":  "Karlovy Vary",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::future future:davi pretto",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Karlovy Vary 2025 Proxima Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Nuestra Tierra ( Landmarks )",
+                                                       "director":  "Lucrecia Martel",
+                                                       "festival":  "NYFF",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::nuestra tierra landmarks:lucrecia martel",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "NYFF 2025 Main Slate"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Nühai (Girl)",
+                                                       "director":  "Shu Qi",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::nuhai girl:shu qi",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Venezia Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Sabar Bonda (Cactus P ears)",
+                                                       "director":  "Rohan Parashuram Kanawade",
+                                                       "festival":  "Sundance",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::sabar bonda cactus p ears:rohan parashuram kanawade",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Sotto le nuvole (Below the clouds)",
+                                                       "director":  "Gianfranco Rosi Italy / 115’ Read more The Smashing Machine Director Benny Safdie",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::sotto le nuvole below the clouds:gianfranco rosi italy 115 read more the smashing machine director benny safdie",
+                                                       "reason":  "parser_noise_suspected",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Venezia Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "The Visitor",
+                                                       "director":  "Vytautas Katkus",
+                                                       "festival":  "Karlovy Vary",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1557589,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "tmdb:1557589",
+                                                       "reason":  "likely_new_or_unreleased",
+                                                       "selectionLabels":  [
+                                                                               "Karlovy Vary 2025 Crystal Globe Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "The Waves Will Carry Us",
+                                                       "director":  "",
+                                                       "festival":  "Taipei Golden Horse Film Festival",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::the waves will carry us:",
+                                                       "reason":  "missing_director_context",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "They Come Out of Margo",
+                                                       "director":  "Alexandros Voulgaris",
+                                                       "festival":  "Karlovy Vary",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::they come out of margo:alexandros voulgaris",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Karlovy Vary 2025 Proxima Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "TÔI YAMANAMINO HIKARI",
+                                                       "director":  "ISHIKAWA Kei",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::toi yamanamino hikari:ishikawa kei",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2025 Un Certain Regard"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "What Does That Nature Say to You / 그 자연이 네게 뭐라고 하니",
+                                                       "director":  "Hong Sangsoo",
+                                                       "festival":  "NYFF",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::what does that nature say to you 그 자연이 네게 뭐라고 하니:hong sangsoo",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "NYFF 2025 Main Slate"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "大濛",
+                                                       "director":  "陳玉勳",
+                                                       "festival":  "Taipei Film Festival",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::大濛:陳玉勳",
+                                                       "reason":  "likely_new_or_unreleased",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳攝影; 最佳原創電影音樂; 最佳原創電影歌曲; 最佳美術設計; 最佳造型設計; 最佳聲音設計; 最佳視覺效果"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "女孩",
+                                                       "director":  "舒淇",
+                                                       "festival":  "Taipei Film Festival",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::女孩:舒淇",
+                                                       "reason":  "likely_new_or_unreleased",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女配角; 最佳攝影; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳造型設計"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "深度安靜",
+                                                       "director":  "沈可尚",
+                                                       "festival":  "Taipei Film Festival",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::深度安靜:沈可尚",
+                                                       "reason":  "likely_new_or_unreleased",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳男主角; 最佳男配角; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳聲音設計"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "雙囍",
+                                                       "director":  "許承傑",
+                                                       "festival":  "Taipei Film Festival",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::雙囍:許承傑",
+                                                       "reason":  "likely_new_or_unreleased",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳女配角; 最佳剪輯; 最佳造型設計"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "左撇子女孩",
+                                                       "director":  "鄒時擎",
+                                                       "festival":  "Taipei Film Festival",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::左撇子女孩:鄒時擎",
+                                                       "reason":  "likely_new_or_unreleased",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女主角; 最佳新演員; 最佳攝影; 最佳剪輯; 最佳聲音設計"
+                                                                           ]
+                                                   }
+                                               ],
+                        "missingTmdbFilms":  [
+                                                 {
+                                                     "title":  "Below the Clouds / Sotto le nuvole",
+                                                     "director":  "Gianfranco Rosi",
+                                                     "festival":  "NYFF",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::below the clouds sotto le nuvole:gianfranco rosi",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "NYFF 2025 Main Slate"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "Eojjeol suga eopda (No Other Choice)",
+                                                     "director":  "Park Chan-wook",
+                                                     "festival":  "Venice",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::eojjeol suga eopda no other choice:park chan wook",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "Venice 2025 Venezia Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "Future Future",
+                                                     "director":  "Davi Pretto",
+                                                     "festival":  "Karlovy Vary",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::future future:davi pretto",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "Karlovy Vary 2025 Proxima Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "Nuestra Tierra ( Landmarks )",
+                                                     "director":  "Lucrecia Martel",
+                                                     "festival":  "NYFF",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::nuestra tierra landmarks:lucrecia martel",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "NYFF 2025 Main Slate"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "Nühai (Girl)",
+                                                     "director":  "Shu Qi",
+                                                     "festival":  "Venice",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::nuhai girl:shu qi",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "Venice 2025 Venezia Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "Sabar Bonda (Cactus P ears)",
+                                                     "director":  "Rohan Parashuram Kanawade",
+                                                     "festival":  "Sundance",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::sabar bonda cactus p ears:rohan parashuram kanawade",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "Sotto le nuvole (Below the clouds)",
+                                                     "director":  "Gianfranco Rosi Italy / 115’ Read more The Smashing Machine Director Benny Safdie",
+                                                     "festival":  "Venice",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::sotto le nuvole below the clouds:gianfranco rosi italy 115 read more the smashing machine director benny safdie",
+                                                     "reason":  "parser_noise_suspected",
+                                                     "selectionLabels":  [
+                                                                             "Venice 2025 Venezia Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "The Waves Will Carry Us",
+                                                     "director":  "",
+                                                     "festival":  "Taipei Golden Horse Film Festival",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::the waves will carry us:",
+                                                     "reason":  "missing_director_context",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "They Come Out of Margo",
+                                                     "director":  "Alexandros Voulgaris",
+                                                     "festival":  "Karlovy Vary",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::they come out of margo:alexandros voulgaris",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "Karlovy Vary 2025 Proxima Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "TÔI YAMANAMINO HIKARI",
+                                                     "director":  "ISHIKAWA Kei",
+                                                     "festival":  "Cannes",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::toi yamanamino hikari:ishikawa kei",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "Cannes 2025 Un Certain Regard"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "What Does That Nature Say to You / 그 자연이 네게 뭐라고 하니",
+                                                     "director":  "Hong Sangsoo",
+                                                     "festival":  "NYFF",
+                                                     "festivalYear":  2025,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::what does that nature say to you 그 자연이 네게 뭐라고 하니:hong sangsoo",
+                                                     "reason":  "missing_external_id",
+                                                     "selectionLabels":  [
+                                                                             "NYFF 2025 Main Slate"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "衝．衝．衝",
+                                                     "director":  "韓昌綠",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::衝 衝 衝:韓昌綠",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "大濛",
+                                                     "director":  "陳玉勳",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::大濛:陳玉勳",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳攝影; 最佳原創電影音樂; 最佳原創電影歌曲; 最佳美術設計; 最佳造型設計; 最佳聲音設計; 最佳視覺效果"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "瘋狂隱形女富豪",
+                                                     "director":  "山繆．亞伯拉罕",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::瘋狂隱形女富豪:山繆 亞伯拉罕",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "火車小夢",
+                                                     "director":  "羅倫佐．費洛、盧卡斯．A．維尼亞雷",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::火車小夢:羅倫佐 費洛 盧卡斯 a 維尼亞雷",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "藍鷺少年",
+                                                     "director":  "蘇菲．容瓦利",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::藍鷺少年:蘇菲 容瓦利",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "你的敵人不是你的敵人",
+                                                     "director":  "奧斯卡．哈德森",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::你的敵人不是你的敵人:奧斯卡 哈德森",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "你流過我的名字",
+                                                     "director":  "賈烏瑪．克萊雷特．穆夏特",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::你流過我的名字:賈烏瑪 克萊雷特 穆夏特",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "女孩",
+                                                     "director":  "舒淇",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::女孩:舒淇",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女配角; 最佳攝影; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳造型設計"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "深度安靜",
+                                                     "director":  "沈可尚",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::深度安靜:沈可尚",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳男主角; 最佳男配角; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳聲音設計"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "盛夏來的人",
+                                                     "director":  "露西亞．阿連尼亞．伊格萊西亞斯",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::盛夏來的人:露西亞 阿連尼亞 伊格萊西亞斯",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "雙囍",
+                                                     "director":  "許承傑",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::雙囍:許承傑",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳女配角; 最佳剪輯; 最佳造型設計"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "我未許願先吹蠟燭",
+                                                     "director":  "周鉅宏、胡錦筵",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::我未許願先吹蠟燭:周鉅宏 胡錦筵",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "炎上",
+                                                     "director":  "長久允",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::炎上:長久允",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "一個夜晚與三個夏天",
+                                                     "director":  "崗珍",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::一個夜晚與三個夏天:崗珍",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 International New Talent Competition"
+                                                                         ]
+                                                 },
+                                                 {
+                                                     "title":  "左撇子女孩",
+                                                     "director":  "鄒時擎",
+                                                     "festival":  "Taipei Film Festival",
+                                                     "festivalYear":  2026,
+                                                     "filmYear":  null,
+                                                     "tmdbId":  null,
+                                                     "imdbId":  "",
+                                                     "canonicalFilmKey":  "title::左撇子女孩:鄒時擎",
+                                                     "reason":  "likely_new_or_unreleased",
+                                                     "selectionLabels":  [
+                                                                             "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女主角; 最佳新演員; 最佳攝影; 最佳剪輯; 最佳聲音設計"
+                                                                         ]
+                                                 }
+                                             ],
+                        "missingDirectorFilms":  [
+                                                     {
+                                                         "title":  "The Waves Will Carry Us",
+                                                         "director":  "",
+                                                         "festival":  "Taipei Golden Horse Film Festival",
+                                                         "festivalYear":  2025,
+                                                         "filmYear":  null,
+                                                         "tmdbId":  null,
+                                                         "imdbId":  "",
+                                                         "canonicalFilmKey":  "title::the waves will carry us:",
+                                                         "reason":  "missing_director_context",
+                                                         "selectionLabels":  [
+                                                                                 "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
+                                                                             ]
+                                                     }
+                                                 ],
+                        "lowConfidenceFilms":  [
+                                                   {
+                                                       "title":  "AISHA CAN’T FLY AWAY",
+                                                       "director":  "Morad MOSTAFA | 1st film",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1337148,
+                                                       "imdbId":  "tt27907966",
+                                                       "canonicalFilmKey":  "tmdb:1337148",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2025 Un Certain Regard"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Arco",
+                                                       "director":  "Ugo Bienvenu",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  804370,
+                                                       "imdbId":  "tt14883538",
+                                                       "canonicalFilmKey":  "tmdb:804370",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Animated Feature Film"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Atropia",
+                                                       "director":  "Hailey Gates",
+                                                       "festival":  "Sundance",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1239288,
+                                                       "imdbId":  "tt31122579",
+                                                       "canonicalFilmKey":  "tmdb:1239288",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Dinți de lapte (Milk Teeth)",
+                                                       "director":  "Mihai Mincan",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1517125,
+                                                       "imdbId":  "tt28084384",
+                                                       "canonicalFilmKey":  "tmdb:1517125",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Orizzonti Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Elio",
+                                                       "director":  "Madeline Sharafian, Domee Shi, Adrian Molina",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1022787,
+                                                       "imdbId":  "tt4900148",
+                                                       "canonicalFilmKey":  "tmdb:1022787",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Animated Feature Film"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "F1",
+                                                       "director":  "Joseph Kosinski",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  911430,
+                                                       "imdbId":  "tt16311594",
+                                                       "canonicalFilmKey":  "tmdb:911430",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Best Picture"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Hamnet",
+                                                       "director":  "Chloé Zhao",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  858024,
+                                                       "imdbId":  "tt14905854",
+                                                       "canonicalFilmKey":  "tmdb:858024",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Best Picture"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Jimmy Jaguar",
+                                                       "director":  "Bence Fliegauf",
+                                                       "festival":  "Karlovy Vary",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1403119,
+                                                       "imdbId":  "tt35717562",
+                                                       "canonicalFilmKey":  "tmdb:1403119",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Karlovy Vary 2025 Crystal Globe Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Komedie elahi (Divine Comedy)",
+                                                       "director":  "Ali Asgari",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1517062,
+                                                       "imdbId":  "tt37660493",
+                                                       "canonicalFilmKey":  "tmdb:1517062",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Orizzonti Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "KPop Demon Hunters",
+                                                       "director":  "Maggie Kang, Chris Appelhans",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  803796,
+                                                       "imdbId":  "tt14205554",
+                                                       "canonicalFilmKey":  "tmdb:803796",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Animated Feature Film"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Le mage du Kremlin (The Wizard of the Kremlin)",
+                                                       "director":  "Olivier Assayas",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1291659,
+                                                       "imdbId":  "tt32386654",
+                                                       "canonicalFilmKey":  "tmdb:1291659",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Venezia Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Left-Handed Girl",
+                                                       "director":  "Tsou Shih-ching",
+                                                       "festival":  "Taipei Golden Horse Film Festival",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  999075,
+                                                       "imdbId":  "tt27722618",
+                                                       "canonicalFilmKey":  "tmdb:999075",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Little Amélie or the Character of Rain",
+                                                       "director":  "Maïlys Vallade, Liane-cho Han",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  682012,
+                                                       "imdbId":  "tt29313285",
+                                                       "canonicalFilmKey":  "tmdb:682012",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Animated Feature Film"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Marty Supreme",
+                                                       "director":  "Josh Safdie",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1317288,
+                                                       "imdbId":  "tt32916440",
+                                                       "canonicalFilmKey":  "tmdb:1317288",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Best Picture"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "ONCE UPON A TIME IN GAZA",
+                                                       "director":  "Arab et Tarzan NASSER",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1309735,
+                                                       "imdbId":  "tt34734841",
+                                                       "canonicalFilmKey":  "tmdb:1309735",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2025 Un Certain Regard"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "One Battle After Another",
+                                                       "director":  "Paul Thomas Anderson",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1054867,
+                                                       "imdbId":  "tt30144839",
+                                                       "canonicalFilmKey":  "tmdb:1054867",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Best Picture"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Queerpanorama",
+                                                       "director":  "Jun Li",
+                                                       "festival":  "Taipei Golden Horse Film Festival",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  999689,
+                                                       "imdbId":  "tt35453155",
+                                                       "canonicalFilmKey":  "tmdb:999689",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Sinners",
+                                                       "director":  "Ryan Coogler",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1233413,
+                                                       "imdbId":  "tt31193180",
+                                                       "canonicalFilmKey":  "tmdb:1233413",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Best Picture"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Train Dreams",
+                                                       "director":  "Clint Bentley",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1241983,
+                                                       "imdbId":  "tt29768334",
+                                                       "canonicalFilmKey":  "tmdb:1241983",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Best Picture"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Zootopia 2",
+                                                       "director":  "Jared Bush, Byron Howard",
+                                                       "festival":  "Academy Awards",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1084242,
+                                                       "imdbId":  "tt26443597",
+                                                       "canonicalFilmKey":  "tmdb:1084242",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Academy Awards 2026 Animated Feature Film"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "A Foggy Tale",
+                                                       "director":  "Chen Yu-hsun",
+                                                       "festival":  "Taipei Golden Horse Film Festival",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1174334,
+                                                       "imdbId":  "tt32080855",
+                                                       "canonicalFilmKey":  "tmdb:1174334",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "À pied d’œuvre (At work)",
+                                                       "director":  "Valérie Donzelli",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1430820,
+                                                       "imdbId":  "tt37660587",
+                                                       "canonicalFilmKey":  "tmdb:1430820",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Venezia Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "ALL OF A SUDDEN",
+                                                       "director":  "HAMAGUCHI Ryusuke",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1476614,
+                                                       "imdbId":  "tt36834996",
+                                                       "canonicalFilmKey":  "tmdb:1476614",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2026 In Competition - Feature films"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "ALL THE LOVERS IN THE NIGHT",
+                                                       "director":  "SODE Yukiko",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1560309,
+                                                       "imdbId":  "tt41592995",
+                                                       "canonicalFilmKey":  "tmdb:1560309",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2026 Un Certain Regard"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Below the Clouds / Sotto le nuvole",
+                                                       "director":  "Gianfranco Rosi",
+                                                       "festival":  "NYFF",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::below the clouds sotto le nuvole:gianfranco rosi",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "NYFF 2025 Main Slate"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Eojjeol suga eopda (No Other Choice)",
+                                                       "director":  "Park Chan-wook",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::eojjeol suga eopda no other choice:park chan wook",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Venezia Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "FATHERLAND",
+                                                       "director":  "Pawel PAWLIKOWSKI",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1437696,
+                                                       "imdbId":  "tt37304295",
+                                                       "canonicalFilmKey":  "tmdb:1437696",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2026 In Competition - Feature films"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Future Future",
+                                                       "director":  "Davi Pretto",
+                                                       "festival":  "Karlovy Vary",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::future future:davi pretto",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Karlovy Vary 2025 Proxima Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Harà Watan (Lost Land)",
+                                                       "director":  "Akio Fujimoto",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1517120,
+                                                       "imdbId":  "tt37660506",
+                                                       "canonicalFilmKey":  "tmdb:1517120",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Orizzonti Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "LA BOLA NEGRA",
+                                                       "director":  "Javier CALVO, Javier AMBROSSI",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1422041,
+                                                       "imdbId":  "tt35511966",
+                                                       "canonicalFilmKey":  "tmdb:1422041",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2026 In Competition - Feature films"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "MINOTAUR",
+                                                       "director":  "Andreï ZVIAGUINTSEV",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  848700,
+                                                       "imdbId":  "tt37118301",
+                                                       "canonicalFilmKey":  "tmdb:848700",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2026 In Competition - Feature films"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Mother Bhumi",
+                                                       "director":  "Keat Aun Chong",
+                                                       "festival":  "Taipei Golden Horse Film Festival",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2025,
+                                                       "tmdbId":  1367555,
+                                                       "imdbId":  "tt33708662",
+                                                       "canonicalFilmKey":  "tmdb:1367555",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "NAGI NOTES",
+                                                       "director":  "FUKADA Koji",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1448971,
+                                                       "imdbId":  "tt28551050",
+                                                       "canonicalFilmKey":  "tmdb:1448971",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2026 In Competition - Feature films"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Nuestra Tierra ( Landmarks )",
+                                                       "director":  "Lucrecia Martel",
+                                                       "festival":  "NYFF",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::nuestra tierra landmarks:lucrecia martel",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "NYFF 2025 Main Slate"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Nühai (Girl)",
+                                                       "director":  "Shu Qi",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::nuhai girl:shu qi",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Venezia Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Sabar Bonda (Cactus P ears)",
+                                                       "director":  "Rohan Parashuram Kanawade",
+                                                       "festival":  "Sundance",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::sabar bonda cactus p ears:rohan parashuram kanawade",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "SHEEP IN THE BOX",
+                                                       "director":  "KOREEDA Hirokazu",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2026,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1553969,
+                                                       "imdbId":  "tt38551209",
+                                                       "canonicalFilmKey":  "tmdb:1553969",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2026 In Competition - Feature films"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "Sotto le nuvole (Below the clouds)",
+                                                       "director":  "Gianfranco Rosi Italy / 115’ Read more The Smashing Machine Director Benny Safdie",
+                                                       "festival":  "Venice",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::sotto le nuvole below the clouds:gianfranco rosi italy 115 read more the smashing machine director benny safdie",
+                                                       "reason":  "parser_noise_suspected",
+                                                       "selectionLabels":  [
+                                                                               "Venice 2025 Venezia Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "The Fence / Le Cri des Gardes",
+                                                       "director":  "Claire Denis",
+                                                       "festival":  "NYFF",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  2026,
+                                                       "tmdbId":  1254800,
+                                                       "imdbId":  "tt33837526",
+                                                       "canonicalFilmKey":  "tmdb:1254800",
+                                                       "reason":  "tmdb_low_confidence",
+                                                       "selectionLabels":  [
+                                                                               "NYFF 2025 Main Slate"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "The Waves Will Carry Us",
+                                                       "director":  "",
+                                                       "festival":  "Taipei Golden Horse Film Festival",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::the waves will carry us:",
+                                                       "reason":  "missing_director_context",
+                                                       "selectionLabels":  [
+                                                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "They Come Out of Margo",
+                                                       "director":  "Alexandros Voulgaris",
+                                                       "festival":  "Karlovy Vary",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::they come out of margo:alexandros voulgaris",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Karlovy Vary 2025 Proxima Competition"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "TÔI YAMANAMINO HIKARI",
+                                                       "director":  "ISHIKAWA Kei",
+                                                       "festival":  "Cannes",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::toi yamanamino hikari:ishikawa kei",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "Cannes 2025 Un Certain Regard"
+                                                                           ]
+                                                   },
+                                                   {
+                                                       "title":  "What Does That Nature Say to You / 그 자연이 네게 뭐라고 하니",
+                                                       "director":  "Hong Sangsoo",
+                                                       "festival":  "NYFF",
+                                                       "festivalYear":  2025,
+                                                       "filmYear":  null,
+                                                       "tmdbId":  null,
+                                                       "imdbId":  "",
+                                                       "canonicalFilmKey":  "title::what does that nature say to you 그 자연이 네게 뭐라고 하니:hong sangsoo",
+                                                       "reason":  "missing_external_id",
+                                                       "selectionLabels":  [
+                                                                               "NYFF 2025 Main Slate"
+                                                                           ]
+                                                   }
+                                               ]
                     },
     "festivals":  [
                       "Academy Awards",

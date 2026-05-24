@@ -393,6 +393,32 @@ $duplicateCanonicalCount = @(
         Group-Object canonicalFilmKey |
         Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.Name) -and $_.Count -gt 1 }
 ).Count
+
+function ConvertTo-DiagnosticFilm {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    [pscustomobject]@{
+        title = [string](Get-ObjectProperty $Film "title" "")
+        director = [string](Get-ObjectProperty $Film "director" "")
+        festival = [string](Get-ObjectProperty $Film "festival" "")
+        festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festivalYear" $null)
+        filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "filmYear" $null)
+        tmdbId = ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdbId" $null)
+        imdbId = [string](Get-ObjectProperty $Film "imdbId" "")
+        canonicalFilmKey = [string](Get-ObjectProperty $Film "canonicalFilmKey" "")
+        reason = Get-FilmMetadataIssueReason -Film $Film
+        selectionLabels = @((Get-ObjectProperty $Film "selectionLabels" @()) | Where-Object { $_ })
+    }
+}
+
+$missingPosterFilms = @($webFilms | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.posterUrl) })
+$missingTmdbFilms = @($webFilms | Where-Object {
+    $tmdbId = ConvertTo-OptionalInt $_.tmdbId
+    $null -eq $tmdbId -or $tmdbId -le 0
+})
+$missingDirectorFilms = @($webFilms | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.director) })
+$lowConfidenceFilms = @($webFilms | Where-Object { $_.lowConfidence })
+
 $payload = [pscustomobject]@{
     generatedAt = (Get-Date).ToString("o")
     totals = [pscustomobject]@{
@@ -402,19 +428,20 @@ $payload = [pscustomobject]@{
         events = @($events).Count
     }
     diagnostics = [pscustomobject]@{
-        lowConfidence = @($webFilms | Where-Object { $_.lowConfidence }).Count
+        lowConfidence = $lowConfidenceFilms.Count
         trackingNeedsReview = @($webFilms | Where-Object { $_.trackingStatus -eq "needs_review" }).Count
         unmatched = @($webFilms | Where-Object {
             ($null -eq (ConvertTo-OptionalInt $_.tmdbId) -or (ConvertTo-OptionalInt $_.tmdbId) -le 0) -and
             [string]::IsNullOrWhiteSpace([string]$_.imdbId)
         }).Count
-        missingPoster = @($webFilms | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.posterUrl) }).Count
-        missingTmdb = @($webFilms | Where-Object {
-            $tmdbId = ConvertTo-OptionalInt $_.tmdbId
-            $null -eq $tmdbId -or $tmdbId -le 0
-        }).Count
-        missingDirector = @($webFilms | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.director) }).Count
+        missingPoster = $missingPosterFilms.Count
+        missingTmdb = $missingTmdbFilms.Count
+        missingDirector = $missingDirectorFilms.Count
         duplicateCanonical = $duplicateCanonicalCount
+        missingPosterFilms = @($missingPosterFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })
+        missingTmdbFilms = @($missingTmdbFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })
+        missingDirectorFilms = @($missingDirectorFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })
+        lowConfidenceFilms = @($lowConfidenceFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })
     }
     festivals = $festivals
     years = $years

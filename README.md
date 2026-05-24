@@ -124,6 +124,13 @@ Run data quality checks:
 .\scripts\Test-TrackerDataQuality.ps1 -UseNotion -DataPath .\web\data\tracker-data.json
 ```
 
+Dry-run and apply missing metadata repairs:
+
+```powershell
+.\scripts\Repair-MissingMetadata.ps1 -UseNotion -Limit 20
+.\scripts\Repair-MissingMetadata.ps1 -UseNotion -Apply -Limit 20
+```
+
 Backfill a historical year after a dry-run:
 
 ```powershell
@@ -152,4 +159,4 @@ Run tests:
 - `available_found`: the first legal online availability event has been recorded.
 - `needs_review`: automation cannot safely continue for this item.
 
-Low-confidence TMDb/IMDb matches are exported as diagnostics. They are useful for maintenance, but they are not shown as a main review queue in the web UI. The export also reports missing poster, missing TMDb ID, missing director, and duplicate canonical key counts.
+Low-confidence TMDb/IMDb matches are exported as diagnostics. They are useful for maintenance, but they are not shown as a main review queue in the web UI. The export also reports missing poster, missing TMDb ID, missing director, and duplicate canonical key counts with capped issue lists for maintenance.

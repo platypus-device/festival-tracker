@@ -1847,6 +1847,155 @@ function Get-TmdbMovieMatch {
     return $null
 }
 
+function Get-TmdbMovieByImdbId {
+    param([Parameter(Mandatory = $true)][string]$ImdbId)
+
+    if ([string]::IsNullOrWhiteSpace($ImdbId)) { return $null }
+    $response = Invoke-TmdbGet -Path "/find/$ImdbId" -Query @{ external_source = "imdb_id" }
+    $movie = @($response.movie_results | Select-Object -First 1)
+    if (@($movie).Count -eq 0 -or $null -eq $movie[0].id) { return $null }
+    return [int]$movie[0].id
+}
+
+function Get-FilmMetadataIssueReason {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $tmdbId = ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdb_id" (Get-ObjectProperty $Film "tmdbId" $null))
+    $imdbId = [string](Get-ObjectProperty $Film "imdb_id" (Get-ObjectProperty $Film "imdbId" ""))
+    $director = [string](Get-ObjectProperty $Film "director" "")
+    $posterUrl = [string](Get-ObjectProperty $Film "poster_url" (Get-ObjectProperty $Film "posterUrl" ""))
+    $confidence = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "match_confidence" (Get-ObjectProperty $Film "matchConfidence" $null))
+    $festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festival_year" (Get-ObjectProperty $Film "festivalYear" $null))
+
+    if ($null -ne $confidence -and $confidence -gt 0 -and $confidence -lt 0.8) { return "tmdb_low_confidence" }
+    if ($director -match '(?i)\bRead more\b|Director .+ Director') { return "parser_noise_suspected" }
+    if ([string]::IsNullOrWhiteSpace($director)) { return "missing_director_context" }
+    if (($null -eq $tmdbId -or $tmdbId -le 0) -and [string]::IsNullOrWhiteSpace($imdbId)) {
+        if ($null -ne $festivalYear -and $festivalYear -ge (Get-Date).Year) { return "likely_new_or_unreleased" }
+        return "missing_external_id"
+    }
+    if ($null -eq $tmdbId -or $tmdbId -le 0) { return "missing_external_id" }
+    if ([string]::IsNullOrWhiteSpace($posterUrl) -or [string]::IsNullOrWhiteSpace($imdbId)) { return "likely_new_or_unreleased" }
+    return ""
+}
+
+function Test-FilmNeedsMetadataRepair {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [switch]$IncludeLowConfidence
+    )
+
+    $tmdbId = ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdb_id" $null)
+    $confidence = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "match_confidence" $null)
+    return (
+        ($null -eq $tmdbId -or $tmdbId -le 0) -or
+        [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "imdb_id" "")) -or
+        [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "director" "")) -or
+        [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "poster_url" "")) -or
+        [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "overview" "")) -or
+        $null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)) -or
+        $null -eq (ConvertTo-OptionalDouble (Get-ObjectProperty $Film "tmdb_rating" $null)) -or
+        ($IncludeLowConfidence -and $null -ne $confidence -and $confidence -gt 0 -and $confidence -lt 0.8)
+    )
+}
+
+function Get-MetadataRepairFieldsChanged {
+    param(
+        [Parameter(Mandatory = $true)][object]$Before,
+        [Parameter(Mandatory = $true)][object]$After
+    )
+
+    $changed = New-Object System.Collections.Generic.List[string]
+    foreach ($name in @("tmdb_id", "imdb_id", "director", "poster_url", "overview", "film_year", "tmdb_rating", "match_confidence", "metadata_source")) {
+        $beforeValue = [string](Get-ObjectProperty $Before $name "")
+        $afterValue = [string](Get-ObjectProperty $After $name "")
+        if ($beforeValue -ne $afterValue) { $changed.Add($name) }
+    }
+    return @($changed.ToArray())
+}
+
+function Copy-FilmRecord {
+    param([Parameter(Mandatory = $true)][object]$Film)
+    return ($Film | ConvertTo-Json -Depth 30 | ConvertFrom-Json)
+}
+
+function Repair-FilmMissingMetadata {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [switch]$IncludeLowConfidence
+    )
+
+    $before = Copy-FilmRecord -Film $Film
+    $working = Copy-FilmRecord -Film $Film
+    $reason = Get-FilmMetadataIssueReason -Film $working
+    $tmdbId = ConvertTo-OptionalInt (Get-ObjectProperty $working "tmdb_id" $null)
+    $imdbId = [string](Get-ObjectProperty $working "imdb_id" "")
+
+    try {
+        if ($null -ne $tmdbId -and $tmdbId -gt 0) {
+            Update-FilmMetadataFromTmdb -Film $working -TmdbId $tmdbId | Out-Null
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($imdbId)) {
+            $foundTmdbId = Get-TmdbMovieByImdbId -ImdbId $imdbId
+            if ($null -ne $foundTmdbId -and $foundTmdbId -gt 0) {
+                Set-RecordProperty -Record $working -Name "tmdb_id" -Value $foundTmdbId
+                Set-RecordProperty -Record $working -Name "match_confidence" -Value 1
+                Update-FilmMetadataFromTmdb -Film $working -TmdbId $foundTmdbId | Out-Null
+                $reason = ""
+            }
+            else {
+                $reason = "tmdb_search_no_result"
+            }
+        }
+        else {
+            $match = Get-TmdbMovieMatch -Film $working
+            if ($null -ne $match -and $match.confidence -ge 0.8) {
+                Set-RecordProperty -Record $working -Name "tmdb_id" -Value $match.tmdb_id
+                Set-RecordProperty -Record $working -Name "imdb_id" -Value $match.imdb_id
+                Set-RecordProperty -Record $working -Name "match_confidence" -Value $match.confidence
+                if (-not [string]::IsNullOrWhiteSpace([string]$match.director)) { Set-RecordProperty -Record $working -Name "director" -Value $match.director }
+                if (-not [string]::IsNullOrWhiteSpace([string]$match.poster_url)) {
+                    Set-RecordProperty -Record $working -Name "poster_url" -Value $match.poster_url
+                    Set-RecordProperty -Record $working -Name "metadata_source" -Value "tmdb"
+                }
+                if (-not [string]::IsNullOrWhiteSpace([string]$match.overview)) { Set-RecordProperty -Record $working -Name "overview" -Value (Repair-MojibakeText $match.overview) }
+                if ($null -ne $match.tmdb_rating) { Set-RecordProperty -Record $working -Name "tmdb_rating" -Value $match.tmdb_rating }
+                if ($match.release_year -gt 0) { Set-RecordProperty -Record $working -Name "film_year" -Value $match.release_year }
+                $reason = ""
+            }
+            elseif ($null -ne $match) {
+                $reason = "tmdb_low_confidence"
+            }
+            else {
+                $reason = if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $working "director" ""))) { "missing_director_context" } else { "tmdb_search_no_result" }
+            }
+        }
+    }
+    catch {
+        $reason = "tmdb_search_no_result"
+    }
+
+    $changedFields = @(Get-MetadataRepairFieldsChanged -Before $before -After $working)
+    if ($changedFields.Count -eq 0 -and [string]::IsNullOrWhiteSpace($reason)) {
+        $reason = Get-FilmMetadataIssueReason -Film $working
+        if ([string]::IsNullOrWhiteSpace($reason)) {
+            $reason = "likely_new_or_unreleased"
+        }
+    }
+    [pscustomobject]@{
+        id = [string](Get-ObjectProperty $Film "id" "")
+        canonical_key = [string](Get-ObjectProperty $Film "canonical_key" "")
+        title = [string](Get-ObjectProperty $Film "title" "")
+        director = [string](Get-ObjectProperty $Film "director" "")
+        tmdb_id = ConvertTo-OptionalInt (Get-ObjectProperty $working "tmdb_id" $null)
+        imdb_id = [string](Get-ObjectProperty $working "imdb_id" "")
+        reason = if ($changedFields.Count -gt 0) { "" } else { $reason }
+        changed_fields = $changedFields
+        repairable = ($changedFields.Count -gt 0)
+        film = $working
+    }
+}
+
 function Update-FilmMetadataFromTmdb {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
@@ -1857,11 +2006,11 @@ function Update-FilmMetadataFromTmdb {
     if ($null -ne $details.external_ids.imdb_id -and [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "imdb_id" ""))) {
         Set-RecordProperty -Record $Film -Name "imdb_id" -Value ([string]$details.external_ids.imdb_id)
     }
-    if (-not [string]::IsNullOrWhiteSpace([string]$details.poster_path)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$details.poster_path) -and [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "poster_url" ""))) {
         Set-RecordProperty -Record $Film -Name "poster_url" -Value ("https://image.tmdb.org/t/p/w500$($details.poster_path)")
         Set-RecordProperty -Record $Film -Name "metadata_source" -Value "tmdb"
     }
-    if (-not [string]::IsNullOrWhiteSpace([string]$details.overview)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$details.overview) -and [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "overview" ""))) {
         Set-RecordProperty -Record $Film -Name "overview" -Value ([string]$details.overview)
         if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "metadata_source" ""))) {
             Set-RecordProperty -Record $Film -Name "metadata_source" -Value "tmdb"
@@ -1876,7 +2025,7 @@ function Update-FilmMetadataFromTmdb {
     if ($null -ne $details.vote_average) {
         Set-RecordProperty -Record $Film -Name "tmdb_rating" -Value ([Math]::Round([double]$details.vote_average, 1))
     }
-    if ([string]$details.release_date -match '^(?<year>(19|20)\d{2})') {
+    if ([string]$details.release_date -match '^(?<year>(19|20)\d{2})' -and $null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null))) {
         Set-RecordProperty -Record $Film -Name "film_year" -Value ([int]$Matches.year)
     }
     Set-RecordProperty -Record $Film -Name "updated_at" -Value (Get-Date).ToString("o")

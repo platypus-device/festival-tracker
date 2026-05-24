@@ -525,6 +525,9 @@ Assert-Equal 0 $exportedWebData.diagnostics.duplicateCanonical "exports duplicat
 Assert-Equal 1 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
 Assert-Equal 0 $exportedWebData.diagnostics.missingTmdb "exports missing TMDb diagnostics"
 Assert-Equal 0 $exportedWebData.diagnostics.missingDirector "exports missing director diagnostics"
+Assert-Equal 1 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
+Assert-Equal "Duplicate Export" $exportedWebData.diagnostics.missingPosterFilms[0].title "exports diagnostic film title"
+Assert-Equal "Duplicate Export" $exportedWebData.diagnostics.lowConfidenceFilms[0].title "exports low confidence film list"
 Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
 Assert-Equal "Cannes,NYFF" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
 Remove-Item -LiteralPath $exportStateDir -Recurse -Force
