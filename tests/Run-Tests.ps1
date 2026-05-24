@@ -596,6 +596,23 @@ $authorizedConfig = [pscustomobject]@{
 Assert-True (Test-AllowedAuthorizedUrl -Url "https://archive.org/details/public-domain-film" -AuthorizedConfig $authorizedConfig) "allows configured authorized domain"
 Assert-True (-not (Test-AllowedAuthorizedUrl -Url "https://pirate.example/details/movie" -AuthorizedConfig $authorizedConfig)) "rejects non-whitelisted domain"
 
+$checkedTodayFilm = New-FilmRecord -Title "Checked Today" -Director "Daily Director" -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Year 2026
+$checkedTodayFilm.last_checked = (Get-Date).ToString("yyyy-MM-dd")
+$checkedTodayFilm.authorized_source_urls = @("https://example.org/download.mp4")
+$sameDayAvailability = Add-FirstAvailabilityEvents -Films @($checkedTodayFilm) -ExistingEvents @() -AuthorizedConfig $authorizedConfig
+Assert-Equal 0 @($sameDayAvailability.new_events).Count "skips same-day pending availability checks"
+Assert-Equal "pending" $sameDayAvailability.films[0].tracking_status "keeps same-day skipped film pending"
+
+$completeMetadataFilm = New-FilmRecord -Title "Complete Metadata" -Director "Metadata Director" -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Year 2026
+$completeMetadataFilm.imdb_id = "tt1234567"
+$completeMetadataFilm.poster_url = "https://image.tmdb.org/t/p/w500/poster.jpg"
+$completeMetadataFilm.overview = "Overview"
+$completeMetadataFilm.film_year = 2026
+$completeMetadataFilm.tmdb_rating = 7.1
+Assert-True (-not (Test-FilmNeedsTmdbMetadataRefresh -Film $completeMetadataFilm)) "skips TMDb metadata refresh when tracked fields are complete"
+$completeMetadataFilm.poster_url = ""
+Assert-True (Test-FilmNeedsTmdbMetadataRefresh -Film $completeMetadataFilm) "refreshes TMDb metadata when tracked fields are missing"
+
 if ($Script:Failures -gt 0) {
     throw "$Script:Failures test(s) failed."
 }

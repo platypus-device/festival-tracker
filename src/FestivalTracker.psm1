@@ -2033,6 +2033,29 @@ function Update-FilmMetadataFromTmdb {
     return $Film
 }
 
+function Test-FilmNeedsTmdbMetadataRefresh {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "imdb_id" ""))) {
+        return $true
+    }
+    if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "poster_url" ""))) {
+        return $true
+    }
+    if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "overview" ""))) {
+        return $true
+    }
+    if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "director" ""))) {
+        return $true
+    }
+    if ($null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null))) {
+        return $true
+    }
+
+    $rating = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "tmdb_rating" $null)
+    return ($null -eq $rating -or $rating -le 0)
+}
+
 function Update-FilmMatches {
     param([object[]]$Films)
 
@@ -2046,11 +2069,13 @@ function Update-FilmMatches {
                 [string]::IsNullOrWhiteSpace($existingImdbId)
             )
             if (-not $shouldRematch) {
-                try {
-                    Update-FilmMetadataFromTmdb -Film $film -TmdbId $existingTmdbId | Out-Null
-                }
-                catch {
-                    Write-Warning "TMDb metadata update failed for '$($film.title)': $($_.Exception.Message)"
+                if (Test-FilmNeedsTmdbMetadataRefresh -Film $film) {
+                    try {
+                        Update-FilmMetadataFromTmdb -Film $film -TmdbId $existingTmdbId | Out-Null
+                    }
+                    catch {
+                        Write-Warning "TMDb metadata update failed for '$($film.title)': $($_.Exception.Message)"
+                    }
                 }
                 continue
             }
@@ -2612,7 +2637,8 @@ function Add-FirstAvailabilityEvents {
     param(
         [object]$Films = @(),
         [object]$ExistingEvents = @(),
-        [Parameter(Mandatory = $true)][object]$AuthorizedConfig
+        [Parameter(Mandatory = $true)][object]$AuthorizedConfig,
+        [switch]$Force
     )
 
     $filmItems = @($Films)
@@ -2634,6 +2660,10 @@ function Add-FirstAvailabilityEvents {
     $newEvents = New-Object System.Collections.Generic.List[object]
     foreach ($film in $filmItems) {
         if ((Get-ObjectProperty $film "tracking_status" "pending") -ne "pending") {
+            continue
+        }
+        $lastChecked = [string](Get-ObjectProperty $film "last_checked" "")
+        if (-not $Force -and $lastChecked -eq (Get-Date).ToString("yyyy-MM-dd")) {
             continue
         }
         $canonicalKey = Get-FilmCanonicalKey -Film $film
