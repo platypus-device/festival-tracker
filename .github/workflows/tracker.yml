@@ -88,7 +88,11 @@ jobs:
           }
 
           & ./scripts/Invoke-FestivalTracker.ps1 @trackerArgs
+          if ($mode -eq "Lineups") {
+            & ./scripts/Invoke-FestivalTracker.ps1 -Mode Availability -UseNotion
+          }
           & ./scripts/Export-TrackerData.ps1 -UseNotion
+          & ./scripts/Test-TrackerDataQuality.ps1 -UseNotion -DataPath ./web/data/tracker-data.json
 
       - name: Prepare Pages artifact
         shell: pwsh

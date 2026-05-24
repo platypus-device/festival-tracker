@@ -346,6 +346,7 @@ $taipeiAwardsData = [pscustomobject]@{
     awardAry = @(
         [pscustomobject]@{
             title = "Sample Narrative Feature"
+            filename = [pscustomobject]@{ url = "https://www.taipeiff.taipei/files/sample-narrative.jpg" }
             awards_with_winners = @(
                 [pscustomobject]@{ award_name = $taipeiBestNarrativeFeature; winner = "Producer" },
                 [pscustomobject]@{ award_name = "Best Director"; winner = "Sample Director" }
@@ -374,15 +375,22 @@ $taipeiAwardsData = [pscustomobject]@{
 $taipeiAwards = @(ConvertFrom-TaipeiFilmAwardsData -Data $taipeiAwardsData -Festival "Taipei Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/tfa" -Year 2026 -AllowedAwardPatterns @("^Best Narrative Feature$", "^\u6700\u4f73\u5287\u60c5\u9577\u7247$"))
 Assert-Equal 1 $taipeiAwards.Count "filters Taipei Film Awards to narrative feature only"
 Assert-Equal "Sample Narrative Feature" $taipeiAwards[0].title "keeps Taipei narrative feature title"
+Assert-Equal "https://www.taipeiff.taipei/files/sample-narrative.jpg" $taipeiAwards[0].poster_url "keeps Taipei official poster fallback"
+Assert-Equal "official:taipeiff" $taipeiAwards[0].metadata_source "marks Taipei official metadata source"
 
 $taipeiNewTalentData = [pscustomobject]@{
     awardAry = @(
-        [pscustomobject]@{ col_1 = "Sample New Talent"; col_2 = "Sample Director | Taiwan" }
+        [pscustomobject]@{
+            col_1 = "Sample New Talent"
+            col_2 = "Sample Director | Taiwan"
+            filename = [pscustomobject]@{ url = "https://www.taipeiff.taipei/files/sample-new-talent.jpg" }
+        }
     )
 }
 $taipeiNewTalent = @(ConvertFrom-TaipeiNewTalentData -Data $taipeiNewTalentData -Festival "Taipei Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/intc" -Year 2026)
 Assert-Equal 1 $taipeiNewTalent.Count "converts Taipei New Talent API data"
 Assert-Equal "Sample Director" $taipeiNewTalent[0].director "extracts Taipei New Talent director"
+Assert-Equal "https://www.taipeiff.taipei/files/sample-new-talent.jpg" $taipeiNewTalent[0].poster_url "keeps Taipei New Talent official poster fallback"
 
 $sampleWebFilms = @(
     [pscustomobject]@{ year = 2025 },
@@ -483,6 +491,10 @@ Assert-Equal 2 $exportedWebData.films[0].selections.Count "keeps duplicate selec
 Assert-Equal 2024 $exportedWebData.films[0].filmYear "keeps film year separate from festival year"
 Assert-Equal 7.8 $exportedWebData.films[0].imdbRating "exports IMDb rating"
 Assert-Equal 12345 $exportedWebData.films[0].imdbVotes "exports IMDb vote count"
+Assert-Equal 0 $exportedWebData.diagnostics.duplicateCanonical "exports duplicate canonical diagnostics"
+Assert-Equal 1 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
+Assert-Equal 0 $exportedWebData.diagnostics.missingTmdb "exports missing TMDb diagnostics"
+Assert-Equal 0 $exportedWebData.diagnostics.missingDirector "exports missing director diagnostics"
 Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
 Assert-Equal "Cannes,NYFF" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
 Remove-Item -LiteralPath $exportStateDir -Recurse -Force

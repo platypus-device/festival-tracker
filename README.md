@@ -50,6 +50,7 @@ Scheduled runs:
 
 - Daily at 23:30 UTC: `Availability`.
 - Weekly on Monday at 23:45 UTC: `Lineups` with `RespectFestivalWindows`, so only sources whose `lineupWindow` includes the current month are fetched.
+- Scheduled and manual sync runs export the web bundle and then run `Test-TrackerDataQuality.ps1` before deployment. `Lineups` runs are followed by an `Availability` pass so new selections get metadata and availability before the quality gate. Pushes still publish the committed web bundle only.
 
 Workflow modes:
 
@@ -79,6 +80,8 @@ Current Notion model:
 
 `Festival Selections` still contains some legacy film metadata columns from the old single-table model. Treat `Films` as the source of truth for title metadata, director, TMDb/IMDb IDs, poster, overview, ratings, and tracking status.
 
+TMDb and IMDb remain the primary metadata sources. Official festival data may fill a missing field when it is clearly available; currently Taipei Film Festival official poster URLs are used only as a poster fallback and are marked with `Metadata Source = official:taipeiff`.
+
 ## Local Commands
 
 Run the full tracker against Notion:
@@ -105,6 +108,13 @@ Archive selections that are outside the current restrained scope:
 ```powershell
 .\scripts\Archive-OutOfScopeSelections.ps1
 .\scripts\Archive-OutOfScopeSelections.ps1 -Apply -ArchiveOrphanFilms
+```
+
+Run data quality checks:
+
+```powershell
+.\scripts\Test-TrackerDataQuality.ps1 -DataPath .\web\data\tracker-data.json
+.\scripts\Test-TrackerDataQuality.ps1 -UseNotion -DataPath .\web\data\tracker-data.json
 ```
 
 Backfill a historical year after a dry-run:
@@ -135,4 +145,4 @@ Run tests:
 - `available_found`: the first legal online availability event has been recorded.
 - `needs_review`: automation cannot safely continue for this item.
 
-Low-confidence TMDb/IMDb matches are exported as diagnostics. They are useful for maintenance, but they are not shown as a main review queue in the web UI.
+Low-confidence TMDb/IMDb matches are exported as diagnostics. They are useful for maintenance, but they are not shown as a main review queue in the web UI. The export also reports missing poster, missing TMDb ID, missing director, and duplicate canonical key counts.

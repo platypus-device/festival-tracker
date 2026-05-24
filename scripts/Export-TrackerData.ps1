@@ -68,6 +68,7 @@ function ConvertTo-WebFilm {
         imdbVotes = ConvertTo-OptionalInt (Get-ObjectProperty $Film "imdb_votes" $null)
         imdbRatingCheckedAt = [string](Get-ObjectProperty $Film "imdb_rating_checked_at" "")
         ratingSource = [string](Get-ObjectProperty $Film "rating_source" "")
+        metadataSource = [string](Get-ObjectProperty $Film "metadata_source" "")
         trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
         firstAvailableDate = [string](Get-ObjectProperty $Film "first_available_date" "")
         lastChecked = [string](Get-ObjectProperty $Film "last_checked" "")
@@ -122,6 +123,7 @@ function ConvertTo-WebCanonicalFilm {
         imdbVotes = ConvertTo-OptionalInt (Get-ObjectProperty $Film "imdb_votes" $null)
         imdbRatingCheckedAt = [string](Get-ObjectProperty $Film "imdb_rating_checked_at" "")
         ratingSource = [string](Get-ObjectProperty $Film "rating_source" "")
+        metadataSource = [string](Get-ObjectProperty $Film "metadata_source" "")
         trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
         firstAvailableDate = [string](Get-ObjectProperty $Film "first_available_date" "")
         lastChecked = [string](Get-ObjectProperty $Film "last_checked" "")
@@ -223,7 +225,7 @@ function Merge-WebFilms {
                 Sort-Object event_date, id -Unique
         )
 
-        foreach ($name in @("posterUrl", "overview", "imdbId", "imdbUrl", "tmdbUrl", "director")) {
+        foreach ($name in @("posterUrl", "overview", "imdbId", "imdbUrl", "tmdbUrl", "director", "metadataSource")) {
             $existingValue = [string](Get-ObjectProperty $existing $name "")
             $incomingValue = [string](Get-ObjectProperty $film $name "")
             if ([string]::IsNullOrWhiteSpace($existingValue) -and -not [string]::IsNullOrWhiteSpace($incomingValue)) {
@@ -386,6 +388,11 @@ $festivals = @(
         Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } |
         Sort-Object -Unique
 )
+$duplicateCanonicalCount = @(
+    $webFilms |
+        Group-Object canonicalFilmKey |
+        Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.Name) -and $_.Count -gt 1 }
+).Count
 $payload = [pscustomobject]@{
     generatedAt = (Get-Date).ToString("o")
     totals = [pscustomobject]@{
@@ -401,6 +408,13 @@ $payload = [pscustomobject]@{
             ($null -eq (ConvertTo-OptionalInt $_.tmdbId) -or (ConvertTo-OptionalInt $_.tmdbId) -le 0) -and
             [string]::IsNullOrWhiteSpace([string]$_.imdbId)
         }).Count
+        missingPoster = @($webFilms | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.posterUrl) }).Count
+        missingTmdb = @($webFilms | Where-Object {
+            $tmdbId = ConvertTo-OptionalInt $_.tmdbId
+            $null -eq $tmdbId -or $tmdbId -le 0
+        }).Count
+        missingDirector = @($webFilms | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.director) }).Count
+        duplicateCanonical = $duplicateCanonicalCount
     }
     festivals = $festivals
     years = $years

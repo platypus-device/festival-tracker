@@ -163,7 +163,7 @@ function Repair-MojibakeText {
 function Repair-RecordTextFields {
     param([Parameter(Mandatory = $true)][object]$Record)
 
-    foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "imdb_id", "overview", "poster_url")) {
+    foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "imdb_id", "overview", "poster_url", "metadata_source")) {
         if ($null -ne $Record.PSObject.Properties[$name]) {
             $value = Get-ObjectProperty $Record $name
             if ($null -ne $value -and $value -is [string]) {
@@ -278,7 +278,9 @@ function New-FilmRecord {
         [string]$Section,
         [string]$SourceUrl,
         [int]$Year = (Get-Date).Year,
-        [Nullable[int]]$FilmYear = $null
+        [Nullable[int]]$FilmYear = $null,
+        [string]$PosterUrl,
+        [string]$MetadataSource
     )
 
     $cleanTitle = (Repair-MojibakeText ($Title -replace '\s+', ' ').Trim())
@@ -300,13 +302,14 @@ function New-FilmRecord {
         tmdb_id = $null
         imdb_id = $null
         match_confidence = 0
-        poster_url = $null
+        poster_url = if ([string]::IsNullOrWhiteSpace($PosterUrl)) { $null } else { Repair-MojibakeText $PosterUrl.Trim() }
         overview = $null
         tmdb_rating = $null
         imdb_rating = $null
         imdb_votes = $null
         imdb_rating_checked_at = $null
         rating_source = $null
+        metadata_source = if ([string]::IsNullOrWhiteSpace($MetadataSource)) { "" } else { Repair-MojibakeText $MetadataSource.Trim() }
         tracking_status = "pending"
         first_available_date = $null
         last_checked = $null
@@ -1313,6 +1316,22 @@ function Invoke-TaipeiFilmFestivalApi {
     return Invoke-RestMethod -Uri "https://www.taipeiff.taipei/$Endpoint" -Method Get -Body $params -Headers @{ "User-Agent" = $Script:UserAgent } -ErrorAction Stop
 }
 
+function Get-TaipeiOfficialImageUrl {
+    param([AllowNull()][object]$Item)
+
+    $filename = Get-ObjectProperty $Item "filename"
+    if ($null -eq $filename) {
+        return ""
+    }
+
+    $url = [string](Get-ObjectProperty $filename "url" "")
+    if ($url -match '^https?://') {
+        return $url
+    }
+
+    return ""
+}
+
 function ConvertFrom-TaipeiFilmAwardsData {
     param(
         [Parameter(Mandatory = $true)][object]$Data,
@@ -1364,7 +1383,9 @@ function ConvertFrom-TaipeiFilmAwardsData {
             $section = "Taipei Film Awards - $($awardNames -join '; ')"
         }
 
-        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $Year))
+        $posterUrl = Get-TaipeiOfficialImageUrl -Item $item
+        $metadataSource = if ([string]::IsNullOrWhiteSpace($posterUrl)) { "" } else { "official:taipeiff" }
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $Year -PosterUrl $posterUrl -MetadataSource $metadataSource))
     }
 
     return $records
@@ -1392,7 +1413,9 @@ function ConvertFrom-TaipeiNewTalentData {
             $director = $Matches.director.Trim()
         }
 
-        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section "International New Talent Competition" -SourceUrl $SourceUrl -Year $Year))
+        $posterUrl = Get-TaipeiOfficialImageUrl -Item $item
+        $metadataSource = if ([string]::IsNullOrWhiteSpace($posterUrl)) { "" } else { "official:taipeiff" }
+        $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section "International New Talent Competition" -SourceUrl $SourceUrl -Year $Year -PosterUrl $posterUrl -MetadataSource $metadataSource))
     }
 
     return $records
@@ -1836,9 +1859,13 @@ function Update-FilmMetadataFromTmdb {
     }
     if (-not [string]::IsNullOrWhiteSpace([string]$details.poster_path)) {
         Set-RecordProperty -Record $Film -Name "poster_url" -Value ("https://image.tmdb.org/t/p/w500$($details.poster_path)")
+        Set-RecordProperty -Record $Film -Name "metadata_source" -Value "tmdb"
     }
     if (-not [string]::IsNullOrWhiteSpace([string]$details.overview)) {
         Set-RecordProperty -Record $Film -Name "overview" -Value ([string]$details.overview)
+        if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "metadata_source" ""))) {
+            Set-RecordProperty -Record $Film -Name "metadata_source" -Value "tmdb"
+        }
     }
     if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "director" ""))) {
         $director = Get-TmdbMovieCreditsDirector -MovieId $TmdbId
@@ -1892,8 +1919,16 @@ function Update-FilmMatches {
                     Set-RecordProperty -Record $film -Name "director" -Value $match.director
                 }
                 Set-RecordProperty -Record $film -Name "match_confidence" -Value $match.confidence
-                Set-RecordProperty -Record $film -Name "poster_url" -Value $match.poster_url
-                Set-RecordProperty -Record $film -Name "overview" -Value (Repair-MojibakeText $match.overview)
+                if (-not [string]::IsNullOrWhiteSpace([string]$match.poster_url)) {
+                    Set-RecordProperty -Record $film -Name "poster_url" -Value $match.poster_url
+                    Set-RecordProperty -Record $film -Name "metadata_source" -Value "tmdb"
+                }
+                if (-not [string]::IsNullOrWhiteSpace([string]$match.overview)) {
+                    Set-RecordProperty -Record $film -Name "overview" -Value (Repair-MojibakeText $match.overview)
+                    if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $film "metadata_source" ""))) {
+                        Set-RecordProperty -Record $film -Name "metadata_source" -Value "tmdb"
+                    }
+                }
                 Set-RecordProperty -Record $film -Name "tmdb_rating" -Value $match.tmdb_rating
                 if ($match.release_year -gt 0) {
                     Set-RecordProperty -Record $film -Name "film_year" -Value $match.release_year
@@ -2374,6 +2409,7 @@ function New-CanonicalFilmFromSelection {
         imdb_votes = ConvertTo-OptionalInt (Get-ObjectProperty $Selection "imdb_votes" $null)
         imdb_rating_checked_at = [string](Get-ObjectProperty $Selection "imdb_rating_checked_at" "")
         rating_source = [string](Get-ObjectProperty $Selection "rating_source" "")
+        metadata_source = [string](Get-ObjectProperty $Selection "metadata_source" "")
         tracking_status = [string](Get-ObjectProperty $Selection "tracking_status" "pending")
         first_available_date = [string](Get-ObjectProperty $Selection "first_available_date" "")
         last_checked = [string](Get-ObjectProperty $Selection "last_checked" "")
@@ -2398,7 +2434,7 @@ function Merge-CanonicalFilmRecords {
         }
 
         $existing = $byKey[$key]
-        foreach ($name in @("title", "original_title", "director", "imdb_id", "poster_url", "overview", "rating_source", "imdb_rating_checked_at", "first_available_date", "last_checked")) {
+        foreach ($name in @("title", "original_title", "director", "imdb_id", "poster_url", "overview", "rating_source", "metadata_source", "imdb_rating_checked_at", "first_available_date", "last_checked")) {
             $existingValue = [string](Get-ObjectProperty $existing $name "")
             $incomingValue = [string](Get-ObjectProperty $film $name "")
             if ([string]::IsNullOrWhiteSpace($existingValue) -and -not [string]::IsNullOrWhiteSpace($incomingValue)) {
@@ -2609,6 +2645,7 @@ function ConvertFrom-NotionFilmPage {
         imdb_votes = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "IMDb Votes")
         imdb_rating_checked_at = Get-NotionTextProperty -Page $Page -Name "IMDb Rating Checked At"
         rating_source = Get-NotionTextProperty -Page $Page -Name "Rating Source"
+        metadata_source = Get-NotionTextProperty -Page $Page -Name "Metadata Source"
         tracking_status = Get-NotionTextProperty -Page $Page -Name "Tracking Status"
         first_available_date = Get-NotionTextProperty -Page $Page -Name "First Available Date"
         last_checked = Get-NotionTextProperty -Page $Page -Name "Last Checked"
@@ -2792,6 +2829,7 @@ function ConvertTo-NotionFilmProperties {
     $lastChecked = [string](ConvertTo-Scalar $Film.last_checked)
     $imdbRatingCheckedAt = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "imdb_rating_checked_at" ""))
     $ratingSource = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "rating_source" ""))
+    $metadataSource = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "metadata_source" ""))
 
     $properties = @{
         "Film Title" = New-TitleProperty $filmTitle
@@ -2806,6 +2844,7 @@ function ConvertTo-NotionFilmProperties {
         "Poster URL" = New-UrlProperty $posterUrl
         "Overview" = New-RichTextProperty $overview
         "Rating Source" = New-RichTextProperty $ratingSource
+        "Metadata Source" = New-RichTextProperty $metadataSource
         "Tracking Status" = @{ select = @{ name = $trackingStatus } }
         "Authorized Source URLs" = New-RichTextProperty ((@($Film.authorized_source_urls) | Where-Object { $_ }) -join "`n")
     }
@@ -2868,6 +2907,7 @@ function ConvertTo-NotionCanonicalFilmProperties {
         "Poster URL" = New-UrlProperty ([string](Get-ObjectProperty $Film "poster_url" ""))
         "Overview" = New-RichTextProperty ([string](Get-ObjectProperty $Film "overview" ""))
         "Rating Source" = New-RichTextProperty ([string](Get-ObjectProperty $Film "rating_source" ""))
+        "Metadata Source" = New-RichTextProperty ([string](Get-ObjectProperty $Film "metadata_source" ""))
         "Tracking Status" = @{ select = @{ name = $trackingStatus } }
         "Needs Review" = @{ checkbox = [bool](Get-ObjectProperty $Film "needs_review" $false) }
     }
@@ -3152,6 +3192,7 @@ function Ensure-NotionThreeTableSchema {
         "IMDb Votes" = @{ number = @{ format = "number" } }
         "IMDb Rating Checked At" = @{ date = @{} }
         "Rating Source" = @{ rich_text = @{} }
+        "Metadata Source" = @{ rich_text = @{} }
         "Tracking Status" = @{ select = @{ options = @(
             @{ name = "pending"; color = "yellow" },
             @{ name = "available_found"; color = "green" },
