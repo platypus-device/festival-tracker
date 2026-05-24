@@ -39,6 +39,36 @@ $mojibakeName = Repair-MojibakeText ("Caitlin {0}Sonny{1} SHIEH" -f (New-StringF
 $expectedSmartQuoteName = "Caitlin {0}Sonny{1} SHIEH" -f [char]0x201C, [char]0x201D
 Assert-Equal $expectedSmartQuoteName $mojibakeName "repairs mojibake smart quotes"
 
+$sameNotionPage = [pscustomobject]@{
+    properties = [pscustomobject]@{
+        "Film Title" = [pscustomobject]@{ type = "title"; title = @([pscustomobject]@{ plain_text = "Sample Film" }) }
+        "Director" = [pscustomobject]@{ type = "rich_text"; rich_text = @([pscustomobject]@{ plain_text = "Sample Director" }) }
+        "Poster URL" = [pscustomobject]@{ type = "url"; url = "https://example.test/poster.jpg" }
+        "TMDb Rating" = [pscustomobject]@{ type = "number"; number = 7.8 }
+        "Needs Review" = [pscustomobject]@{ type = "checkbox"; checkbox = $false }
+    }
+}
+$sameProperties = @{
+    "Film Title" = New-TitleProperty "Sample Film"
+    "Director" = New-RichTextProperty "Sample Director"
+    "Poster URL" = New-UrlProperty "https://example.test/poster.jpg"
+    "TMDb Rating" = @{ number = 7.8 }
+    "Needs Review" = @{ checkbox = $false }
+}
+$samePatch = Get-NotionChangedProperties -DesiredProperties $sameProperties -Page $sameNotionPage
+Assert-Equal 0 $samePatch.Count "does not patch unchanged Notion properties"
+
+$emptyIncomingProperties = @{
+    "Director" = New-RichTextProperty ""
+    "Poster URL" = New-UrlProperty ""
+}
+$emptyPatch = Get-NotionChangedProperties -DesiredProperties $emptyIncomingProperties -Page $sameNotionPage
+Assert-Equal 0 $emptyPatch.Count "does not clear existing Notion values with empty incoming values"
+
+$changedPatch = Get-NotionChangedProperties -DesiredProperties @{ "TMDb Rating" = @{ number = 8.1 } } -Page $sameNotionPage
+Assert-Equal 1 $changedPatch.Count "patches changed Notion property only"
+Assert-True $changedPatch.ContainsKey("TMDb Rating") "includes changed rating property"
+
 $mojibakeCredit = Repair-MojibakeText ("Scriptwriter{0}Editor{1}LI Luo" -f (New-StringFromCodePoints @(0x00EF, 0x00BC, 0x008F)), (New-StringFromCodePoints @(0x00EF, 0x00BD, 0x009C)))
 Assert-Equal "Scriptwriter/Editor|LI Luo" $mojibakeCredit "repairs mojibake full-width separators"
 

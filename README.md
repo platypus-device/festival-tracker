@@ -51,6 +51,7 @@ Scheduled runs:
 - Daily at 23:30 UTC: `Availability`.
 - Weekly on Monday at 23:45 UTC: `Lineups` with `RespectFestivalWindows`, so only sources whose `lineupWindow` includes the current month are fetched.
 - Scheduled and manual sync runs export the web bundle and then run `Test-TrackerDataQuality.ps1` before deployment. `Lineups` runs are followed by an `Availability` pass so new selections get metadata and availability before the quality gate. Pushes still publish the committed web bundle only.
+- Notion sync uses a preloaded page index and diff-based updates. Existing non-empty Notion fields are not cleared by empty incoming values, unchanged records are skipped, and existing page covers are not bulk-updated during routine sync.
 
 Workflow modes:
 
@@ -88,6 +89,12 @@ Run the full tracker against Notion:
 
 ```powershell
 .\scripts\Invoke-FestivalTracker.ps1 -Mode All -UseNotion
+```
+
+Ensure or update Notion schema explicitly after a schema change:
+
+```powershell
+.\scripts\Invoke-FestivalTracker.ps1 -Mode Availability -UseNotion -EnsureNotionSchema
 ```
 
 Export Notion data for the web UI:

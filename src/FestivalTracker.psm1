@@ -2829,7 +2829,6 @@ function ConvertTo-NotionFilmProperties {
     $lastChecked = [string](ConvertTo-Scalar $Film.last_checked)
     $imdbRatingCheckedAt = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "imdb_rating_checked_at" ""))
     $ratingSource = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "rating_source" ""))
-    $metadataSource = [string](ConvertTo-Scalar (Get-ObjectProperty $Film "metadata_source" ""))
 
     $properties = @{
         "Film Title" = New-TitleProperty $filmTitle
@@ -2844,7 +2843,6 @@ function ConvertTo-NotionFilmProperties {
         "Poster URL" = New-UrlProperty $posterUrl
         "Overview" = New-RichTextProperty $overview
         "Rating Source" = New-RichTextProperty $ratingSource
-        "Metadata Source" = New-RichTextProperty $metadataSource
         "Tracking Status" = @{ select = @{ name = $trackingStatus } }
         "Authorized Source URLs" = New-RichTextProperty ((@($Film.authorized_source_urls) | Where-Object { $_ }) -join "`n")
     }
@@ -2949,6 +2947,175 @@ function Get-NotionPageCover {
     return @{ type = "external"; external = @{ url = $posterUrl } }
 }
 
+function Get-NotionCoverUrl {
+    param([AllowNull()][object]$Page)
+
+    $cover = Get-ObjectProperty $Page "cover"
+    if ($null -eq $cover) { return "" }
+    $type = [string](Get-ObjectProperty $cover "type" "")
+    if ($type -eq "external") {
+        return [string](Get-ObjectProperty (Get-ObjectProperty $cover "external") "url" "")
+    }
+    return ""
+}
+
+function Get-NotionGeneratedPropertyComparable {
+    param([AllowNull()][object]$Property)
+
+    if ($null -eq $Property) { return "" }
+    if ($Property.ContainsKey("title")) {
+        return (@($Property.title) | ForEach-Object { [string]$_.text.content }) -join ""
+    }
+    if ($Property.ContainsKey("rich_text")) {
+        return (@($Property.rich_text) | ForEach-Object { [string]$_.text.content }) -join ""
+    }
+    if ($Property.ContainsKey("url")) {
+        return [string]$Property.url
+    }
+    if ($Property.ContainsKey("select")) {
+        return [string](Get-ObjectProperty $Property.select "name" "")
+    }
+    if ($Property.ContainsKey("number")) {
+        if ($null -eq $Property.number) { return "" }
+        return [string]$Property.number
+    }
+    if ($Property.ContainsKey("date")) {
+        return [string](Get-ObjectProperty $Property.date "start" "")
+    }
+    if ($Property.ContainsKey("checkbox")) {
+        return [string][bool]$Property.checkbox
+    }
+    if ($Property.ContainsKey("multi_select")) {
+        return (@($Property.multi_select) | ForEach-Object { [string]$_.name } | Sort-Object) -join "|"
+    }
+    if ($Property.ContainsKey("relation")) {
+        return (@($Property.relation) | ForEach-Object { [string]$_.id } | Sort-Object) -join "|"
+    }
+    return ($Property | ConvertTo-Json -Depth 10 -Compress)
+}
+
+function Get-NotionPagePropertyComparable {
+    param(
+        [AllowNull()][object]$Page,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $property = Get-ObjectProperty (Get-ObjectProperty $Page "properties") $Name
+    if ($null -eq $property) { return "" }
+    $type = [string](Get-ObjectProperty $property "type" "")
+    switch ($type) {
+        "title" { return (@($property.title) | ForEach-Object { [string]$_.plain_text }) -join "" }
+        "rich_text" { return (@($property.rich_text) | ForEach-Object { [string]$_.plain_text }) -join "" }
+        "url" { return [string]$property.url }
+        "select" { return [string](Get-ObjectProperty $property.select "name" "") }
+        "number" { if ($null -eq $property.number) { return "" }; return [string]$property.number }
+        "date" { return [string](Get-ObjectProperty $property.date "start" "") }
+        "checkbox" { return [string][bool]$property.checkbox }
+        "multi_select" { return (@($property.multi_select) | ForEach-Object { [string]$_.name } | Sort-Object) -join "|" }
+        "relation" { return (@($property.relation) | ForEach-Object { [string]$_.id } | Sort-Object) -join "|" }
+        default { return "" }
+    }
+}
+
+function Get-NotionChangedProperties {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$DesiredProperties,
+        [Parameter(Mandatory = $true)][object]$Page
+    )
+
+    $changed = @{}
+    foreach ($name in $DesiredProperties.Keys) {
+        $desired = $DesiredProperties[$name]
+        $desiredComparable = Get-NotionGeneratedPropertyComparable -Property $desired
+        $currentComparable = Get-NotionPagePropertyComparable -Page $Page -Name $name
+
+        if ([string]::IsNullOrWhiteSpace($desiredComparable) -and -not [string]::IsNullOrWhiteSpace($currentComparable)) {
+            continue
+        }
+        if ($desiredComparable -ne $currentComparable) {
+            $changed[$name] = $desired
+        }
+    }
+    return $changed
+}
+
+function New-NotionSyncStats {
+    [pscustomobject]@{
+        films_created = 0
+        films_patched = 0
+        films_skipped = 0
+        selections_created = 0
+        selections_patched = 0
+        selections_skipped = 0
+        relations_patched = 0
+        relations_skipped = 0
+        events_created = 0
+        events_patched = 0
+        events_skipped = 0
+    }
+}
+
+function Add-NotionSyncStat {
+    param(
+        [Parameter(Mandatory = $true)][object]$Stats,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [int]$Amount = 1
+    )
+
+    if ($null -ne $Stats.PSObject.Properties[$Name]) {
+        $Stats.$Name = [int]$Stats.$Name + $Amount
+    }
+}
+
+function New-NotionSyncContext {
+    param(
+        [string]$FilmsDatabaseId,
+        [string]$SelectionsDatabaseId,
+        [string]$EventsDatabaseId
+    )
+
+    $context = [pscustomobject]@{
+        filmPagesByCanonicalKey = @{}
+        filmPagesById = @{}
+        selectionPagesByTrackerId = @{}
+        selectionRelationByPageId = @{}
+        eventPagesByTrackerId = @{}
+        stats = New-NotionSyncStats
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($FilmsDatabaseId)) {
+        foreach ($page in @(Get-NotionDatabasePages -DatabaseId $FilmsDatabaseId)) {
+            $key = Get-NotionTextProperty -Page $page -Name "Canonical Key"
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $context.filmPagesByCanonicalKey[$key] = $page
+            }
+            $context.filmPagesById[$page.id] = $page
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SelectionsDatabaseId)) {
+        foreach ($page in @(Get-NotionDatabasePages -DatabaseId $SelectionsDatabaseId)) {
+            $trackerId = Get-NotionTextProperty -Page $page -Name "Tracker ID"
+            if (-not [string]::IsNullOrWhiteSpace($trackerId)) {
+                $context.selectionPagesByTrackerId[$trackerId] = $page
+            }
+            $relationIds = @(Get-NotionRelationIds -Page $page -Name "Film")
+            if ($relationIds.Count -gt 0) {
+                $context.selectionRelationByPageId[$page.id] = $relationIds[0]
+            }
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($EventsDatabaseId)) {
+        foreach ($page in @(Get-NotionDatabasePages -DatabaseId $EventsDatabaseId)) {
+            $trackerId = Get-NotionTextProperty -Page $page -Name "Tracker ID"
+            if (-not [string]::IsNullOrWhiteSpace($trackerId)) {
+                $context.eventPagesByTrackerId[$trackerId] = $page
+            }
+        }
+    }
+
+    return $context
+}
+
 function Find-NotionPageByTrackerId {
     param(
         [Parameter(Mandatory = $true)][string]$DatabaseId,
@@ -2990,16 +3157,31 @@ function Find-NotionCanonicalFilmPage {
 function Sync-NotionCanonicalFilm {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
-        [Parameter(Mandatory = $true)][string]$DatabaseId
+        [Parameter(Mandatory = $true)][string]$DatabaseId,
+        [object]$Context = $null
     )
 
     $properties = ConvertTo-NotionCanonicalFilmProperties -Film $Film
     $page = $null
     if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "notion_page_id" ""))) {
-        $page = [pscustomobject]@{ id = $Film.notion_page_id }
+        $pageId = [string](Get-ObjectProperty $Film "notion_page_id" "")
+        if ($null -ne $Context -and $Context.filmPagesById.ContainsKey($pageId)) {
+            $page = $Context.filmPagesById[$pageId]
+        }
+        elseif ($null -ne $Context -and -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "canonical_key" "")) -and $Context.filmPagesByCanonicalKey.ContainsKey($Film.canonical_key)) {
+            $page = $Context.filmPagesByCanonicalKey[$Film.canonical_key]
+        }
+        elseif ($null -eq $Context) {
+            $page = [pscustomobject]@{ id = $pageId }
+        }
     }
     elseif (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "canonical_key" ""))) {
-        $page = Find-NotionCanonicalFilmPage -DatabaseId $DatabaseId -CanonicalKey $Film.canonical_key
+        if ($null -ne $Context -and $Context.filmPagesByCanonicalKey.ContainsKey($Film.canonical_key)) {
+            $page = $Context.filmPagesByCanonicalKey[$Film.canonical_key]
+        }
+        else {
+            $page = Find-NotionCanonicalFilmPage -DatabaseId $DatabaseId -CanonicalKey $Film.canonical_key
+        }
     }
 
     $cover = Get-NotionPageCover -Film $Film
@@ -3008,12 +3190,35 @@ function Sync-NotionCanonicalFilm {
         if ($null -ne $cover) { $body["cover"] = $cover }
         $created = Invoke-NotionRequest -Method "POST" -Path "/v1/pages" -Body $body
         Set-RecordProperty -Record $Film -Name "notion_page_id" -Value $created.id
+        if ($null -ne $Context) {
+            $Context.filmPagesById[$created.id] = $created
+            $key = [string](Get-ObjectProperty $Film "canonical_key" "")
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $Context.filmPagesByCanonicalKey[$key] = $created
+            }
+            Add-NotionSyncStat -Stats $Context.stats -Name "films_created"
+        }
     }
     else {
-        $body = @{ properties = $properties }
-        if ($null -ne $cover) { $body["cover"] = $cover }
-        $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body $body
-        Set-RecordProperty -Record $Film -Name "notion_page_id" -Value $updated.id
+        $changedProperties = Get-NotionChangedProperties -DesiredProperties $properties -Page $page
+        $body = @{}
+        if ($changedProperties.Count -gt 0) { $body["properties"] = $changedProperties }
+        if ($body.Count -gt 0) {
+            $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body $body
+            Set-RecordProperty -Record $Film -Name "notion_page_id" -Value $updated.id
+            if ($null -ne $Context) {
+                $Context.filmPagesById[$updated.id] = $updated
+                $key = [string](Get-ObjectProperty $Film "canonical_key" "")
+                if (-not [string]::IsNullOrWhiteSpace($key)) {
+                    $Context.filmPagesByCanonicalKey[$key] = $updated
+                }
+                Add-NotionSyncStat -Stats $Context.stats -Name "films_patched"
+            }
+        }
+        else {
+            Set-RecordProperty -Record $Film -Name "notion_page_id" -Value $page.id
+            if ($null -ne $Context) { Add-NotionSyncStat -Stats $Context.stats -Name "films_skipped" }
+        }
     }
 
     return $Film
@@ -3022,29 +3227,51 @@ function Sync-NotionCanonicalFilm {
 function Set-NotionPageFilmRelation {
     param(
         [Parameter(Mandatory = $true)][string]$PageId,
-        [Parameter(Mandatory = $true)][string]$FilmPageId
+        [Parameter(Mandatory = $true)][string]$FilmPageId,
+        [object]$Context = $null
     )
+
+    if ($null -ne $Context -and $Context.selectionRelationByPageId.ContainsKey($PageId) -and $Context.selectionRelationByPageId[$PageId] -eq $FilmPageId) {
+        Add-NotionSyncStat -Stats $Context.stats -Name "relations_skipped"
+        return
+    }
 
     Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$PageId" -Body @{
         properties = @{
             "Film" = @{ relation = @(@{ id = $FilmPageId }) }
         }
     } | Out-Null
+    if ($null -ne $Context) {
+        $Context.selectionRelationByPageId[$PageId] = $FilmPageId
+        Add-NotionSyncStat -Stats $Context.stats -Name "relations_patched"
+    }
 }
 
 function Sync-NotionFilm {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
-        [Parameter(Mandatory = $true)][string]$DatabaseId
+        [Parameter(Mandatory = $true)][string]$DatabaseId,
+        [object]$Context = $null
     )
 
     $properties = ConvertTo-NotionFilmProperties -Film $Film
     $page = $null
     if (-not [string]::IsNullOrWhiteSpace($Film.notion_page_id)) {
-        $page = [pscustomobject]@{ id = $Film.notion_page_id }
+        $pageId = [string]$Film.notion_page_id
+        if ($null -ne $Context -and $Context.selectionPagesByTrackerId.ContainsKey($Film.id)) {
+            $page = $Context.selectionPagesByTrackerId[$Film.id]
+        }
+        elseif ($null -eq $Context) {
+            $page = [pscustomobject]@{ id = $pageId }
+        }
     }
     else {
-        $page = Find-NotionPageByTrackerId -DatabaseId $DatabaseId -TrackerId $Film.id
+        if ($null -ne $Context -and $Context.selectionPagesByTrackerId.ContainsKey($Film.id)) {
+            $page = $Context.selectionPagesByTrackerId[$Film.id]
+        }
+        else {
+            $page = Find-NotionPageByTrackerId -DatabaseId $DatabaseId -TrackerId $Film.id
+        }
     }
 
     if ($null -eq $page) {
@@ -3058,15 +3285,28 @@ function Sync-NotionFilm {
         }
         $created = Invoke-NotionRequest -Method "POST" -Path "/v1/pages" -Body $body
         $Film.notion_page_id = $created.id
+        if ($null -ne $Context) {
+            $Context.selectionPagesByTrackerId[$Film.id] = $created
+            Add-NotionSyncStat -Stats $Context.stats -Name "selections_created"
+        }
     }
     else {
-        $body = @{ properties = $properties }
         $cover = Get-NotionPageCover -Film $Film
-        if ($null -ne $cover) {
-            $body["cover"] = $cover
+        $changedProperties = Get-NotionChangedProperties -DesiredProperties $properties -Page $page
+        $body = @{}
+        if ($changedProperties.Count -gt 0) { $body["properties"] = $changedProperties }
+        if ($body.Count -gt 0) {
+            $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body $body
+            $Film.notion_page_id = $updated.id
+            if ($null -ne $Context) {
+                $Context.selectionPagesByTrackerId[$Film.id] = $updated
+                Add-NotionSyncStat -Stats $Context.stats -Name "selections_patched"
+            }
         }
-        $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body $body
-        $Film.notion_page_id = $updated.id
+        else {
+            $Film.notion_page_id = $page.id
+            if ($null -ne $Context) { Add-NotionSyncStat -Stats $Context.stats -Name "selections_skipped" }
+        }
     }
 
     return $Film
@@ -3103,7 +3343,8 @@ function Sync-NotionEvent {
     param(
         [Parameter(Mandatory = $true)][object]$Event,
         [Parameter(Mandatory = $true)][string]$DatabaseId,
-        [hashtable]$FilmPageIdByTrackerId = @{}
+        [hashtable]$FilmPageIdByTrackerId = @{},
+        [object]$Context = $null
     )
 
     $filmTrackerId = [string](Get-ObjectProperty $Event "film_id" "")
@@ -3112,7 +3353,13 @@ function Sync-NotionEvent {
     }
 
     $properties = ConvertTo-NotionEventProperties -Event $Event
-    $page = Find-NotionPageByTrackerId -DatabaseId $DatabaseId -TrackerId $Event.id
+    $page = $null
+    if ($null -ne $Context -and $Context.eventPagesByTrackerId.ContainsKey($Event.id)) {
+        $page = $Context.eventPagesByTrackerId[$Event.id]
+    }
+    else {
+        $page = Find-NotionPageByTrackerId -DatabaseId $DatabaseId -TrackerId $Event.id
+    }
     if ($null -eq $page) {
         $body = @{
             parent = @{ database_id = $DatabaseId }
@@ -3120,11 +3367,25 @@ function Sync-NotionEvent {
         }
         $created = Invoke-NotionRequest -Method "POST" -Path "/v1/pages" -Body $body
         $Event.notion_page_id = $created.id
+        if ($null -ne $Context) {
+            $Context.eventPagesByTrackerId[$Event.id] = $created
+            Add-NotionSyncStat -Stats $Context.stats -Name "events_created"
+        }
     }
     else {
-        $body = @{ properties = $properties }
-        $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body $body
-        $Event.notion_page_id = $updated.id
+        $changedProperties = Get-NotionChangedProperties -DesiredProperties $properties -Page $page
+        if ($changedProperties.Count -gt 0) {
+            $updated = Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$($page.id)" -Body @{ properties = $changedProperties }
+            $Event.notion_page_id = $updated.id
+            if ($null -ne $Context) {
+                $Context.eventPagesByTrackerId[$Event.id] = $updated
+                Add-NotionSyncStat -Stats $Context.stats -Name "events_patched"
+            }
+        }
+        else {
+            $Event.notion_page_id = $page.id
+            if ($null -ne $Context) { Add-NotionSyncStat -Stats $Context.stats -Name "events_skipped" }
+        }
     }
 
     return $Event
@@ -3257,7 +3518,8 @@ function New-NotionCanonicalFilmsDatabase {
 function Sync-NotionState {
     param(
         [object[]]$Films = @(),
-        [object[]]$NewEvents = @()
+        [object[]]$NewEvents = @(),
+        [switch]$EnsureNotionSchema
     )
 
     $canonicalFilmsDb = Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"
@@ -3276,14 +3538,20 @@ function Sync-NotionState {
             throw "Set NOTION_SELECTIONS_DATABASE_ID or NOTION_FILMS_DATABASE_ID before syncing three-table Notion state."
         }
 
-        Ensure-NotionThreeTableSchema -FilmsDatabaseId $canonicalFilmsDb -SelectionsDatabaseId $selectionsDb -EventsDatabaseId $eventsDb
-
         $filmItems = @($Films)
         $selectionItems = @($filmItems | Where-Object {
             -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "festival" "")) -or
             -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "section" "")) -or
             -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "source_url" ""))
         })
+
+        if ($EnsureNotionSchema) {
+            Ensure-NotionThreeTableSchema -FilmsDatabaseId $canonicalFilmsDb -SelectionsDatabaseId $selectionsDb -EventsDatabaseId $eventsDb
+        }
+
+        $contextSelectionsDb = if (@($selectionItems).Count -gt 0) { $selectionsDb } else { "" }
+        $contextEventsDb = if (@($NewEvents).Count -gt 0) { $eventsDb } else { "" }
+        $syncContext = New-NotionSyncContext -FilmsDatabaseId $canonicalFilmsDb -SelectionsDatabaseId $contextSelectionsDb -EventsDatabaseId $contextEventsDb
 
         if (@($selectionItems).Count -gt 0) {
             $canonicalFilms = @(Merge-CanonicalFilmRecords -Selections $selectionItems)
@@ -3299,7 +3567,7 @@ function Sync-NotionState {
             if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $film "canonical_key" ""))) {
                 Set-RecordProperty -Record $film -Name "canonical_key" -Value (Get-CanonicalFilmKey -Film $film)
             }
-            $synced = Sync-NotionCanonicalFilm -Film $film -DatabaseId $canonicalFilmsDb
+            $synced = Sync-NotionCanonicalFilm -Film $film -DatabaseId $canonicalFilmsDb -Context $syncContext
             $syncedCanonicalFilms.Add($synced)
             $key = [string](Get-ObjectProperty $synced "canonical_key" "")
             $pageId = [string](Get-ObjectProperty $synced "notion_page_id" "")
@@ -3314,11 +3582,11 @@ function Sync-NotionState {
 
         $syncedSelections = New-Object System.Collections.Generic.List[object]
         foreach ($selection in @($selectionItems)) {
-            $syncedSelection = Sync-NotionFilm -Film $selection -DatabaseId $selectionsDb
+            $syncedSelection = Sync-NotionFilm -Film $selection -DatabaseId $selectionsDb -Context $syncContext
             $syncedSelections.Add($syncedSelection)
             $key = Get-CanonicalFilmKey -Film $selection
             if ($filmPageIdByCanonicalKey.ContainsKey($key)) {
-                Set-NotionPageFilmRelation -PageId $syncedSelection.notion_page_id -FilmPageId $filmPageIdByCanonicalKey[$key]
+                Set-NotionPageFilmRelation -PageId $syncedSelection.notion_page_id -FilmPageId $filmPageIdByCanonicalKey[$key] -Context $syncContext
             }
         }
 
@@ -3336,13 +3604,20 @@ function Sync-NotionState {
             if (-not [string]::IsNullOrWhiteSpace($canonicalKey) -and $filmPageIdByCanonicalKey.ContainsKey($canonicalKey)) {
                 Set-RecordProperty -Record $event -Name "film_notion_page_id" -Value $filmPageIdByCanonicalKey[$canonicalKey]
             }
-            $syncedEvents.Add((Sync-NotionEvent -Event $event -DatabaseId $eventsDb -FilmPageIdByTrackerId $filmPageIdByTrackerId))
+            $syncedEvents.Add((Sync-NotionEvent -Event $event -DatabaseId $eventsDb -FilmPageIdByTrackerId $filmPageIdByTrackerId -Context $syncContext))
         }
+
+        Write-Host ("Notion sync stats: films created={0}, patched={1}, skipped={2}; selections created={3}, patched={4}, skipped={5}; relations patched={6}, skipped={7}; events created={8}, patched={9}, skipped={10}" -f `
+            $syncContext.stats.films_created, $syncContext.stats.films_patched, $syncContext.stats.films_skipped, `
+            $syncContext.stats.selections_created, $syncContext.stats.selections_patched, $syncContext.stats.selections_skipped, `
+            $syncContext.stats.relations_patched, $syncContext.stats.relations_skipped, `
+            $syncContext.stats.events_created, $syncContext.stats.events_patched, $syncContext.stats.events_skipped)
 
         return [pscustomobject]@{
             films = @($syncedCanonicalFilms.ToArray())
             selections = @($syncedSelections.ToArray())
             events = @($syncedEvents.ToArray())
+            stats = $syncContext.stats
         }
     }
 
@@ -3350,12 +3625,16 @@ function Sync-NotionState {
         throw "Set NOTION_FILMS_DATABASE_ID before syncing legacy Notion state."
     }
 
-    Ensure-NotionFilmMetadataProperties -DatabaseId $filmsDb
-    Ensure-NotionEventRelationProperty -EventsDatabaseId $eventsDb -FilmsDatabaseId $filmsDb
+    if ($EnsureNotionSchema) {
+        Ensure-NotionFilmMetadataProperties -DatabaseId $filmsDb
+        Ensure-NotionEventRelationProperty -EventsDatabaseId $eventsDb -FilmsDatabaseId $filmsDb
+    }
+
+    $syncContext = New-NotionSyncContext -SelectionsDatabaseId $filmsDb -EventsDatabaseId $eventsDb
 
     $syncedFilms = New-Object System.Collections.Generic.List[object]
     foreach ($film in @($Films)) {
-        $syncedFilms.Add((Sync-NotionFilm -Film $film -DatabaseId $filmsDb))
+        $syncedFilms.Add((Sync-NotionFilm -Film $film -DatabaseId $filmsDb -Context $syncContext))
     }
 
     $filmPageIdByTrackerId = @{}
@@ -3369,12 +3648,17 @@ function Sync-NotionState {
 
     $syncedEvents = New-Object System.Collections.Generic.List[object]
     foreach ($event in @($NewEvents)) {
-        $syncedEvents.Add((Sync-NotionEvent -Event $event -DatabaseId $eventsDb -FilmPageIdByTrackerId $filmPageIdByTrackerId))
+        $syncedEvents.Add((Sync-NotionEvent -Event $event -DatabaseId $eventsDb -FilmPageIdByTrackerId $filmPageIdByTrackerId -Context $syncContext))
     }
+
+    Write-Host ("Notion sync stats: selections created={0}, patched={1}, skipped={2}; events created={3}, patched={4}, skipped={5}" -f `
+        $syncContext.stats.selections_created, $syncContext.stats.selections_patched, $syncContext.stats.selections_skipped, `
+        $syncContext.stats.events_created, $syncContext.stats.events_patched, $syncContext.stats.events_skipped)
 
     return [pscustomobject]@{
         films = @($syncedFilms.ToArray())
         events = @($syncedEvents.ToArray())
+        stats = $syncContext.stats
     }
 }
 
@@ -3564,7 +3848,8 @@ function Invoke-FestivalTracker {
         [int]$OmdbMaxUpdates = 20,
         [switch]$UseNotion,
         [switch]$RespectFestivalWindows,
-        [switch]$DryRun
+        [switch]$DryRun,
+        [switch]$EnsureNotionSchema
     )
 
     $filmsPath = Join-Path $StateDir "films.json"
@@ -3616,10 +3901,11 @@ function Invoke-FestivalTracker {
         $films = @(Merge-FilmRecords -Existing $films -Incoming $localFilms)
     }
 
+    $lineupRecords = @()
     if ($Mode -eq "Lineups" -or $Mode -eq "All") {
-        $incoming = @(Get-FestivalLineupRecords -Config $config -RespectFestivalWindows:$RespectFestivalWindows)
-        $films = @(Merge-FilmRecords -Existing $films -Incoming $incoming)
-        Write-Host "Lineup sync found $($incoming.Count) records; merged total is $($films.Count)."
+        $lineupRecords = @(Get-FestivalLineupRecords -Config $config -RespectFestivalWindows:$RespectFestivalWindows)
+        $films = @(Merge-FilmRecords -Existing $films -Incoming $lineupRecords)
+        Write-Host "Lineup sync found $($lineupRecords.Count) records; merged total is $($films.Count)."
     }
 
     $newEvents = @()
@@ -3660,7 +3946,11 @@ function Invoke-FestivalTracker {
         Write-JsonFile -Path $filmsPath -Value $films
         Write-JsonFile -Path $eventsPath -Value $events
         if ($UseNotion) {
-            Sync-NotionState -Films $films -NewEvents $newEvents | Out-Null
+            $notionSyncFilms = $films
+            if ($Mode -eq "Lineups" -and @($lineupRecords).Count -gt 0) {
+                $notionSyncFilms = $lineupRecords
+            }
+            Sync-NotionState -Films $notionSyncFilms -NewEvents $newEvents -EnsureNotionSchema:$EnsureNotionSchema | Out-Null
         }
     }
     else {

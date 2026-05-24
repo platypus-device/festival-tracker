@@ -9,7 +9,8 @@ param(
 
     [switch]$UseNotion,
     [switch]$RespectFestivalWindows,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$EnsureNotionSchema
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,4 +25,5 @@ Invoke-FestivalTracker `
     -OmdbMaxUpdates $OmdbMaxUpdates `
     -UseNotion:$UseNotion `
     -RespectFestivalWindows:$RespectFestivalWindows `
-    -DryRun:$DryRun
+    -DryRun:$DryRun `
+    -EnsureNotionSchema:$EnsureNotionSchema

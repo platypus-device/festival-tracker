@@ -1,5 +1,5 @@
 ﻿{
-    "generatedAt":  "2026-05-24T14:48:17.8298128+08:00",
+    "generatedAt":  "2026-05-24T17:37:12.8781187+08:00",
     "totals":  {
                    "films":  220,
                    "selections":  220,
@@ -7,11 +7,11 @@
                    "events":  94
                },
     "diagnostics":  {
-                        "lowConfidence":  58,
+                        "lowConfidence":  43,
                         "trackingNeedsReview":  0,
-                        "unmatched":  22,
-                        "missingPoster":  23,
-                        "missingTmdb":  22,
+                        "unmatched":  26,
+                        "missingPoster":  17,
+                        "missingTmdb":  26,
                         "missingDirector":  1,
                         "duplicateCanonical":  0
                     },
@@ -17499,7 +17499,7 @@
                       "imdbUrl":  "https://www.imdb.com/title/tt31778123/",
                       "tmdbUrl":  "https://www.themoviedb.org/movie/1442922",
                       "matchConfidence":  0.93,
-                      "posterUrl":  "https://image.tmdb.org/t/p/w500/p1Fd8cIp0rfqfmlb66ydZADsJP.jpg",
+                      "posterUrl":  "https://image.tmdb.org/t/p/w500/6Oha80OEhmtnDwlRYrdvLXP0mmo.jpg",
                       "overview":  "2007. Fred, a 17-year-old girl who just moved from Sweden to Northeast Italy, enrolls for her high school senior year—finding herself the only female student in an all-male class. Lively and good-looking, she quickly becomes the center of attention, especially for three classmates: Antero, charming and reserved; Pasini, a cocky womanizer; Mitis, gruff and sagacious. The three have been best friends for as long as they can remember, but Fred\u0027s arrival puts their longstanding bond to the test. As each of the guys secretly desires Fred for himself, she yearns to be accepted into the group and be considered \u0027one of them\u0027, but is asked to sacrifice more and more in order to belong.",
                       "tmdbRating":  7.3,
                       "imdbRating":  7.1,
@@ -17739,7 +17739,7 @@
                       "imdbUrl":  "",
                       "tmdbUrl":  "",
                       "matchConfidence":  0,
-                      "posterUrl":  "",
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512102149606.jpg",
                       "overview":  "",
                       "tmdbRating":  null,
                       "imdbRating":  null,
@@ -17750,7 +17750,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -17798,7 +17798,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -17835,7 +17835,7 @@
                       "imdbUrl":  "",
                       "tmdbUrl":  "",
                       "matchConfidence":  0,
-                      "posterUrl":  "",
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512102029125.jpg",
                       "overview":  "",
                       "tmdbRating":  null,
                       "imdbRating":  null,
@@ -17846,7 +17846,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -17883,7 +17883,7 @@
                       "imdbUrl":  "",
                       "tmdbUrl":  "",
                       "matchConfidence":  0,
-                      "posterUrl":  "",
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512101923403.jpg",
                       "overview":  "",
                       "tmdbRating":  null,
                       "imdbRating":  null,
@@ -17894,7 +17894,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -17931,7 +17931,7 @@
                       "imdbUrl":  "",
                       "tmdbUrl":  "",
                       "matchConfidence":  0,
-                      "posterUrl":  "",
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512102334343.jpg",
                       "overview":  "",
                       "tmdbRating":  null,
                       "imdbRating":  null,
@@ -17942,7 +17942,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -17979,7 +17979,7 @@
                       "imdbUrl":  "",
                       "tmdbUrl":  "",
                       "matchConfidence":  0,
-                      "posterUrl":  "",
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512101842346.jpg",
                       "overview":  "",
                       "tmdbRating":  null,
                       "imdbRating":  null,
@@ -17990,7 +17990,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18027,7 +18027,7 @@
                       "imdbUrl":  "",
                       "tmdbUrl":  "",
                       "matchConfidence":  0,
-                      "posterUrl":  "",
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512101647325.jpg",
                       "overview":  "",
                       "tmdbRating":  null,
                       "imdbRating":  null,
@@ -18038,7 +18038,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18086,7 +18086,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18107,34 +18107,34 @@
                                           ]
                   },
                   {
-                      "id":  "a4539f2e98a2a29863f4841f",
+                      "id":  "54ac9f1cbe28df25caeaac20",
                       "title":  "深度安靜",
                       "originalTitle":  "深度安靜",
                       "director":  "沈可尚",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  2026,
+                      "filmYear":  null,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳男主角; 最佳男配角; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳聲音設計",
                       "sourceUrl":  "",
-                      "tmdbId":  1239037,
-                      "imdbId":  "tt36354070",
-                      "imdbUrl":  "https://www.imdb.com/title/tt36354070/",
-                      "tmdbUrl":  "https://www.themoviedb.org/movie/1239037",
-                      "matchConfidence":  0.7,
-                      "posterUrl":  "https://image.tmdb.org/t/p/w500/oFWqjpIGMmTbMe39asGie7VByNZ.jpg",
-                      "overview":  "After his pregnant wife Yi-ting unexpectedly committed suicide, Ming decides to take care of his father-in-law, only to find out the unbearable truth of Yi-ting’s family that leads to her death.",
-                      "tmdbRating":  6,
-                      "imdbRating":  7.4,
-                      "imdbVotes":  77,
-                      "imdbRatingCheckedAt":  "2026-05-24",
-                      "ratingSource":  "IMDb Dataset",
+                      "tmdbId":  null,
+                      "imdbId":  "",
+                      "imdbUrl":  "",
+                      "tmdbUrl":  "",
+                      "matchConfidence":  0,
+                      "posterUrl":  "",
+                      "overview":  "",
+                      "tmdbRating":  null,
+                      "imdbRating":  null,
+                      "imdbVotes":  null,
+                      "imdbRatingCheckedAt":  "",
+                      "ratingSource":  "",
                       "metadataSource":  "",
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
-                      "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lastChecked":  "",
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18148,7 +18148,7 @@
                                              "sourceUrl":  "https://www.taipeiff.taipei/tw/tfa?tab=shortlist"
                                          }
                                      ],
-                      "canonicalFilmKey":  "tmdb:1239037",
+                      "canonicalFilmKey":  "title::深度安靜:沈可尚",
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳男主角; 最佳男配角; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳聲音設計"
@@ -18171,7 +18171,7 @@
                       "imdbUrl":  "",
                       "tmdbUrl":  "",
                       "matchConfidence":  0,
-                      "posterUrl":  "",
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512102226259.jpg",
                       "overview":  "",
                       "tmdbRating":  null,
                       "imdbRating":  null,
@@ -18182,7 +18182,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18203,34 +18203,34 @@
                                           ]
                   },
                   {
-                      "id":  "e4b37b4e6f3bf2eeb860447f",
+                      "id":  "5f46d1e7454a605db6f77c08",
                       "title":  "雙囍",
                       "originalTitle":  "雙囍",
                       "director":  "許承傑",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  2026,
+                      "filmYear":  null,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳女配角; 最佳剪輯; 最佳造型設計",
                       "sourceUrl":  "",
-                      "tmdbId":  1536559,
-                      "imdbId":  "tt38067963",
-                      "imdbUrl":  "https://www.imdb.com/title/tt38067963/",
-                      "tmdbUrl":  "https://www.themoviedb.org/movie/1536559",
-                      "matchConfidence":  0.7,
-                      "posterUrl":  "https://image.tmdb.org/t/p/w500/1MzikEP1A09dZFuQu5DBxJFPNH7.jpg",
-                      "overview":  "Groom-to-be Tim must pull off two perfect weddings on the same night, at the same five-star hotel, all without his divorced parents discovering each other.",
-                      "tmdbRating":  9.8,
-                      "imdbRating":  7.9,
-                      "imdbVotes":  328,
-                      "imdbRatingCheckedAt":  "2026-05-24",
-                      "ratingSource":  "IMDb Dataset",
+                      "tmdbId":  null,
+                      "imdbId":  "",
+                      "imdbUrl":  "",
+                      "tmdbUrl":  "",
+                      "matchConfidence":  0,
+                      "posterUrl":  "",
+                      "overview":  "",
+                      "tmdbRating":  null,
+                      "imdbRating":  null,
+                      "imdbVotes":  null,
+                      "imdbRatingCheckedAt":  "",
+                      "ratingSource":  "",
                       "metadataSource":  "",
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
-                      "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lastChecked":  "",
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18244,32 +18244,32 @@
                                              "sourceUrl":  "https://www.taipeiff.taipei/tw/tfa?tab=shortlist"
                                          }
                                      ],
-                      "canonicalFilmKey":  "tmdb:1536559",
+                      "canonicalFilmKey":  "title::雙囍:許承傑",
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳女配角; 最佳剪輯; 最佳造型設計"
                                           ]
                   },
                   {
-                      "id":  "20dd29c0eddbe3f02c42e0ab",
+                      "id":  "55de065c5999000c6a9f538c",
                       "title":  "我未許願先吹蠟燭",
                       "originalTitle":  "我未許願先吹蠟燭",
-                      "director":  "Chao Koi-Wang, Yen Hu",
+                      "director":  "周鉅宏、胡錦筵",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  2026,
+                      "filmYear":  null,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
                       "sourceUrl":  "",
-                      "tmdbId":  1402984,
+                      "tmdbId":  null,
                       "imdbId":  "",
                       "imdbUrl":  "",
-                      "tmdbUrl":  "https://www.themoviedb.org/movie/1402984",
-                      "matchConfidence":  0.7,
-                      "posterUrl":  "https://image.tmdb.org/t/p/w500/3CcHR1aSewVqEFdbA0UAUMzeyO0.jpg",
-                      "overview":  "Young Jojo suddenly comes into a stack of casino chips worth a million and decides to pay off her runaway father’s debt, asking the down-on-his-luck debt collector Hua to gamble on her behalf. In Macau’s chaotic casinos, they form an unlikely alliance, navigating wins, losses, and life’s challenges together. When the final bet arrives, fate cruelly tests them, stripping them of everything, yet revealing the true gift life has been offering. I Blew Out the Candle Before Making a Wish explores money, family, and responsibility, capturing the shadows and resilience of human nature.",
-                      "tmdbRating":  0,
+                      "tmdbUrl":  "",
+                      "matchConfidence":  0,
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512102110486.jpg",
+                      "overview":  "",
+                      "tmdbRating":  null,
                       "imdbRating":  null,
                       "imdbVotes":  null,
                       "imdbRatingCheckedAt":  "",
@@ -18277,8 +18277,8 @@
                       "metadataSource":  "",
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
-                      "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lastChecked":  "",
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18292,41 +18292,41 @@
                                              "sourceUrl":  "https://www.taipeiff.taipei/tw/intc?tab=shortlist"
                                          }
                                      ],
-                      "canonicalFilmKey":  "tmdb:1402984",
+                      "canonicalFilmKey":  "title::我未許願先吹蠟燭:周鉅宏 胡錦筵",
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
                                           ]
                   },
                   {
-                      "id":  "81f77b3f1ac60c94e3745e65",
+                      "id":  "af06d368098a0753555e3c67",
                       "title":  "炎上",
                       "originalTitle":  "炎上",
                       "director":  "長久允",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  2026,
+                      "filmYear":  null,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
                       "sourceUrl":  "",
-                      "tmdbId":  1559189,
-                      "imdbId":  "tt39150067",
-                      "imdbUrl":  "https://www.imdb.com/title/tt39150067/",
-                      "tmdbUrl":  "https://www.themoviedb.org/movie/1559189",
-                      "matchConfidence":  0.7,
-                      "posterUrl":  "https://image.tmdb.org/t/p/w500/rvuyrsPsMEKiwmQsVB5XFM0ZkK7.jpg",
-                      "overview":  "When runaway teen Ju-Ju is embraced by a tribe of misfit youths in Kabukicho, she finds belonging for the first time — until betrayal and despair twist her haven into a prison, and she\u0027s left with one way to take back control.",
-                      "tmdbRating":  6,
-                      "imdbRating":  6.8,
-                      "imdbVotes":  64,
-                      "imdbRatingCheckedAt":  "2026-05-24",
-                      "ratingSource":  "IMDb Dataset",
+                      "tmdbId":  null,
+                      "imdbId":  "",
+                      "imdbUrl":  "",
+                      "tmdbUrl":  "",
+                      "matchConfidence":  0,
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512102300584.jpg",
+                      "overview":  "",
+                      "tmdbRating":  null,
+                      "imdbRating":  null,
+                      "imdbVotes":  null,
+                      "imdbRatingCheckedAt":  "",
+                      "ratingSource":  "",
                       "metadataSource":  "",
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
-                      "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lastChecked":  "",
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18340,7 +18340,7 @@
                                              "sourceUrl":  "https://www.taipeiff.taipei/tw/intc?tab=shortlist"
                                          }
                                      ],
-                      "canonicalFilmKey":  "tmdb:1559189",
+                      "canonicalFilmKey":  "title::炎上:長久允",
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
@@ -18363,7 +18363,7 @@
                       "imdbUrl":  "",
                       "tmdbUrl":  "",
                       "matchConfidence":  0,
-                      "posterUrl":  "",
+                      "posterUrl":  "https://www.taipeiff.taipei/files/20260512102001377.jpg",
                       "overview":  "",
                       "tmdbRating":  null,
                       "imdbRating":  null,
@@ -18374,7 +18374,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
@@ -18422,7 +18422,7 @@
                       "trackingStatus":  "pending",
                       "firstAvailableDate":  "",
                       "lastChecked":  "2026-05-24",
-                      "lowConfidence":  true,
+                      "lowConfidence":  false,
                       "availability":  [
 
                                        ],
