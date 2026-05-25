@@ -1,5 +1,5 @@
 ﻿{
-    "generatedAt":  "2026-05-25T14:51:15.2821677+08:00",
+    "generatedAt":  "2026-05-25T15:01:46.5591542+08:00",
     "totals":  {
                    "films":  252,
                    "selections":  267,
@@ -1631,13 +1631,11 @@
                   ],
     "years":  [
                   2026,
-                  2025,
-                  2024
+                  2025
               ],
     "festivalYears":  [
                           2026,
-                          2025,
-                          2024
+                          2025
                       ],
     "selectionCount":  267,
     "films":  [
@@ -5980,8 +5978,8 @@
                       "title":  "La Grazia",
                       "originalTitle":  "La Grazia",
                       "director":  "Paolo Sorrentino",
-                      "year":  2026,
-                      "festivalYear":  2026,
+                      "year":  2025,
+                      "festivalYear":  2025,
                       "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
@@ -6092,14 +6090,14 @@
                                              "festival":  "Venice",
                                              "region":  "Italy",
                                              "section":  "Venezia Competition",
-                                             "festivalYear":  2026,
+                                             "festivalYear":  2025,
                                              "sourceUrl":  "https://www.labiennale.org/en/cinema/2025/venezia-82-competition"
                                          }
                                      ],
                       "canonicalFilmKey":  "tmdb:1397364",
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
-                                              "Venice 2026 Venezia Competition"
+                                              "Venice 2025 Venezia Competition"
                                           ]
                   },
                   {
@@ -13637,8 +13635,8 @@
                       "title":  "Barrio triste",
                       "originalTitle":  "Barrio triste",
                       "director":  "STILLZ",
-                      "year":  2024,
-                      "festivalYear":  2024,
+                      "year":  2025,
+                      "festivalYear":  2025,
                       "filmYear":  2026,
                       "festival":  "Venice",
                       "region":  "",
@@ -13670,14 +13668,14 @@
                                              "festival":  "Venice",
                                              "region":  "Italy",
                                              "section":  "Orizzonti Competition",
-                                             "festivalYear":  2024,
+                                             "festivalYear":  2025,
                                              "sourceUrl":  "https://www.labiennale.org/en/cinema/2025/orizzonti"
                                          }
                                      ],
                       "canonicalFilmKey":  "tmdb:1310573",
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
-                                              "Venice 2024 Orizzonti Competition"
+                                              "Venice 2025 Orizzonti Competition"
                                           ]
                   },
                   {

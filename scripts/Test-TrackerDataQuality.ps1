@@ -50,6 +50,18 @@ function Get-SelectionFestivalYear {
     return ConvertTo-OptionalInt (Get-ObjectProperty $Selection "year" $null)
 }
 
+function Test-SelectionSourceYearMatches {
+    param([Parameter(Mandatory = $true)][object]$Selection)
+
+    $sourceUrl = [string](Get-ObjectProperty $Selection "sourceUrl" (Get-ObjectProperty $Selection "source_url" ""))
+    if ($sourceUrl -notmatch '/(?<urlYear>20\d{2})/') {
+        return $true
+    }
+
+    $festivalYear = Get-SelectionFestivalYear -Selection $Selection
+    return ($null -eq $festivalYear -or $festivalYear -eq [int]$Matches.urlYear)
+}
+
 $qualityErrors = New-Object System.Collections.Generic.List[object]
 $qualityWarnings = New-Object System.Collections.Generic.List[object]
 $films = @()
@@ -82,6 +94,11 @@ if (Test-Path -LiteralPath $DataPath) {
     $taipeiOutOfScope = @($selections | Where-Object { -not (Test-TaipeiSelectionInScope -Selection $_) })
     if ($taipeiOutOfScope.Count -gt 0) {
         Add-QualityIssue -List $qualityErrors -Code "taipei_out_of_scope" -Message "Taipei Film Festival selections outside the approved scope are visible in web export." -Count $taipeiOutOfScope.Count
+    }
+
+    $sourceYearMismatch = @($selections | Where-Object { -not (Test-SelectionSourceYearMatches -Selection $_) })
+    if ($sourceYearMismatch.Count -gt 0) {
+        Add-QualityIssue -List $qualityErrors -Code "selection_source_year_mismatch" -Message "Selections have a Festival Year that does not match the year in their source URL." -Count $sourceYearMismatch.Count
     }
 
     $missingPoster = @($films | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.posterUrl) }).Count
@@ -161,6 +178,11 @@ if ($UseNotion) {
         $notionTaipeiOutOfScope = @($notionSelections | Where-Object { -not (Test-TaipeiSelectionInScope -Selection $_) })
         if ($notionTaipeiOutOfScope.Count -gt 0) {
             Add-QualityIssue -List $qualityErrors -Code "notion_taipei_out_of_scope" -Message "Taipei Film Festival selections outside the approved scope remain active in Notion." -Count $notionTaipeiOutOfScope.Count
+        }
+
+        $notionSourceYearMismatch = @($notionSelections | Where-Object { -not (Test-SelectionSourceYearMatches -Selection $_) })
+        if ($notionSourceYearMismatch.Count -gt 0) {
+            Add-QualityIssue -List $qualityErrors -Code "notion_selection_source_year_mismatch" -Message "Notion selections have a Festival Year that does not match the year in their source URL." -Count $notionSourceYearMismatch.Count
         }
     }
 
