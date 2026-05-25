@@ -178,18 +178,16 @@
       "lineupWindow": { "startMonth": 5, "endMonth": 7 },
       "sources": [
         {
-          "url": "https://www.taipeiff.taipei/tw/tfa?tab=shortlist",
-          "enabled": false,
+          "url": "https://www.taipeiff.taipei/2025/tw/tfa?tab=shortlist",
           "parser": "taipeiff_tfa_nominees",
           "year": 2025,
-          "notes": "Current API token flow resolves the active edition; keep disabled until a stable 2025 archive endpoint is confirmed."
+          "notes": "Official 2025 archive API; parser filters to Best Narrative Feature nominees."
         },
         {
-          "url": "https://www.taipeiff.taipei/en/news/7ddc0697D4fe",
-          "enabled": false,
+          "url": "https://www.taipeiff.taipei/2025/tw/intc?tab=shortlist",
           "parser": "taipeiff_new_talent",
           "year": 2025,
-          "notes": "Official 2025 news page is stable, but this parser expects the active API endpoint."
+          "notes": "Official 2025 archive API for International New Talent Competition nominees."
         }
       ]
     }

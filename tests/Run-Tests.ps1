@@ -422,6 +422,9 @@ Assert-Equal 1 $taipeiNewTalent.Count "converts Taipei New Talent API data"
 Assert-Equal "Sample Director" $taipeiNewTalent[0].director "extracts Taipei New Talent director"
 Assert-Equal "https://www.taipeiff.taipei/files/sample-new-talent.jpg" $taipeiNewTalent[0].poster_url "keeps Taipei New Talent official poster fallback"
 
+Assert-Equal "2025/api/articles/tfa/nominees" (Get-TaipeiFilmFestivalApiEndpoint -Endpoint "api/articles/tfa/nominees" -SourceUrl "https://www.taipeiff.taipei/2025/tw/tfa?tab=shortlist") "uses Taipei archive year in API endpoint"
+Assert-Equal "api/articles/tfa/nominees" (Get-TaipeiFilmFestivalApiEndpoint -Endpoint "api/articles/tfa/nominees" -SourceUrl "https://www.taipeiff.taipei/tw/tfa?tab=shortlist") "keeps active Taipei API endpoint"
+
 $sampleWebFilms = @(
     [pscustomobject]@{ year = 2025 },
     [pscustomobject]@{ year = 2026 },

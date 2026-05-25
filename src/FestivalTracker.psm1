@@ -1314,11 +1314,26 @@ function Get-TaipeiFilmFestivalApiToken {
     }
 }
 
+function Get-TaipeiFilmFestivalApiEndpoint {
+    param(
+        [Parameter(Mandatory = $true)][string]$Endpoint,
+        [string]$SourceUrl
+    )
+
+    $cleanEndpoint = $Endpoint.TrimStart("/")
+    if ($SourceUrl -match '^https?://www\.taipeiff\.taipei/(?<archiveYear>20\d{2})/') {
+        return "$($Matches.archiveYear)/$cleanEndpoint"
+    }
+
+    return $cleanEndpoint
+}
+
 function Invoke-TaipeiFilmFestivalApi {
     param(
         [Parameter(Mandatory = $true)][string]$Endpoint,
         [Parameter(Mandatory = $true)][object]$Token,
-        [hashtable]$Query = @{}
+        [hashtable]$Query = @{},
+        [string]$SourceUrl
     )
 
     $params = @{}
@@ -1326,8 +1341,9 @@ function Invoke-TaipeiFilmFestivalApi {
         $params[$key] = $Query[$key]
     }
     $params[$Token.key] = $Token.value
+    $apiEndpoint = Get-TaipeiFilmFestivalApiEndpoint -Endpoint $Endpoint -SourceUrl $SourceUrl
 
-    return Invoke-RestMethod -Uri "https://www.taipeiff.taipei/$Endpoint" -Method Get -Body $params -Headers @{ "User-Agent" = $Script:UserAgent } -ErrorAction Stop
+    return Invoke-RestMethod -Uri "https://www.taipeiff.taipei/$apiEndpoint" -Method Get -Body $params -Headers @{ "User-Agent" = $Script:UserAgent } -ErrorAction Stop
 }
 
 function Get-TaipeiOfficialImageUrl {
@@ -1445,7 +1461,7 @@ function ConvertFrom-TaipeiFilmAwardsHtml {
     )
 
     $token = Get-TaipeiFilmFestivalApiToken -Html $Html -EndpointFragment "api/articles/tfa/nominees"
-    $data = Invoke-TaipeiFilmFestivalApi -Endpoint "api/articles/tfa/nominees" -Token $token -Query @{ type = "2"; search = "" }
+    $data = Invoke-TaipeiFilmFestivalApi -Endpoint "api/articles/tfa/nominees" -Token $token -Query @{ type = "2"; search = "" } -SourceUrl $SourceUrl
     if ($data.status -ne "success") {
         throw "Taipei Film Awards API returned status '$($data.status)'."
     }
@@ -1463,7 +1479,7 @@ function ConvertFrom-TaipeiNewTalentHtml {
     )
 
     $token = Get-TaipeiFilmFestivalApiToken -Html $Html -EndpointFragment "api/articles/international/nominees"
-    $data = Invoke-TaipeiFilmFestivalApi -Endpoint "api/articles/international/nominees" -Token $token -Query @{ pages = "1" }
+    $data = Invoke-TaipeiFilmFestivalApi -Endpoint "api/articles/international/nominees" -Token $token -Query @{ pages = "1" } -SourceUrl $SourceUrl
     if ($data.status -ne "success") {
         throw "Taipei New Talent API returned status '$($data.status)'."
     }
