@@ -392,9 +392,27 @@ $allSelections = @(
     $webFilms |
         ForEach-Object { @($_.selections) }
 )
-$years = @(
+$festivalYears = @(
     $allSelections |
         ForEach-Object { ConvertTo-OptionalInt (Get-ObjectProperty $_ "festivalYear" $null) } |
+        Where-Object { $null -ne $_ } |
+        Sort-Object -Descending -Unique
+)
+$filmYears = @(
+    $webFilms |
+        ForEach-Object {
+            $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $_ "filmYear" $null)
+            if ($null -ne $filmYear) {
+                $filmYear
+            }
+            else {
+                @($_.selections) |
+                    ForEach-Object { ConvertTo-OptionalInt (Get-ObjectProperty $_ "festivalYear" $null) } |
+                    Where-Object { $null -ne $_ } |
+                    Sort-Object |
+                    Select-Object -First 1
+            }
+        } |
         Where-Object { $null -ne $_ } |
         Sort-Object -Descending -Unique
 )
@@ -460,8 +478,9 @@ $payload = [pscustomobject]@{
         lowConfidenceFilms = @($lowConfidenceFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })
     }
     festivals = $festivals
-    years = $years
-    festivalYears = $years
+    years = $filmYears
+    filmYears = $filmYears
+    festivalYears = $festivalYears
     selectionCount = $allSelections.Count
     films = @($webFilms)
     events = @($events)

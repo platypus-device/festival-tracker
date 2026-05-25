@@ -126,6 +126,15 @@ const filmSelections = (film) => (Array.isArray(film.selections) && film.selecti
   },
 ]);
 
+const filmBrowseYear = (film) => {
+  if (film?.filmYear) return String(film.filmYear);
+  const fallbackYears = filmSelections(film)
+    .map((selection) => Number(selection.festivalYear))
+    .filter((year) => Number.isFinite(year) && year > 0)
+    .sort((a, b) => a - b);
+  return fallbackYears.length > 0 ? String(fallbackYears[0]) : "";
+};
+
 const selectionLabel = (selection) =>
   [selection.festival, selection.festivalYear, selection.section].filter(Boolean).join(" - ");
 
@@ -241,9 +250,11 @@ function setupFilters() {
         .filter(Boolean)
     ),
   ].sort((a, b) => String(a).localeCompare(String(b)));
-  const years = Array.isArray(state.data.years)
-    ? state.data.years
-    : [...new Set((state.data.films || []).map((film) => film.year).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
+  const years = Array.isArray(state.data.filmYears)
+    ? state.data.filmYears
+    : Array.isArray(state.data.years)
+      ? state.data.years
+      : [...new Set((state.data.films || []).map((film) => filmBrowseYear(film)).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
   els.festivalFilter.innerHTML = [
     `<option value="">All festivals</option>`,
     ...festivals.map((festival) => `<option value="${escapeHtml(festival)}">${escapeHtml(festival)}</option>`),
@@ -265,7 +276,7 @@ function filteredFilms() {
     films = films.filter((film) => filmSelections(film).some((selection) => selection.festival === state.festival));
   }
   if (state.year) {
-    films = films.filter((film) => filmSelections(film).some((selection) => String(selection.festivalYear || "") === state.year));
+    films = films.filter((film) => filmBrowseYear(film) === state.year);
   }
   if (state.status) {
     films = films.filter((film) => film.trackingStatus === state.status);
