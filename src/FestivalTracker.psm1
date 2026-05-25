@@ -719,14 +719,28 @@ function Update-FilmImdbDatasetRatings {
             continue
         }
         $rating = $ratings[$imdbId]
+        $changed = $false
         if ($null -ne $rating.imdb_rating -and $rating.imdb_rating -gt 0) {
-            Set-RecordProperty -Record $film -Name "imdb_rating" -Value $rating.imdb_rating
-            Set-RecordProperty -Record $film -Name "rating_source" -Value "IMDb Dataset"
-            Set-RecordProperty -Record $film -Name "imdb_rating_checked_at" -Value (Get-Date).ToString("yyyy-MM-dd")
-            $updated++
+            $currentRating = ConvertTo-OptionalDouble (Get-ObjectProperty $film "imdb_rating" $null)
+            if ($null -eq $currentRating -or [Math]::Abs($currentRating - [double]$rating.imdb_rating) -gt 0.001) {
+                Set-RecordProperty -Record $film -Name "imdb_rating" -Value $rating.imdb_rating
+                $changed = $true
+            }
+            if ([string](Get-ObjectProperty $film "rating_source" "") -ne "IMDb Dataset") {
+                Set-RecordProperty -Record $film -Name "rating_source" -Value "IMDb Dataset"
+                $changed = $true
+            }
         }
         if ($null -ne $rating.imdb_votes -and $rating.imdb_votes -gt 0) {
-            Set-RecordProperty -Record $film -Name "imdb_votes" -Value $rating.imdb_votes
+            $currentVotes = ConvertTo-OptionalInt (Get-ObjectProperty $film "imdb_votes" $null)
+            if ($null -eq $currentVotes -or $currentVotes -ne [int]$rating.imdb_votes) {
+                Set-RecordProperty -Record $film -Name "imdb_votes" -Value $rating.imdb_votes
+                $changed = $true
+            }
+        }
+        if ($changed) {
+            Set-RecordProperty -Record $film -Name "imdb_rating_checked_at" -Value (Get-Date).ToString("yyyy-MM-dd")
+            $updated++
         }
     }
 

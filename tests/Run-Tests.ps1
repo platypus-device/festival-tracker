@@ -626,6 +626,52 @@ Assert-True (-not (Test-FilmNeedsTmdbMetadataRefresh -Film $completeMetadataFilm
 $completeMetadataFilm.poster_url = ""
 Assert-True (Test-FilmNeedsTmdbMetadataRefresh -Film $completeMetadataFilm) "refreshes TMDb metadata when tracked fields are missing"
 
+$imdbStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-imdb-test-" + [guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Path (Join-Path $imdbStateDir "imdb") | Out-Null
+$imdbDatasetPath = Join-Path $imdbStateDir "imdb\title.ratings.tsv.gz"
+$imdbDatasetText = "tconst`taverageRating`numVotes`n" +
+    "tt7654321`t7.2`t1000`n" +
+    "tt7654322`t8.1`t2000`n"
+$fileStream = [System.IO.File]::Create($imdbDatasetPath)
+try {
+    $gzipStream = [System.IO.Compression.GZipStream]::new($fileStream, [System.IO.Compression.CompressionMode]::Compress)
+    try {
+        $writer = [System.IO.StreamWriter]::new($gzipStream)
+        try {
+            $writer.Write($imdbDatasetText)
+        }
+        finally {
+            $writer.Dispose()
+        }
+    }
+    finally {
+        $gzipStream.Dispose()
+    }
+}
+finally {
+    $fileStream.Dispose()
+}
+(Get-Item $imdbDatasetPath).LastWriteTime = Get-Date
+
+$unchangedRatingFilm = New-FilmRecord -Title "Unchanged Rating" -Director "Rating Director" -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Year 2026
+$unchangedRatingFilm.imdb_id = "tt7654321"
+$unchangedRatingFilm.imdb_rating = 7.2
+$unchangedRatingFilm.imdb_votes = 1000
+$unchangedRatingFilm.rating_source = "IMDb Dataset"
+$unchangedRatingFilm.imdb_rating_checked_at = "2026-01-01"
+$changedRatingFilm = New-FilmRecord -Title "Changed Rating" -Director "Rating Director" -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Year 2026
+$changedRatingFilm.imdb_id = "tt7654322"
+$changedRatingFilm.imdb_rating = 8.0
+$changedRatingFilm.imdb_votes = 1999
+$changedRatingFilm.rating_source = "IMDb Dataset"
+$changedRatingFilm.imdb_rating_checked_at = "2026-01-01"
+$ratedFilms = @(Update-FilmImdbDatasetRatings -Films @($unchangedRatingFilm, $changedRatingFilm) -StateDir $imdbStateDir)
+Assert-Equal "2026-01-01" $ratedFilms[0].imdb_rating_checked_at "keeps IMDb checked date when dataset values are unchanged"
+Assert-Equal 8.1 $ratedFilms[1].imdb_rating "updates changed IMDb dataset rating"
+Assert-Equal 2000 $ratedFilms[1].imdb_votes "updates changed IMDb dataset votes"
+Assert-Equal (Get-Date).ToString("yyyy-MM-dd") $ratedFilms[1].imdb_rating_checked_at "updates IMDb checked date when dataset values change"
+Remove-Item -LiteralPath $imdbStateDir -Recurse -Force
+
 if ($Script:Failures -gt 0) {
     throw "$Script:Failures test(s) failed."
 }

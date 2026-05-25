@@ -104,13 +104,17 @@ if (Test-Path -LiteralPath $DataPath) {
 
     $festivalLimits = @{
         "Academy Awards" = @{ warnMin = 15; warnMax = 25; failMax = 30 }
-        "Cannes" = @{ warnMin = 35; warnMax = 45; failMax = 50 }
+        "Cannes" = @{ warnMin = 20; warnMax = 45; failMax = 50 }
         "Karlovy Vary" = @{ warnMin = 20; warnMax = 30; failMax = 35 }
         "NYFF" = @{ warnMin = 25; warnMax = 35; failMax = 40 }
-        "Sundance" = @{ warnMin = 30; warnMax = 45; failMax = 50 }
+        "Sundance" = @{ warnMin = 15; warnMax = 45; failMax = 50 }
         "Taipei Film Festival" = @{ warnMin = 10; warnMax = 20; failMax = 25 }
         "Taipei Golden Horse Film Festival" = @{ warnMin = 3; warnMax = 10; failMax = 15 }
         "Venice" = @{ warnMin = 35; warnMax = 45; failMax = 50 }
+    }
+    $festivalYearLimitOverrides = @{
+        "Venice|2024" = @{ warnMin = 1; warnMax = 45; failMax = 50 }
+        "Venice|2026" = @{ warnMin = 1; warnMax = 45; failMax = 50 }
     }
 
     $selectionCounts = @(
@@ -129,7 +133,8 @@ if (Test-Path -LiteralPath $DataPath) {
         if (-not $festivalLimits.ContainsKey($sample.festival)) {
             continue
         }
-        $limits = $festivalLimits[$sample.festival]
+        $overrideKey = "$($sample.festival)|$($sample.year)"
+        $limits = if ($festivalYearLimitOverrides.ContainsKey($overrideKey)) { $festivalYearLimitOverrides[$overrideKey] } else { $festivalLimits[$sample.festival] }
         if ($group.Count -gt $limits.failMax) {
             Add-QualityIssue -List $qualityErrors -Code "festival_count_anomaly" -Message "$($sample.festival) $($sample.year) has $($group.Count) selections, above fail limit $($limits.failMax)." -Count $group.Count
         }

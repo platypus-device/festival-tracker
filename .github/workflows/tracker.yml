@@ -39,15 +39,27 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set IMDb cache key
+        if: github.event_name != 'push'
+        shell: pwsh
+        run: |
+          $now = Get-Date
+          $weekYear = [System.Globalization.ISOWeek]::GetYear($now)
+          $week = [System.Globalization.ISOWeek]::GetWeekOfYear($now)
+          $weekKey = "{0}-W{1:D2}" -f $weekYear, $week
+          "IMDB_CACHE_KEY=imdb-ratings-$weekKey" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Cache IMDb datasets
         if: github.event_name != 'push'
         uses: actions/cache@v4
         with:
           path: .tracker/imdb
-          key: imdb-ratings-${{ github.run_id }}
+          key: ${{ env.IMDB_CACHE_KEY }}
           restore-keys: |
             imdb-ratings-
 
