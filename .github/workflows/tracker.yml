@@ -104,6 +104,19 @@ jobs:
           & ./scripts/Export-TrackerData.ps1 -UseNotion
           & ./scripts/Test-TrackerDataQuality.ps1 -UseNotion -DataPath ./web/data/tracker-data.json
 
+      - name: Export tracker data
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
+          NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
+          NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: |
+          & ./scripts/Export-TrackerData.ps1 -UseNotion
+          & ./scripts/Test-TrackerDataQuality.ps1 -UseNotion -DataPath ./web/data/tracker-data.json
+
       - name: Prepare Pages artifact
         shell: pwsh
         run: |
