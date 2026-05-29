@@ -185,6 +185,41 @@ function Get-SelectionLabel {
     return ($parts -join " ")
 }
 
+function Get-FirstAvailabilityDate {
+    param([object[]]$Availability = @())
+
+    $dates = @(
+        $Availability |
+            ForEach-Object { [string](Get-ObjectProperty $_ "event_date" "") } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Sort-Object
+    )
+    if ($dates.Count -eq 0) {
+        return ""
+    }
+    return [string]$dates[0]
+}
+
+function Normalize-WebFilmAvailability {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $availability = @($Film.availability)
+    if ($availability.Count -eq 0) {
+        return
+    }
+
+    $sourceStatus = [string](Get-ObjectProperty $Film "trackingStatus" "pending")
+    Add-Member -InputObject $Film -NotePropertyName "sourceTrackingStatus" -NotePropertyValue $sourceStatus -Force
+    $Film.trackingStatus = "available_found"
+
+    if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "firstAvailableDate" ""))) {
+        $firstDate = Get-FirstAvailabilityDate -Availability $availability
+        if (-not [string]::IsNullOrWhiteSpace($firstDate)) {
+            $Film.firstAvailableDate = $firstDate
+        }
+    }
+}
+
 function Merge-WebFilms {
     param([object[]]$Films)
 
@@ -303,6 +338,7 @@ function Merge-WebFilms {
     }
 
     foreach ($film in @($byKey.Values)) {
+        Normalize-WebFilmAvailability -Film $film
         $selectionFestivals = @($film.selections | ForEach-Object { $_.festival } | Where-Object { $_ } | Select-Object -Unique)
         $film.festival = ($selectionFestivals -join ", ")
         $film.section = if (@($film.selections).Count -eq 1) { $film.selections[0].section } else { "$(@($film.selections).Count) selections" }
@@ -452,6 +488,13 @@ $missingTmdbFilms = @($webFilms | Where-Object {
 })
 $missingDirectorFilms = @($webFilms | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.director) })
 $lowConfidenceFilms = @($webFilms | Where-Object { $_.lowConfidence })
+$pendingWithAvailabilityFilms = @($webFilms | Where-Object {
+    [string](Get-ObjectProperty $_ "sourceTrackingStatus" (Get-ObjectProperty $_ "trackingStatus" "pending")) -eq "pending" -and
+    @($_.availability).Count -gt 0
+})
+foreach ($film in @($webFilms)) {
+    $film.PSObject.Properties.Remove("sourceTrackingStatus")
+}
 
 $payload = [pscustomobject]@{
     generatedAt = (Get-Date).ToString("o")
@@ -472,6 +515,7 @@ $payload = [pscustomobject]@{
         missingTmdb = $missingTmdbFilms.Count
         missingDirector = $missingDirectorFilms.Count
         duplicateCanonical = $duplicateCanonicalCount
+        pendingWithAvailability = $pendingWithAvailabilityFilms.Count
         missingPosterFilms = @($missingPosterFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })
         missingTmdbFilms = @($missingTmdbFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })
         missingDirectorFilms = @($missingDirectorFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })

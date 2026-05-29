@@ -2718,8 +2718,22 @@ function Add-FirstAvailabilityEvents {
         }
         $canonicalKey = Get-FilmCanonicalKey -Film $film
         $canonicalEventId = New-StableId ("first-availability|{0}" -f $canonicalKey)
-        if ($eventsByFilmId.ContainsKey($film.id) -or $eventsByCanonicalKey.ContainsKey($canonicalKey) -or $eventsByCanonicalKey.ContainsKey($canonicalEventId)) {
+        $existingEvent = $null
+        if ($eventsByFilmId.ContainsKey($film.id)) {
+            $existingEvent = $eventsByFilmId[$film.id]
+        }
+        elseif ($eventsByCanonicalKey.ContainsKey($canonicalKey)) {
+            $existingEvent = $eventsByCanonicalKey[$canonicalKey]
+        }
+        elseif ($eventsByCanonicalKey.ContainsKey($canonicalEventId)) {
+            $existingEvent = $eventsByCanonicalKey[$canonicalEventId]
+        }
+        if ($null -ne $existingEvent) {
             Set-RecordProperty -Record $film -Name "tracking_status" -Value "available_found"
+            if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $film "first_available_date" "")) -and
+                -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $existingEvent "event_date" ""))) {
+                Set-RecordProperty -Record $film -Name "first_available_date" -Value $existingEvent.event_date
+            }
             continue
         }
 

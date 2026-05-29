@@ -495,6 +495,30 @@ $duplicateFestivalFilms = @(
         last_checked = ""
         needs_review = $false
         authorized_source_urls = @()
+    },
+    [pscustomobject]@{
+        id = "selection-pending"
+        title = "Pending With Event"
+        original_title = "Pending With Event"
+        director = "Event Director"
+        year = 2025
+        festival_year = 2025
+        film_year = 2025
+        festival = "Berlin"
+        region = "Germany"
+        section = "Competition"
+        source_url = "https://example.test/berlin"
+        tmdb_id = 1002
+        imdb_id = "tt1002"
+        match_confidence = 1
+        poster_url = ""
+        overview = ""
+        tmdb_rating = 6.8
+        tracking_status = "pending"
+        first_available_date = ""
+        last_checked = ""
+        needs_review = $false
+        authorized_source_urls = @()
     }
 )
 $duplicateEvents = @(
@@ -510,6 +534,19 @@ $duplicateEvents = @(
         countries = @("US")
         source_urls = @("https://example.test/watch")
         needs_review = $false
+    },
+    [pscustomobject]@{
+        id = "event-pending"
+        film_id = "selection-pending"
+        film_title = "Pending With Event"
+        director = "Event Director"
+        festival = "Berlin"
+        event_date = "2026-05-20"
+        availability_types = @("digital_rent")
+        providers = @("Test")
+        countries = @("US")
+        source_urls = @("https://example.test/rent")
+        needs_review = $false
     }
 )
 ConvertTo-Json -InputObject $duplicateFestivalFilms -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "films.json") -Encoding UTF8
@@ -517,27 +554,34 @@ ConvertTo-Json -InputObject $duplicateEvents -Depth 10 | Set-Content -Path (Join
 & (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir | Out-Null
 $exportedWebData = Get-Content $exportOutput -Raw | ConvertFrom-Json
 $exportedSelectionCount = @($exportedWebData.films | ForEach-Object { @($_.selections) }).Count
-Assert-Equal 1 $exportedWebData.totals.films "exports one web card for duplicate TMDb selections"
-Assert-Equal 2 $exportedWebData.totals.selections "keeps both festival selections in export totals"
+Assert-Equal 2 $exportedWebData.totals.films "exports unique web cards for duplicate TMDb selections"
+Assert-Equal 3 $exportedWebData.totals.selections "keeps all festival selections in export totals"
 Assert-Equal $exportedSelectionCount $exportedWebData.totals.selections "keeps totals selections aligned with exported selection records"
 Assert-Equal $exportedSelectionCount $exportedWebData.selectionCount "keeps legacy selectionCount aligned with exported selection records"
 Assert-True ($null -eq $exportedWebData.totals.needsReview) "does not expose legacy review count in main totals"
+Assert-Equal 2 $exportedWebData.totals.available "counts available by unique web film"
+Assert-Equal 2 $exportedWebData.totals.events "keeps finds aligned with raw availability events"
+$pendingEventFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Pending With Event" })[0]
+Assert-Equal "available_found" $pendingEventFilm.trackingStatus "normalizes pending films with availability events"
+Assert-Equal "2026-05-20" $pendingEventFilm.firstAvailableDate "fills first available date from availability event"
+Assert-Equal 1 $exportedWebData.diagnostics.pendingWithAvailability "diagnoses source pending films with availability"
 Assert-Equal 1 $exportedWebData.diagnostics.lowConfidence "exports low confidence as diagnostics"
-Assert-Equal 2 $exportedWebData.films[0].selections.Count "keeps duplicate selections on merged web card"
-Assert-Equal 2024 $exportedWebData.films[0].filmYear "keeps film year separate from festival year"
-Assert-Equal 7.8 $exportedWebData.films[0].imdbRating "exports IMDb rating"
-Assert-Equal 12345 $exportedWebData.films[0].imdbVotes "exports IMDb vote count"
+$duplicateExportFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Duplicate Export" })[0]
+Assert-Equal 2 $duplicateExportFilm.selections.Count "keeps duplicate selections on merged web card"
+Assert-Equal 2024 $duplicateExportFilm.filmYear "keeps film year separate from festival year"
+Assert-Equal 7.8 $duplicateExportFilm.imdbRating "exports IMDb rating"
+Assert-Equal 12345 $duplicateExportFilm.imdbVotes "exports IMDb vote count"
 Assert-Equal 0 $exportedWebData.diagnostics.duplicateCanonical "exports duplicate canonical diagnostics"
-Assert-Equal 1 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
+Assert-Equal 2 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
 Assert-Equal 0 $exportedWebData.diagnostics.missingTmdb "exports missing TMDb diagnostics"
 Assert-Equal 0 $exportedWebData.diagnostics.missingDirector "exports missing director diagnostics"
-Assert-Equal 1 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
-Assert-Equal "Duplicate Export" $exportedWebData.diagnostics.missingPosterFilms[0].title "exports diagnostic film title"
+Assert-Equal 2 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
+Assert-True (@($exportedWebData.diagnostics.missingPosterFilms | Where-Object { $_.title -eq "Duplicate Export" }).Count -eq 1) "exports diagnostic film title"
 Assert-Equal "Duplicate Export" $exportedWebData.diagnostics.lowConfidenceFilms[0].title "exports low confidence film list"
-Assert-Equal "2024" (($exportedWebData.years | ForEach-Object { [string]$_ }) -join ",") "exports browse years from film years"
-Assert-Equal "2024" (($exportedWebData.filmYears | ForEach-Object { [string]$_ }) -join ",") "exports film year filter options"
+Assert-Equal "2025,2024" (($exportedWebData.years | ForEach-Object { [string]$_ }) -join ",") "exports browse years from film years"
+Assert-Equal "2025,2024" (($exportedWebData.filmYears | ForEach-Object { [string]$_ }) -join ",") "exports film year filter options"
 Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
-Assert-Equal "Cannes,NYFF" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
+Assert-Equal "Berlin,Cannes,NYFF" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
 Remove-Item -LiteralPath $exportStateDir -Recurse -Force
 
 $providerResult = [pscustomobject]@{
