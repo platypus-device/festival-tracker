@@ -58,6 +58,8 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --shell-gutter: 24px;
+  --toolbar-inset: 12px;
   --font-body: "Segoe UI", Aptos, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: Georgia, Cambria, "Times New Roman", ui-serif, serif;
   --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
@@ -186,9 +188,25 @@ main:focus-visible {
 }
 
 .shell {
-  width: min(1500px, calc(100% - 48px));
+  width: min(1500px, calc(100% - (var(--shell-gutter) * 2)));
   margin: 0 auto;
   padding: var(--space-4) 0 64px;
+}
+
+.topbar,
+.controls {
+  isolation: isolate;
+}
+
+.topbar::before,
+.controls::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  background: var(--color-chrome);
+  border-bottom: 1px solid var(--color-chrome-line);
+  backdrop-filter: blur(18px);
 }
 
 .topbar {
@@ -199,10 +217,7 @@ main:focus-visible {
   grid-template-columns: minmax(230px, 1fr) minmax(300px, auto) auto;
   gap: var(--space-4);
   align-items: center;
-  padding: var(--space-3) 0;
-  background: var(--color-chrome);
-  border-bottom: 1px solid var(--color-line);
-  backdrop-filter: blur(18px);
+  padding: var(--space-3) var(--toolbar-inset);
 }
 
 .brand h1,
@@ -296,10 +311,7 @@ h1 {
   display: grid;
   grid-template-columns: minmax(250px, 0.9fr) minmax(620px, 1.8fr);
   gap: var(--space-3);
-  padding: var(--space-3) 0;
-  background: var(--color-chrome);
-  border-bottom: 1px solid var(--color-chrome-line);
-  backdrop-filter: blur(18px);
+  padding: var(--space-3) var(--toolbar-inset);
 }
 
 .filter-drawer {
@@ -896,8 +908,12 @@ select:focus-visible {
 }
 
 @media (max-width: 780px) {
+  :root {
+    --shell-gutter: 14px;
+    --toolbar-inset: 0px;
+  }
+
   .shell {
-    width: min(100% - 28px, 1500px);
     padding-top: var(--space-3);
   }
 
@@ -1011,8 +1027,8 @@ select:focus-visible {
 }
 
 @media (max-width: 420px) {
-  .shell {
-    width: min(100% - 18px, 1500px);
+  :root {
+    --shell-gutter: 9px;
   }
 
   .summary-line {
