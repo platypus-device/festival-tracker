@@ -439,7 +439,7 @@ function openDetail(film) {
   els.detailContent.innerHTML = `
     <div class="detail-toolbar">
       <span>${escapeHtml(selectionSummaryLabel(film))}</span>
-      <button class="close-button" type="button" aria-label="Close detail">x</button>
+      <button class="close-button" type="button" aria-label="Close detail"></button>
     </div>
     <div class="detail-hero">
       <div class="poster">${posterMarkup(film)}</div>

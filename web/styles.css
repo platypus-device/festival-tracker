@@ -722,21 +722,44 @@ select:focus-visible {
 }
 
 .close-button {
-  display: grid;
-  place-items: center;
+  position: relative;
+  flex: 0 0 auto;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm);
-  background: var(--color-close-bg);
-  color: var(--color-text);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 0;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.close-button::before,
+.close-button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+.close-button::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.close-button::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .close-button:hover {
-  border-color: var(--color-line-strong);
+  border-color: var(--color-line);
   background: var(--color-hover-fill);
+  color: var(--color-text);
 }
 
 #detailPanel > .close-button {
