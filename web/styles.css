@@ -710,10 +710,11 @@ select:focus-visible {
   width: min(620px, 100%);
   overflow: auto;
   overscroll-behavior: contain;
-  background: var(--color-bg-soft);
+  background: var(--color-panel);
   box-shadow: var(--shadow-panel);
   transform: translateX(102%);
   transition: transform 180ms ease;
+  scrollbar-color: var(--color-faint) transparent;
 }
 
 .detail-panel.open {
@@ -721,25 +722,59 @@ select:focus-visible {
 }
 
 .close-button {
-  position: sticky;
-  top: var(--space-3);
-  float: right;
-  z-index: 2;
-  width: 36px;
-  height: 36px;
-  margin: var(--space-3);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-sm);
   background: var(--color-close-bg);
   color: var(--color-text);
   cursor: pointer;
+  font-size: 16px;
+}
+
+.close-button:hover {
+  border-color: var(--color-line-strong);
+  background: var(--color-hover-fill);
+}
+
+#detailPanel > .close-button {
+  display: none;
+}
+
+.detail-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 58px;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-chrome);
+  backdrop-filter: blur(18px);
+}
+
+.detail-toolbar span {
+  overflow: hidden;
+  color: var(--color-faint);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .detail-hero {
   display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: var(--space-5);
-  padding: 58px var(--space-6) var(--space-5);
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-5);
   border-bottom: 1px solid var(--color-line);
   background:
     linear-gradient(180deg, var(--color-detail-wash), transparent),
@@ -747,32 +782,45 @@ select:focus-visible {
 }
 
 .detail-hero .poster {
-  width: 170px;
+  width: 150px;
 }
 
 .detail-body {
-  padding: 0 var(--space-6) var(--space-8);
+  padding: var(--space-2) var(--space-5) var(--space-8);
 }
 
-.detail-hero .detail-body {
+.detail-copy {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-width: 0;
   padding: 0;
 }
 
-.detail-body h2 {
+.detail-copy h2 {
   margin: 0 0 var(--space-2);
   color: var(--color-paper);
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: clamp(28px, 4vw, 42px);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.04;
 }
 
+.detail-copy p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.detail-copy .film-facts {
+  align-self: start;
+  margin-top: var(--space-4);
+}
+
 .detail-body h3 {
-  margin: var(--space-6) 0 var(--space-2);
+  margin: var(--space-5) 0 var(--space-2);
   color: var(--color-faint);
   font-size: 11px;
   font-weight: 800;
@@ -781,6 +829,7 @@ select:focus-visible {
 }
 
 .detail-body p {
+  max-width: 60ch;
   color: var(--color-muted);
   line-height: 1.58;
 }
@@ -792,11 +841,11 @@ select:focus-visible {
 
 .selection-row {
   display: grid;
-  gap: 4px;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm);
-  background: var(--color-subtle-fill);
-  padding: 10px 12px;
+  grid-template-columns: minmax(92px, 0.35fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  border-bottom: 1px solid var(--color-line);
+  padding: 10px 0;
 }
 
 .selection-row strong {
@@ -811,11 +860,32 @@ select:focus-visible {
   font-size: 13px;
 }
 
+.metadata-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.metadata-row span {
+  min-height: 30px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-subtle-fill);
+  color: var(--color-faint);
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.metadata-row strong {
+  color: var(--color-paper);
+  font-weight: 700;
+}
+
 .availability-card {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-sm);
   background: var(--color-subtle-fill);
-  padding: var(--space-3);
+  padding: 10px 12px;
 }
 
 .availability-summary {
@@ -842,11 +912,13 @@ select:focus-visible {
 }
 
 .link-row a {
-  min-height: 32px;
+  min-height: 30px;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-sm);
+  background: var(--color-subtle-fill);
   color: var(--color-text);
-  padding: 7px 10px;
+  padding: 6px 9px;
+  font-size: 13px;
   text-decoration: none;
 }
 
@@ -1020,6 +1092,10 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .detail-hero {
+    align-items: start;
+  }
+
   .detail-hero .poster {
     width: min(190px, 58vw);
   }
@@ -1056,5 +1132,15 @@ select:focus-visible {
   .detail-hero {
     padding-left: var(--space-4);
     padding-right: var(--space-4);
+  }
+
+  .detail-toolbar {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .selection-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }

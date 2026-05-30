@@ -437,9 +437,13 @@ function openDetail(film) {
   ].filter(Boolean);
 
   els.detailContent.innerHTML = `
+    <div class="detail-toolbar">
+      <span>${escapeHtml(selectionSummaryLabel(film))}</span>
+      <button class="close-button" type="button" aria-label="Close detail">x</button>
+    </div>
     <div class="detail-hero">
       <div class="poster">${posterMarkup(film)}</div>
-      <div class="detail-body">
+      <div class="detail-copy">
         <h2>${escapeHtml(film.title || "Untitled")}</h2>
         <p>${escapeHtml([film.director, film.filmYear ? `Film ${film.filmYear}` : "", `${selections.length} selection${selections.length === 1 ? "" : "s"}`].filter(Boolean).join(" - "))}</p>
         <div class="film-facts">
@@ -464,10 +468,10 @@ function openDetail(film) {
           .join("")}
       </div>
       <h3>Years</h3>
-      <p>${escapeHtml([
-        `Festival years: ${[...new Set(selections.map((selection) => selection.festivalYear).filter(Boolean))].join(", ") || "Unknown"}`,
-        `Film year: ${film.filmYear || "Unknown"}`
-      ].join(" - "))}</p>
+      <div class="metadata-row">
+        <span>Festival years <strong>${escapeHtml([...new Set(selections.map((selection) => selection.festivalYear).filter(Boolean))].join(", ") || "Unknown")}</strong></span>
+        <span>Film year <strong>${escapeHtml(film.filmYear || "Unknown")}</strong></span>
+      </div>
       <h3>Availability</h3>
       ${
         firstEvent
@@ -487,6 +491,7 @@ function openDetail(film) {
   els.detailPanel.classList.add("open");
   els.detailPanel.setAttribute("aria-hidden", "false");
   els.overlay.classList.remove("hidden");
+  els.detailPanel.querySelector(".close-button")?.addEventListener("click", closeDetail);
 }
 
 function closeDetail() {
