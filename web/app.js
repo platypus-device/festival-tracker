@@ -386,6 +386,23 @@ function renderFilmGrid() {
   });
 }
 
+function findFilmForEvent(event) {
+  const films = Array.isArray(state.data.films) ? state.data.films : [];
+  const eventId = String(event?.id || "");
+  const eventFilmId = String(event?.film_id || "");
+
+  if (eventId) {
+    const filmByEventId = films.find((film) => (film.availability || []).some((item) => String(item.id || "") === eventId));
+    if (filmByEventId) return filmByEventId;
+  }
+
+  if (!eventFilmId) return null;
+  return films.find((film) =>
+    String(film.id || "") === eventFilmId ||
+    filmSelections(film).some((selection) => String(selection.id || "") === eventFilmId)
+  ) || null;
+}
+
 function renderEvents() {
   const events = Array.isArray(state.data.events) ? [...state.data.events] : [];
   events.sort((a, b) => String(b.event_date || "").localeCompare(String(a.event_date || "")));
@@ -400,8 +417,11 @@ function renderEvents() {
 
   els.eventList.innerHTML = events
     .map(
-      (event) => `
-        <article class="event-row">
+      (event, index) => {
+        const film = findFilmForEvent(event);
+        const eventKey = event.id || `${event.film_id || "event"}-${index}`;
+        return `
+        <article class="event-row${film ? " is-clickable" : ""}" data-event-id="${escapeHtml(eventKey)}"${film ? ` tabindex="0" role="button" aria-label="Open details for ${escapeHtml(event.film_title || "Untitled")}"` : ""}>
           <time>${escapeHtml(event.event_date || "No date")}</time>
           <div>
             <h3>${escapeHtml(event.film_title || "Untitled")}</h3>
@@ -409,9 +429,22 @@ function renderEvents() {
           </div>
           <span class="chip">${escapeHtml((event.availability_types || []).join(", "))}</span>
         </article>
-      `
+      `;
+      }
     )
     .join("");
+
+  els.eventList.querySelectorAll(".event-row.is-clickable").forEach((row) => {
+    const event = events.find((item, index) => String(item.id || `${item.film_id || "event"}-${index}`) === row.dataset.eventId);
+    const film = findFilmForEvent(event);
+    if (!film) return;
+    row.addEventListener("click", () => openDetail(film));
+    row.addEventListener("keydown", (keyboardEvent) => {
+      if (keyboardEvent.key !== "Enter" && keyboardEvent.key !== " ") return;
+      keyboardEvent.preventDefault();
+      openDetail(film);
+    });
+  });
 }
 
 function render() {

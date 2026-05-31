@@ -683,6 +683,21 @@ select:focus-visible {
   contain-intrinsic-size: 72px;
 }
 
+.event-row.is-clickable {
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.event-row.is-clickable:hover {
+  border-color: var(--color-line-strong);
+  background: var(--color-panel-raised);
+}
+
+.event-row.is-clickable:focus-visible {
+  border-color: var(--color-poster-focus-border);
+  box-shadow: 0 0 0 3px var(--color-poster-focus-shadow);
+}
+
 .event-row time {
   color: var(--color-faint);
   font-family: var(--font-mono);
