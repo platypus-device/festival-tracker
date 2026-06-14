@@ -81,7 +81,23 @@ function Test-EventMatchesFilm {
 
     $filmPageId = [string](Get-ObjectProperty $Film "notion_page_id" "")
     $eventFilmRelationIds = @((Get-ObjectProperty $Event "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })
-    return (-not [string]::IsNullOrWhiteSpace($filmPageId) -and $eventFilmRelationIds -contains $filmPageId)
+    if (-not [string]::IsNullOrWhiteSpace($filmPageId) -and $eventFilmRelationIds -contains $filmPageId) {
+        return $true
+    }
+
+    $eventTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Event "film_title" ""))
+    $filmTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Film "title" ""))
+    $filmOriginalTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Film "original_title" ""))
+    $eventDirector = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Event "director" ""))
+    $filmDirector = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Film "director" ""))
+    if (-not [string]::IsNullOrWhiteSpace($eventTitle) -and
+        ($eventTitle -eq $filmTitle -or (-not [string]::IsNullOrWhiteSpace($filmOriginalTitle) -and $eventTitle -eq $filmOriginalTitle)) -and
+        -not [string]::IsNullOrWhiteSpace($eventDirector) -and
+        $eventDirector -eq $filmDirector) {
+        return $true
+    }
+
+    return $false
 }
 
 function Resolve-YearMetadata {
