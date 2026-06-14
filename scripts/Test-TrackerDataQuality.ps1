@@ -62,6 +62,27 @@ function Test-SelectionSourceYearMatches {
     return ($null -eq $festivalYear -or $festivalYear -eq [int]$Matches.urlYear)
 }
 
+function Get-FilmPremiereYear {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $premiereYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiereYear" $null)
+    if ($null -ne $premiereYear) { return $premiereYear }
+    return ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiere_year" $null)
+}
+
+function Get-FilmEarliestFestivalYear {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $years = @(
+        @($Film.selections) |
+            ForEach-Object { Get-SelectionFestivalYear -Selection $_ } |
+            Where-Object { $null -ne $_ } |
+            Sort-Object
+    )
+    if (@($years).Count -eq 0) { return $null }
+    return [int]$years[0]
+}
+
 $qualityErrors = New-Object System.Collections.Generic.List[object]
 $qualityWarnings = New-Object System.Collections.Generic.List[object]
 $films = @()
@@ -71,6 +92,25 @@ if (Test-Path -LiteralPath $DataPath) {
     $payload = Get-Content -LiteralPath $DataPath -Raw | ConvertFrom-Json
     $films = @($payload.films)
     $selections = @($films | ForEach-Object { @($_.selections) })
+    $events = @($payload.events)
+    $attachedEventIds = @($films | ForEach-Object { @($_.availability) | ForEach-Object { [string](Get-ObjectProperty $_ "id" "") } | Where-Object { $_ } })
+    $orphanedAvailabilityEvents = @($events | Where-Object {
+        $eventId = [string](Get-ObjectProperty $_ "id" "")
+        -not [string]::IsNullOrWhiteSpace($eventId) -and $attachedEventIds -notcontains $eventId
+    })
+    if ($orphanedAvailabilityEvents.Count -gt 0) {
+        $sample = @(
+            $orphanedAvailabilityEvents |
+                Select-Object -First 5 |
+                ForEach-Object {
+                    "{0} ({1}, film_id={2})" -f `
+                        (Get-ObjectProperty $_ "film_title" "Untitled"),
+                        (Get-ObjectProperty $_ "event_date" "no date"),
+                        (Get-ObjectProperty $_ "film_id" "")
+                }
+        ) -join "; "
+        Add-QualityIssue -List $qualityErrors -Code "orphaned_availability_event" -Message "Availability events are not attached to exported film cards: $sample" -Count $orphanedAvailabilityEvents.Count
+    }
 
     $duplicateCanonical = @(
         $films |
@@ -99,6 +139,17 @@ if (Test-Path -LiteralPath $DataPath) {
     $sourceYearMismatch = @($selections | Where-Object { -not (Test-SelectionSourceYearMatches -Selection $_) })
     if ($sourceYearMismatch.Count -gt 0) {
         Add-QualityIssue -List $qualityErrors -Code "selection_source_year_mismatch" -Message "Selections have a Festival Year that does not match the year in their source URL." -Count $sourceYearMismatch.Count
+    }
+
+    $premiereAfterFestival = @(
+        $films | Where-Object {
+            $premiereYear = Get-FilmPremiereYear -Film $_
+            $earliestFestivalYear = Get-FilmEarliestFestivalYear -Film $_
+            $null -ne $premiereYear -and $null -ne $earliestFestivalYear -and $premiereYear -gt $earliestFestivalYear
+        }
+    )
+    if ($premiereAfterFestival.Count -gt 0) {
+        Add-QualityIssue -List $qualityErrors -Code "premiere_year_after_festival_year" -Message "Films have a Premiere Year later than their earliest Festival Year." -Count $premiereAfterFestival.Count
     }
 
     $missingPoster = @($films | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.posterUrl) }).Count

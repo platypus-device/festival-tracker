@@ -163,7 +163,7 @@ function Repair-MojibakeText {
 function Repair-RecordTextFields {
     param([Parameter(Mandatory = $true)][object]$Record)
 
-    foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "imdb_id", "overview", "poster_url", "metadata_source")) {
+    foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "imdb_id", "overview", "poster_url", "metadata_source", "year_source")) {
         if ($null -ne $Record.PSObject.Properties[$name]) {
             $value = Get-ObjectProperty $Record $name
             if ($null -ne $value -and $value -is [string]) {
@@ -238,6 +238,51 @@ function ConvertTo-NormalizedTitle {
     return $normalized.Trim()
 }
 
+function Get-DefaultYearSource {
+    param(
+        [AllowNull()][string]$Festival,
+        [bool]$HasExplicitFilmYear
+    )
+
+    if ($Festival -eq "Academy Awards") { return "oscars_eligibility" }
+    if ($HasExplicitFilmYear) { return "official_festival" }
+    return "festival_year_fallback"
+}
+
+function Get-RecordPremiereYear {
+    param([AllowNull()][object]$Film)
+
+    $premiereYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiere_year" (Get-ObjectProperty $Film "premiereYear" $null))
+    if ($null -ne $premiereYear -and $premiereYear -gt 0) { return $premiereYear }
+
+    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" (Get-ObjectProperty $Film "filmYear" $null))
+    if ($null -ne $filmYear -and $filmYear -gt 0) { return $filmYear }
+
+    $festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festival_year" (Get-ObjectProperty $Film "festivalYear" (Get-ObjectProperty $Film "year" $null)))
+    $festival = [string](Get-ObjectProperty $Film "festival" "")
+    if ($festival -eq "Academy Awards" -and $null -ne $festivalYear -and $festivalYear -gt 1) {
+        return ($festivalYear - 1)
+    }
+    return $festivalYear
+}
+
+function Get-RecordReleaseYear {
+    param([AllowNull()][object]$Film)
+
+    return ConvertTo-OptionalInt (Get-ObjectProperty $Film "release_year" (Get-ObjectProperty $Film "releaseYear" $null))
+}
+
+function Get-RecordYearSource {
+    param([AllowNull()][object]$Film)
+
+    $yearSource = [string](Get-ObjectProperty $Film "year_source" (Get-ObjectProperty $Film "yearSource" ""))
+    if (-not [string]::IsNullOrWhiteSpace($yearSource)) { return $yearSource }
+
+    $festival = [string](Get-ObjectProperty $Film "festival" "")
+    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" (Get-ObjectProperty $Film "filmYear" $null))
+    return Get-DefaultYearSource -Festival $festival -HasExplicitFilmYear:($null -ne $filmYear)
+}
+
 function New-StableId {
     param([Parameter(Mandatory = $true)][string]$InputText)
 
@@ -295,6 +340,9 @@ function New-FilmRecord {
         year = $Year
         festival_year = $Year
         film_year = $FilmYear
+        premiere_year = if ($null -ne $FilmYear) { $FilmYear } elseif ($Festival -eq "Academy Awards" -and $Year -gt 1) { $Year - 1 } else { $Year }
+        release_year = $null
+        year_source = Get-DefaultYearSource -Festival $Festival -HasExplicitFilmYear:($null -ne $FilmYear)
         festival = $Festival
         region = $Region
         section = $Section
@@ -1699,7 +1747,7 @@ function Merge-FilmRecords {
 
         if ($byId.ContainsKey($film.id)) {
             $existingFilm = $byId[$film.id]
-            foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "year", "film_year")) {
+            foreach ($name in @("title", "original_title", "director", "festival", "region", "section", "source_url", "year", "film_year", "premiere_year", "release_year", "year_source")) {
                 $incomingValue = Get-ObjectProperty $film $name
                 if ($null -ne $incomingValue -and -not [string]::IsNullOrWhiteSpace([string]$incomingValue)) {
                     if ($name -eq "section") {
@@ -1771,6 +1819,24 @@ function Get-TmdbMovieCreditsDirector {
     }
 }
 
+function Get-TmdbPremiereYearFromDetails {
+    param([AllowNull()][object]$Details)
+
+    $years = @(
+        @($Details.release_dates.results) |
+            ForEach-Object { @($_.release_dates) } |
+            Where-Object { (ConvertTo-OptionalInt (Get-ObjectProperty $_ "type" $null)) -eq 1 } |
+            ForEach-Object {
+                $releaseDate = [string](Get-ObjectProperty $_ "release_date" "")
+                if ($releaseDate -match '^(?<year>(19|20)\d{2})') { [int]$Matches.year }
+            } |
+            Where-Object { $null -ne $_ } |
+            Sort-Object
+    )
+    if (@($years).Count -eq 0) { return $null }
+    return [int]$years[0]
+}
+
 function Get-TmdbMovieMatch {
     param([Parameter(Mandatory = $true)][object]$Film)
 
@@ -1780,15 +1846,7 @@ function Get-TmdbMovieMatch {
         "language" = "en-US"
         "page" = "1"
     }
-    $festivalName = [string](Get-ObjectProperty $Film "festival" "")
-    $festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festival_year" (Get-ObjectProperty $Film "year" $null))
-    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
-    if ($festivalName -eq "Academy Awards" -and $null -ne $festivalYear -and $festivalYear -gt 1) {
-        $filmYear = $festivalYear - 1
-    }
-    elseif ($null -eq $filmYear) {
-        $filmYear = ConvertTo-OptionalInt $Film.year
-    }
+    $filmYear = Get-RecordPremiereYear -Film $Film
     if ($null -ne $filmYear -and $filmYear -gt 0) {
         $query["year"] = [string]$filmYear
     }
@@ -1840,6 +1898,8 @@ function Get-TmdbMovieMatch {
                 title = $candidate.title
                 original_title = $candidate.original_title
                 release_year = $candidateYear
+                premiere_year = $null
+                year_source = ""
                 director = $candidateDirector
                 confidence = [Math]::Min(1.0, [Math]::Round($score, 2))
                 poster_url = $null
@@ -1851,9 +1911,17 @@ function Get-TmdbMovieMatch {
 
     if ($null -ne $best -and $best.confidence -ge 0.65) {
         try {
-            $details = Invoke-TmdbGet -Path "/movie/$($best.tmdb_id)" -Query @{ "append_to_response" = "external_ids" }
+            $details = Invoke-TmdbGet -Path "/movie/$($best.tmdb_id)" -Query @{ "append_to_response" = "external_ids,release_dates" }
             if ($null -ne $details.external_ids.imdb_id) {
                 $best.imdb_id = $details.external_ids.imdb_id
+            }
+            if ([string]$details.release_date -match '^(?<year>(19|20)\d{2})') {
+                $best.release_year = [int]$Matches.year
+            }
+            $premiereYear = Get-TmdbPremiereYearFromDetails -Details $details
+            if ($null -ne $premiereYear -and $premiereYear -gt 0) {
+                $best.premiere_year = $premiereYear
+                $best.year_source = "tmdb_premiere"
             }
             if (-not [string]::IsNullOrWhiteSpace([string]$details.poster_path)) {
                 $best.poster_url = "https://image.tmdb.org/t/p/w500$($details.poster_path)"
@@ -1923,7 +1991,7 @@ function Test-FilmNeedsMetadataRepair {
         [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "director" "")) -or
         [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "poster_url" "")) -or
         [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "overview" "")) -or
-        $null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)) -or
+        $null -eq (Get-RecordReleaseYear -Film $Film) -or
         $null -eq (ConvertTo-OptionalDouble (Get-ObjectProperty $Film "tmdb_rating" $null)) -or
         ($IncludeLowConfidence -and $null -ne $confidence -and $confidence -gt 0 -and $confidence -lt 0.8)
     )
@@ -1936,7 +2004,7 @@ function Get-MetadataRepairFieldsChanged {
     )
 
     $changed = New-Object System.Collections.Generic.List[string]
-    foreach ($name in @("tmdb_id", "imdb_id", "director", "poster_url", "overview", "film_year", "tmdb_rating", "match_confidence", "metadata_source")) {
+    foreach ($name in @("tmdb_id", "imdb_id", "director", "poster_url", "overview", "premiere_year", "release_year", "year_source", "film_year", "tmdb_rating", "match_confidence", "metadata_source")) {
         $beforeValue = [string](Get-ObjectProperty $Before $name "")
         $afterValue = [string](Get-ObjectProperty $After $name "")
         if ($beforeValue -ne $afterValue) { $changed.Add($name) }
@@ -1990,7 +2058,11 @@ function Repair-FilmMissingMetadata {
                 }
                 if (-not [string]::IsNullOrWhiteSpace([string]$match.overview)) { Set-RecordProperty -Record $working -Name "overview" -Value (Repair-MojibakeText $match.overview) }
                 if ($null -ne $match.tmdb_rating) { Set-RecordProperty -Record $working -Name "tmdb_rating" -Value $match.tmdb_rating }
-                if ($match.release_year -gt 0) { Set-RecordProperty -Record $working -Name "film_year" -Value $match.release_year }
+                if ($match.release_year -gt 0) { Set-RecordProperty -Record $working -Name "release_year" -Value $match.release_year }
+                if ($null -ne $match.premiere_year -and $match.premiere_year -gt 0 -and $null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $working "premiere_year" $null))) {
+                    Set-RecordProperty -Record $working -Name "premiere_year" -Value $match.premiere_year
+                    Set-RecordProperty -Record $working -Name "year_source" -Value "tmdb_premiere"
+                }
                 $reason = ""
             }
             elseif ($null -ne $match) {
@@ -2032,7 +2104,7 @@ function Update-FilmMetadataFromTmdb {
         [Parameter(Mandatory = $true)][int]$TmdbId
     )
 
-    $details = Invoke-TmdbGet -Path "/movie/$TmdbId" -Query @{ "append_to_response" = "external_ids" }
+    $details = Invoke-TmdbGet -Path "/movie/$TmdbId" -Query @{ "append_to_response" = "external_ids,release_dates" }
     if ($null -ne $details.external_ids.imdb_id -and [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "imdb_id" ""))) {
         Set-RecordProperty -Record $Film -Name "imdb_id" -Value ([string]$details.external_ids.imdb_id)
     }
@@ -2055,8 +2127,13 @@ function Update-FilmMetadataFromTmdb {
     if ($null -ne $details.vote_average) {
         Set-RecordProperty -Record $Film -Name "tmdb_rating" -Value ([Math]::Round([double]$details.vote_average, 1))
     }
-    if ([string]$details.release_date -match '^(?<year>(19|20)\d{2})' -and $null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null))) {
-        Set-RecordProperty -Record $Film -Name "film_year" -Value ([int]$Matches.year)
+    if ([string]$details.release_date -match '^(?<year>(19|20)\d{2})') {
+        Set-RecordProperty -Record $Film -Name "release_year" -Value ([int]$Matches.year)
+    }
+    $premiereYear = Get-TmdbPremiereYearFromDetails -Details $details
+    if ($null -ne $premiereYear -and $premiereYear -gt 0 -and $null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiere_year" $null))) {
+        Set-RecordProperty -Record $Film -Name "premiere_year" -Value $premiereYear
+        Set-RecordProperty -Record $Film -Name "year_source" -Value "tmdb_premiere"
     }
     Set-RecordProperty -Record $Film -Name "updated_at" -Value (Get-Date).ToString("o")
 
@@ -2078,7 +2155,7 @@ function Test-FilmNeedsTmdbMetadataRefresh {
     if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "director" ""))) {
         return $true
     }
-    if ($null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null))) {
+    if ($null -eq (Get-RecordReleaseYear -Film $Film)) {
         return $true
     }
 
@@ -2135,7 +2212,11 @@ function Update-FilmMatches {
                 }
                 Set-RecordProperty -Record $film -Name "tmdb_rating" -Value $match.tmdb_rating
                 if ($match.release_year -gt 0) {
-                    Set-RecordProperty -Record $film -Name "film_year" -Value $match.release_year
+                    Set-RecordProperty -Record $film -Name "release_year" -Value $match.release_year
+                }
+                if ($null -ne $match.premiere_year -and $match.premiere_year -gt 0 -and $null -eq (ConvertTo-OptionalInt (Get-ObjectProperty $film "premiere_year" $null))) {
+                    Set-RecordProperty -Record $film -Name "premiere_year" -Value $match.premiere_year
+                    Set-RecordProperty -Record $film -Name "year_source" -Value "tmdb_premiere"
                 }
                 Set-RecordProperty -Record $film -Name "needs_review" -Value ($match.confidence -lt 0.8)
             }
@@ -2562,6 +2643,7 @@ function ConvertFrom-NotionEventPage {
     [pscustomobject]@{
         id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
         film_id = Get-NotionTextProperty -Page $Page -Name "Film Tracker ID"
+        canonical_key = Get-NotionTextProperty -Page $Page -Name "Canonical Key"
         film_relation_ids = $filmRelationIds
         film_title = Get-NotionTextProperty -Page $Page -Name "Film Title"
         director = Get-NotionTextProperty -Page $Page -Name "Director"
@@ -2606,7 +2688,7 @@ function Get-CanonicalFilmKey {
         return "imdb:$($imdbId.Trim().ToLowerInvariant())"
     }
 
-    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
+    $filmYear = Get-RecordPremiereYear -Film $Film
     $yearPart = if ($null -ne $filmYear -and $filmYear -gt 0) { [string]$filmYear } else { "" }
     $director = [string](Get-ObjectProperty $Film "director" "")
     return "title:${yearPart}:$(ConvertTo-NormalizedTitle $Film.title):$(ConvertTo-NormalizedTitle $director)"
@@ -2623,6 +2705,9 @@ function New-CanonicalFilmFromSelection {
         original_title = [string](Get-ObjectProperty $Selection "original_title" (Get-ObjectProperty $Selection "title" ""))
         director = [string](Get-ObjectProperty $Selection "director" "")
         film_year = ConvertTo-OptionalInt (Get-ObjectProperty $Selection "film_year" $null)
+        premiere_year = Get-RecordPremiereYear -Film $Selection
+        release_year = Get-RecordReleaseYear -Film $Selection
+        year_source = Get-RecordYearSource -Film $Selection
         tmdb_id = ConvertTo-OptionalInt (Get-ObjectProperty $Selection "tmdb_id" $null)
         imdb_id = [string](Get-ObjectProperty $Selection "imdb_id" "")
         match_confidence = ConvertTo-OptionalDouble (Get-ObjectProperty $Selection "match_confidence" $null)
@@ -2658,7 +2743,7 @@ function Merge-CanonicalFilmRecords {
         }
 
         $existing = $byKey[$key]
-        foreach ($name in @("title", "original_title", "director", "imdb_id", "poster_url", "overview", "rating_source", "metadata_source", "imdb_rating_checked_at", "first_available_date", "last_checked")) {
+        foreach ($name in @("title", "original_title", "director", "imdb_id", "poster_url", "overview", "rating_source", "metadata_source", "imdb_rating_checked_at", "first_available_date", "last_checked", "year_source")) {
             $existingValue = [string](Get-ObjectProperty $existing $name "")
             $incomingValue = [string](Get-ObjectProperty $film $name "")
             if ([string]::IsNullOrWhiteSpace($existingValue) -and -not [string]::IsNullOrWhiteSpace($incomingValue)) {
@@ -2666,7 +2751,7 @@ function Merge-CanonicalFilmRecords {
             }
         }
 
-        foreach ($name in @("film_year", "tmdb_id", "match_confidence", "tmdb_rating", "imdb_rating", "imdb_votes")) {
+        foreach ($name in @("film_year", "premiere_year", "release_year", "tmdb_id", "match_confidence", "tmdb_rating", "imdb_rating", "imdb_votes")) {
             $existingValue = ConvertTo-OptionalDouble (Get-ObjectProperty $existing $name $null)
             $incomingValue = ConvertTo-OptionalDouble (Get-ObjectProperty $film $name $null)
             if (($null -eq $existingValue -or $existingValue -le 0) -and $null -ne $incomingValue -and $incomingValue -gt 0) {
@@ -2855,6 +2940,16 @@ function ConvertFrom-NotionFilmPage {
     if ($filmYearText -match '\d{4}') {
         $filmYearValue = [int]$Matches[0]
     }
+    $premiereYearText = Get-NotionTextProperty -Page $Page -Name "Premiere Year"
+    $premiereYearValue = $null
+    if ($premiereYearText -match '\d{4}') {
+        $premiereYearValue = [int]$Matches[0]
+    }
+    $releaseYearText = Get-NotionTextProperty -Page $Page -Name "Release Year"
+    $releaseYearValue = $null
+    if ($releaseYearText -match '\d{4}') {
+        $releaseYearValue = [int]$Matches[0]
+    }
     $tmdbText = Get-NotionTextProperty -Page $Page -Name "TMDb ID"
     $tmdbValue = $null
     if ($tmdbText -match '\d+') {
@@ -2874,6 +2969,9 @@ function ConvertFrom-NotionFilmPage {
         year = $yearValue
         festival_year = $yearValue
         film_year = $filmYearValue
+        premiere_year = $premiereYearValue
+        release_year = $releaseYearValue
+        year_source = Get-NotionTextProperty -Page $Page -Name "Year Source"
         festival = Get-NotionTextProperty -Page $Page -Name "Festival"
         region = Get-NotionTextProperty -Page $Page -Name "Region"
         section = Get-NotionTextProperty -Page $Page -Name "Section"
@@ -2949,6 +3047,12 @@ function ConvertFrom-NotionCanonicalFilmPage {
     $filmYearText = Get-NotionTextProperty -Page $Page -Name "Film Year"
     $filmYearValue = $null
     if ($filmYearText -match '\d{4}') { $filmYearValue = [int]$Matches[0] }
+    $premiereYearText = Get-NotionTextProperty -Page $Page -Name "Premiere Year"
+    $premiereYearValue = $null
+    if ($premiereYearText -match '\d{4}') { $premiereYearValue = [int]$Matches[0] }
+    $releaseYearText = Get-NotionTextProperty -Page $Page -Name "Release Year"
+    $releaseYearValue = $null
+    if ($releaseYearText -match '\d{4}') { $releaseYearValue = [int]$Matches[0] }
 
     $record = [pscustomobject]@{
         id = Get-NotionTextProperty -Page $Page -Name "Film ID"
@@ -2957,6 +3061,9 @@ function ConvertFrom-NotionCanonicalFilmPage {
         original_title = Get-NotionTextProperty -Page $Page -Name "Original Title"
         director = Get-NotionTextProperty -Page $Page -Name "Director"
         film_year = $filmYearValue
+        premiere_year = $premiereYearValue
+        release_year = $releaseYearValue
+        year_source = Get-NotionTextProperty -Page $Page -Name "Year Source"
         tmdb_id = $tmdbValue
         imdb_id = Get-NotionTextProperty -Page $Page -Name "IMDb ID"
         match_confidence = ConvertTo-OptionalDouble (Get-NotionTextProperty -Page $Page -Name "Match Confidence")
@@ -3028,6 +3135,9 @@ function ConvertFrom-NotionSelectionPage {
         year = $festivalYearValue
         festival_year = $festivalYearValue
         film_year = $null
+        premiere_year = $festivalYearValue
+        release_year = $null
+        year_source = "festival_year_fallback"
         tmdb_id = $null
         imdb_id = ""
         match_confidence = $null
@@ -3131,6 +3241,9 @@ function ConvertTo-NotionFilmProperties {
 
     $festivalYear = ConvertTo-OptionalInt $Film.year
     $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
+    $premiereYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiere_year" $null)
+    $releaseYear = Get-RecordReleaseYear -Film $Film
+    $yearSource = Get-RecordYearSource -Film $Film
     $filmTmdbId = ConvertTo-OptionalInt $Film.tmdb_id
     $filmConfidence = ConvertTo-OptionalDouble $Film.match_confidence
     $filmTmdbRating = ConvertTo-OptionalDouble $Film.tmdb_rating
@@ -3141,6 +3254,15 @@ function ConvertTo-NotionFilmProperties {
     }
     if ($null -ne $filmYear -and $filmYear -gt 0) {
         $properties["Film Year"] = @{ number = $filmYear }
+    }
+    if ($null -ne $premiereYear -and $premiereYear -gt 0) {
+        $properties["Premiere Year"] = @{ number = $premiereYear }
+    }
+    if ($null -ne $releaseYear -and $releaseYear -gt 0) {
+        $properties["Release Year"] = @{ number = $releaseYear }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($yearSource)) {
+        $properties["Year Source"] = New-RichTextProperty $yearSource
     }
     if ($null -ne $filmTmdbId -and $filmTmdbId -gt 0) {
         $properties["TMDb ID"] = @{ number = $filmTmdbId }
@@ -3217,6 +3339,8 @@ function ConvertTo-NotionCanonicalFilmProperties {
 
     foreach ($pair in @(
         @{ name = "Film Year"; value = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null) },
+        @{ name = "Premiere Year"; value = ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiere_year" $null) },
+        @{ name = "Release Year"; value = Get-RecordReleaseYear -Film $Film },
         @{ name = "TMDb ID"; value = ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdb_id" $null) },
         @{ name = "Match Confidence"; value = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "match_confidence" $null) },
         @{ name = "TMDb Rating"; value = ConvertTo-OptionalDouble (Get-ObjectProperty $Film "tmdb_rating" $null) },
@@ -3226,6 +3350,11 @@ function ConvertTo-NotionCanonicalFilmProperties {
         if ($null -ne $pair.value) {
             $properties[$pair.name] = @{ number = $pair.value }
         }
+    }
+
+    $yearSource = Get-RecordYearSource -Film $Film
+    if (-not [string]::IsNullOrWhiteSpace($yearSource)) {
+        $properties["Year Source"] = New-RichTextProperty $yearSource
     }
 
     foreach ($pair in @(
@@ -3639,6 +3768,7 @@ function ConvertTo-NotionEventProperties {
         "Event Title" = New-TitleProperty $title
         "Tracker ID" = New-RichTextProperty $Event.id
         "Film Tracker ID" = New-RichTextProperty $Event.film_id
+        "Canonical Key" = New-RichTextProperty ([string](Get-ObjectProperty $Event "canonical_key" ""))
         "Film Title" = New-RichTextProperty $Event.film_title
         "Director" = New-RichTextProperty $Event.director
         "Festival" = New-RichTextProperty $Event.festival
@@ -3725,6 +3855,9 @@ function Ensure-NotionFilmMetadataProperties {
             "IMDb Rating Checked At" = @{ date = @{} }
             "Rating Source" = @{ rich_text = @{} }
             "Film Year" = @{ number = @{ format = "number" } }
+            "Premiere Year" = @{ number = @{ format = "number" } }
+            "Release Year" = @{ number = @{ format = "number" } }
+            "Year Source" = @{ rich_text = @{} }
             "Festival Year" = @{ number = @{ format = "number" } }
         }
     }
@@ -3779,6 +3912,9 @@ function Ensure-NotionThreeTableSchema {
         "Original Title" = @{ rich_text = @{} }
         "Director" = @{ rich_text = @{} }
         "Film Year" = @{ number = @{ format = "number" } }
+        "Premiere Year" = @{ number = @{ format = "number" } }
+        "Release Year" = @{ number = @{ format = "number" } }
+        "Year Source" = @{ rich_text = @{} }
         "TMDb ID" = @{ number = @{ format = "number" } }
         "IMDb ID" = @{ rich_text = @{} }
         "Match Confidence" = @{ number = @{ format = "number" } }
@@ -3826,6 +3962,7 @@ function Ensure-NotionThreeTableSchema {
                 }
             }
             "Primary Source URL" = @{ url = @{} }
+            "Canonical Key" = @{ rich_text = @{} }
             "Source URL Count" = @{ number = @{ format = "number" } }
             "Provider Count" = @{ number = @{ format = "number" } }
             "Country Count" = @{ number = @{ format = "number" } }
@@ -4113,6 +4250,9 @@ function New-NotionTrackerDatabases {
             "Director" = @{ rich_text = @{} }
             "Festival Year" = @{ number = @{ format = "number" } }
             "Film Year" = @{ number = @{ format = "number" } }
+            "Premiere Year" = @{ number = @{ format = "number" } }
+            "Release Year" = @{ number = @{ format = "number" } }
+            "Year Source" = @{ rich_text = @{} }
             "Festival" = @{ rich_text = @{} }
             "Region" = @{ rich_text = @{} }
             "Section" = @{ rich_text = @{} }
@@ -4154,6 +4294,7 @@ function New-NotionTrackerDatabases {
             }
             "Tracker ID" = @{ rich_text = @{} }
             "Film Tracker ID" = @{ rich_text = @{} }
+            "Canonical Key" = @{ rich_text = @{} }
             "Film Title" = @{ rich_text = @{} }
             "Director" = @{ rich_text = @{} }
             "Festival" = @{ rich_text = @{} }

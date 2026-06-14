@@ -127,7 +127,7 @@ const filmSelections = (film) => (Array.isArray(film.selections) && film.selecti
 ]);
 
 const filmBrowseYear = (film) => {
-  if (film?.filmYear) return String(film.filmYear);
+  if (film?.premiereYear) return String(film.premiereYear);
   const fallbackYears = filmSelections(film)
     .map((selection) => Number(selection.festivalYear))
     .filter((year) => Number.isFinite(year) && year > 0)
@@ -250,8 +250,8 @@ function setupFilters() {
         .filter(Boolean)
     ),
   ].sort((a, b) => String(a).localeCompare(String(b)));
-  const years = Array.isArray(state.data.filmYears)
-    ? state.data.filmYears
+  const years = Array.isArray(state.data.premiereYears)
+    ? state.data.premiereYears
     : Array.isArray(state.data.years)
       ? state.data.years
       : [...new Set((state.data.films || []).map((film) => filmBrowseYear(film)).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
@@ -478,7 +478,7 @@ function openDetail(film) {
       <div class="poster">${posterMarkup(film)}</div>
       <div class="detail-copy">
         <h2>${escapeHtml(film.title || "Untitled")}</h2>
-        <p>${escapeHtml([film.director, film.filmYear ? `Film ${film.filmYear}` : "", `${selections.length} selection${selections.length === 1 ? "" : "s"}`].filter(Boolean).join(" - "))}</p>
+        <p>${escapeHtml([film.director, film.premiereYear ? `Premiere ${film.premiereYear}` : "", `${selections.length} selection${selections.length === 1 ? "" : "s"}`].filter(Boolean).join(" - "))}</p>
         <div class="film-facts">
           <span>${escapeHtml(statusLabel(film.trackingStatus))}</span>
           <span>${escapeHtml(primaryRatingLabel(film))}</span>
@@ -503,7 +503,8 @@ function openDetail(film) {
       <h3>Years</h3>
       <div class="metadata-row">
         <span>Festival years <strong>${escapeHtml([...new Set(selections.map((selection) => selection.festivalYear).filter(Boolean))].join(", ") || "Unknown")}</strong></span>
-        <span>Film year <strong>${escapeHtml(film.filmYear || "Unknown")}</strong></span>
+        <span>Premiere year <strong>${escapeHtml(film.premiereYear || "Unknown")}</strong></span>
+        <span>Release year <strong>${escapeHtml(film.releaseYear || "Unknown")}</strong></span>
       </div>
       <h3>Availability</h3>
       ${

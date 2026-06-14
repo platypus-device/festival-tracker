@@ -83,6 +83,14 @@ Current Notion model:
 
 TMDb and IMDb remain the primary metadata sources. Official festival data may fill a missing field when it is clearly available; currently Taipei Film Festival official poster URLs are used only as a poster fallback and are marked with `Metadata Source = official:taipeiff`.
 
+Year fields are intentionally split:
+
+- `Festival Year`: festival edition year from each selection.
+- `Premiere Year`: browse/filter year for the web UI.
+- `Release Year`: TMDb commercial or ordinary release year.
+- `Film Year`: legacy compatibility field; do not write TMDb release years here.
+- `Year Source`: provenance for `Premiere Year`, such as `official_festival`, `tmdb_premiere`, `festival_year_fallback`, or `oscars_eligibility`.
+
 ## Local Commands
 
 Run the full tracker against Notion:
@@ -129,6 +137,15 @@ Dry-run and apply missing metadata repairs:
 ```powershell
 .\scripts\Repair-MissingMetadata.ps1 -UseNotion -Limit 20
 .\scripts\Repair-MissingMetadata.ps1 -UseNotion -Apply -Limit 20
+```
+
+Dry-run and apply year metadata repairs:
+
+```powershell
+.\scripts\Repair-YearMetadata.ps1
+.\scripts\Repair-YearMetadata.ps1 -Apply
+.\scripts\Repair-YearMetadata.ps1 -UseNotion
+.\scripts\Repair-YearMetadata.ps1 -UseNotion -Apply
 ```
 
 Backfill a historical year after a dry-run:

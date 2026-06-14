@@ -1853,7 +1853,10 @@
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate",
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "9e9ac39cdd4bef887311ac91",
@@ -2054,7 +2057,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "66c7e625413443e19e33521f",
@@ -2124,7 +2130,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "aee65f18f8369dce90080fca",
@@ -2248,7 +2257,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "2edd81f825d338819b642ce5",
@@ -2335,7 +2347,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "229f95cdfdaffe10d44a3a09",
@@ -2406,7 +2421,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f641f6f3d4cbe8ef417698e6",
@@ -2509,7 +2527,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "37368f9604378105f835cee9",
@@ -2588,7 +2609,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "73e2f3a977a1bc9983955f71",
@@ -2662,7 +2686,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "114613581a7ffdbf04532ce4",
@@ -2853,7 +2880,10 @@
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture",
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "1ad87b5d1ea92d9cc321494f",
@@ -2862,7 +2892,7 @@
                       "director":  "Katarina Zhu",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Sundance",
                       "region":  "",
                       "section":  "U.S. DRAMATIC COMPETITION",
@@ -2923,7 +2953,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "87b5c29151401b59a3430ff1",
@@ -2932,7 +2965,7 @@
                       "director":  "Mihai Mincan",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -2994,7 +3027,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "1b11728870774bd94221295e",
@@ -3088,7 +3124,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8f27a2398168005f01d0c5e2",
@@ -3188,7 +3227,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "678b5edb23dc4eb893a8b3f8",
@@ -3273,7 +3315,10 @@
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate",
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "ad308128d3b5b10f3ea2a34a",
@@ -3460,7 +3505,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "4f16d5db96d632545f725ea4",
@@ -3629,7 +3677,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5ce021c7287e555ce9049c63",
@@ -3703,7 +3754,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8bf5ec01f129ccfa0035ac12",
@@ -3778,7 +3832,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3c3e1ad19520bbac06bac110",
@@ -3969,7 +4026,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "649af6b233fa6c1163baefa4",
@@ -4099,7 +4159,10 @@
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate",
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f6cb4e71bc322d58f1baad77",
@@ -4309,7 +4372,10 @@
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture",
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "87e2683015e2a9a9169391e8",
@@ -4473,7 +4539,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f9e8b0d05819561c9d79d729",
@@ -4653,7 +4722,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "1f4c2308d2d2df8999a770b6",
@@ -4781,7 +4853,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "581bf1643d83a0895ceff819",
@@ -4940,7 +5015,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "9504011ebf8045985574411e",
@@ -5117,7 +5195,10 @@
                       "selectionLabels":  [
                                               "Academy Awards 2026 International Feature Film",
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5c21b850c411c8cb9629f232",
@@ -5327,7 +5408,10 @@
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate",
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "a1dac051ffc7f4ef1b7b8b61",
@@ -5397,7 +5481,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3eb283b63a988885b290b1de",
@@ -5406,7 +5493,7 @@
                       "director":  "Ali Asgari",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -5467,7 +5554,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "220dd452a2fa818c16959681",
@@ -5569,7 +5659,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "b932218ea082648f3d8b9def",
@@ -5770,7 +5863,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "454db3a4ed30bf30bf1a8d1f",
@@ -5872,7 +5968,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8d01843cb5991ef7dccf35d2",
@@ -5977,7 +6076,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "b974d3ccb5010802dad3dd1b",
@@ -6104,7 +6206,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "1209bc8354b5510b94e05013",
@@ -6212,7 +6317,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "361d3477ed5ec3937263e5ea",
@@ -6302,7 +6410,10 @@
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard",
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "6e820f25a9a540c10bad5586",
@@ -6311,7 +6422,7 @@
                       "director":  "Olivier Assayas",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Venezia Competition",
@@ -6373,7 +6484,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "ee7d436eb66bc329d2befb73",
@@ -6574,7 +6688,10 @@
                       "selectionSummary":  "Taipei Golden Horse Film Festival",
                       "selectionLabels":  [
                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "4f7b9c07ea70aab170e8990c",
@@ -6691,7 +6808,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "88e94791c63242ac5409436a",
@@ -6773,7 +6893,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "cc521d3b76e9c06bafc978de",
@@ -6856,7 +6979,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8fc53fc704135f728b478f54",
@@ -6928,7 +7054,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5843e0616171d7903b75b22d",
@@ -7010,7 +7139,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "6f311bfa511bd4f6d185ba22",
@@ -7171,7 +7303,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8bc393a714f097a3fd6650fd",
@@ -7250,7 +7385,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f24b310604e85a0ed82c481e",
@@ -7354,7 +7492,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "901166c09d15f76e881ef328",
@@ -7440,7 +7581,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "dc162d7a44ca22c4811a1107",
@@ -7602,7 +7746,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "e4fab87900ee1672eb119e10",
@@ -7752,7 +7899,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "6dc167d7d9606702d0ccd430",
@@ -7841,7 +7991,10 @@
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard",
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "da928edabaddfbd43e8949c3",
@@ -7919,7 +8072,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "37fa571756ef0f845e7ceb71",
@@ -8122,7 +8278,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f85976fe9f5f48d1097b481e",
@@ -8192,7 +8351,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "05392db1bf6afba359ed9d85",
@@ -8266,7 +8428,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "dd2b806ea13f7ccd2a6ff66f",
@@ -8357,7 +8522,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "d9e6f52ae7f3d4cf91f29948",
@@ -8451,7 +8619,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "38c432fe943346b7df1c8452",
@@ -8558,7 +8729,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5b9d7159dd307a86023b91b2",
@@ -8670,7 +8844,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8f68d499a22d2ca93d091d58",
@@ -8746,7 +8923,10 @@
                       "selectionSummary":  "Taipei Golden Horse Film Festival",
                       "selectionLabels":  [
                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "ded33001134d42ff4c4238cd",
@@ -8865,7 +9045,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "ff1c22215298185ccfa086d3",
@@ -8944,7 +9127,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "fe5ea5a069e26eba44a1a5ff",
@@ -9026,7 +9212,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "2173055ad5a29c3cef472ea2",
@@ -9114,7 +9303,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "96926b9a0ab2ba5801359313",
@@ -9312,7 +9504,10 @@
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture; International Feature Film",
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "4f2034aeb27fe4e5076cce3d",
@@ -9321,7 +9516,7 @@
                       "director":  "Ildikó Enyedi",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Venezia Competition",
@@ -9382,7 +9577,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "8ac4c0d2d9b78014a68824eb",
@@ -9596,7 +9794,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "d6551c4591e2ddfa69795854",
@@ -9762,7 +9963,10 @@
                       "selectionLabels":  [
                                               "Academy Awards 2026 International Feature Film",
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "161833e6c2fdc84c8d71a4ec",
@@ -9914,7 +10118,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "e9a06c57996a38fc553886c6",
@@ -10045,7 +10252,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "028ae78c8dda4a973bef7cdf",
@@ -10054,7 +10264,7 @@
                       "director":  "Vladimir de Fontenay",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Sundance",
                       "region":  "",
                       "section":  "WORLD CINEMA DRAMATIC COMPETITION",
@@ -10118,7 +10328,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "e49bcebde5456c65476c9635",
@@ -10200,7 +10413,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "d0c7ecebf11c6e6fd4ac1f96",
@@ -10283,7 +10499,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3497f90d5a5d0d4399acfc11",
@@ -10389,7 +10608,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "14ded2f72c6f6b887433f5f5",
@@ -10486,7 +10708,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "ed6cdc0ccf230a881c6562a6",
@@ -10698,7 +10923,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3fa0ddb3c5028f6da506b71b",
@@ -10769,7 +10997,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "4c2fdf848dd73d11f8a1d8eb",
@@ -10863,7 +11094,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "0ecc0a2578a72635db6b834e",
@@ -11032,7 +11266,10 @@
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture; International Feature Film",
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3a0b5062778fa775ad1e9ca7",
@@ -11168,7 +11405,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3795235e86a730c7b565d834",
@@ -11269,7 +11509,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "59a49eec1d261318ac093619",
@@ -11278,7 +11521,7 @@
                       "director":  "Laura Casabé",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Sundance",
                       "region":  "",
                       "section":  "WORLD CINEMA DRAMATIC COMPETITION",
@@ -11369,7 +11612,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "bc669db49c13368e85f8d39c",
@@ -11518,7 +11764,10 @@
                       "selectionLabels":  [
                                               "Academy Awards 2026 International Feature Film",
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5f5f8f282574117d8c3d26c2",
@@ -11589,7 +11838,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "b2b8bba678bbee500e80c2c2",
@@ -11790,7 +12042,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8c22e0e8ee66cb55f8f562c8",
@@ -11964,7 +12219,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "7f72961185242d15bb113b0c",
@@ -12063,7 +12321,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5338f29743eeb42029eeab3b",
@@ -12159,7 +12420,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "9a6f9791cf69f0429332bf35",
@@ -12238,7 +12502,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "60c9cb8ac73788bb8aae519e",
@@ -12360,7 +12627,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "7e65c2fdc7904a535ff99bac",
@@ -12430,7 +12700,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "89bd8647e8683c16efd95f6a",
@@ -12535,7 +12808,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "1fcf2f4bcf92c3bd9797e7d7",
@@ -12622,7 +12898,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "e8e02a4c0589e0a6873c13de",
@@ -12794,7 +13073,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2026 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "93baed51a6ff396fad706aca",
@@ -12968,7 +13250,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "61ce9afcbda346ca00e3c818",
@@ -13016,7 +13301,10 @@
                       "selectionSummary":  "Taipei Golden Horse Film Festival",
                       "selectionLabels":  [
                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "24d5c64412e2ff664c593a55",
@@ -13064,7 +13352,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "d81e9fa171780b9998ac3196",
@@ -13112,7 +13403,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f1ec3b20b65698e0af84d0fa",
@@ -13121,7 +13415,7 @@
                       "director":  "Valérie Donzelli",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Venezia Competition",
@@ -13160,7 +13454,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "7bd5b7a2fd6ed3f184485af0",
@@ -13208,7 +13505,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8a3e71bd6ee58c566e4f7930",
@@ -13256,7 +13556,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "79286d4d54e06c45a515f25a",
@@ -13304,7 +13607,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "51478830d5d666a74cc7a1e0",
@@ -13352,7 +13658,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "70f17da8f0a2d32fed84a898",
@@ -13400,7 +13709,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "fbd9a14e8876978c50690544",
@@ -13634,7 +13946,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "74d1af1dc913b98e211e21ba",
@@ -13643,7 +13958,7 @@
                       "director":  "STILLZ",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -13682,7 +13997,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "968d431522f370457535cc17",
@@ -13730,7 +14048,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "c49b8639bb6c9fd70dac447d",
@@ -13778,7 +14099,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "c813032ccde5657177972f34",
@@ -13787,7 +14111,7 @@
                       "director":  "Gianfranco Rosi",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "NYFF",
                       "region":  "",
                       "section":  "Main Slate",
@@ -13826,7 +14150,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "1450e268df39327a0bca7488",
@@ -13874,7 +14201,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5a4fc9fb63f0c619a8a18aa4",
@@ -13922,7 +14252,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "cd88731c712116a67d2743a1",
@@ -13970,7 +14303,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "ad1dd15d54cab476bce1c7f5",
@@ -14018,7 +14354,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "a92e8a678f7dfe761687cb95",
@@ -14066,7 +14405,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "07cd491a4ece683b147c957d",
@@ -14114,7 +14456,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "59d37a514f1e087b2f5e9039",
@@ -14162,7 +14507,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "c2669ad99f31a3529b459a0d",
@@ -14370,7 +14718,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "a71df56c71419d452278252e",
@@ -14418,7 +14769,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "99f432faef35dc07cf1b0b5e",
@@ -14466,7 +14820,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "9dcc69d3dfabf26817385347",
@@ -14514,7 +14871,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "001829a6052303a6c6365e52",
@@ -14755,7 +15115,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "b0159f6405d7ba3444f7d9cb",
@@ -14803,7 +15166,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5b3a5f819e9ed8592988f6d7",
@@ -15019,7 +15385,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture; International Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3fcf3bd63feb2a14b3c452e1",
@@ -15028,7 +15397,7 @@
                       "director":  "David Pablos",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -15067,7 +15436,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "74327dbf61bcdd22eb821499",
@@ -15076,7 +15448,7 @@
                       "director":  "Park Chan-wook",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Venezia Competition",
@@ -15115,7 +15487,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "67a357bac538e388be981b87",
@@ -15163,7 +15538,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8b94d20375bd170f827d788a",
@@ -15211,7 +15589,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "c9f60a979cfe10b931ce5914",
@@ -15259,7 +15640,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "88fa53bfd262899ca27d4cc3",
@@ -15307,7 +15691,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "172b68ea6fc6ebc371d9241b",
@@ -15355,7 +15742,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "2cdb8b2d632e3d74c0125b4b",
@@ -15550,7 +15940,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Animated Feature Film; International Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "d0f1c55b0c2fd56713fdab91",
@@ -15598,7 +15991,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "990c72552e1fc01ce5ff582b",
@@ -15646,7 +16042,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "4a9ef1197e8969737d76d4a1",
@@ -15655,7 +16054,7 @@
                       "director":  "Roderick Warich",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -15694,7 +16093,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "4dcd85b070daae90ff96340f",
@@ -15703,7 +16105,7 @@
                       "director":  "Davi Pretto",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Karlovy Vary",
                       "region":  "",
                       "section":  "Proxima Competition",
@@ -15742,7 +16144,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "85b3c65d4effeff4d4921b7e",
@@ -15790,7 +16195,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "02daad002f7012545ca930d5",
@@ -15799,7 +16207,7 @@
                       "director":  "Ulrich Köhler",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "NYFF",
                       "region":  "",
                       "section":  "Main Slate",
@@ -15838,7 +16246,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "5550da6fe0f4cd339f666540",
@@ -15886,7 +16297,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "96c1e5d67a3ad99751b8bc08",
@@ -15895,7 +16309,7 @@
                       "director":  "Akihiro Hata",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -15934,7 +16348,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "196e9cf956efe80000c27f9c",
@@ -15982,7 +16399,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5bdb0062db3d143944ef8781",
@@ -15991,7 +16411,7 @@
                       "director":  "Akio Fujimoto",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -16030,7 +16450,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "4b437f3ec0ce5cf2eeabb684",
@@ -16039,7 +16462,7 @@
                       "director":  "Ana Cristina Barragan",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -16078,7 +16501,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "e0cb4e5cce8ef970c154f63b",
@@ -16126,7 +16552,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "14705c1c829d608091543465",
@@ -16174,7 +16603,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "38249dfe080b6994c5408190",
@@ -16222,7 +16654,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "d945a6d3b2b83d3456967fc1",
@@ -16270,7 +16705,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f85122cb03963331e4bed696",
@@ -16318,7 +16756,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "329ecf4fea39494a3a45b422",
@@ -16327,7 +16768,7 @@
                       "director":  "Nawapol Thamrongrattanarit",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -16366,7 +16807,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "e9a7d9cb023053b22f0af542",
@@ -16414,7 +16858,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "53a75086748d295dc920e999",
@@ -16462,7 +16909,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f1425cf1c24cb0de07ef1003",
@@ -16664,7 +17114,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture; International Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "609bc8e01d46b9c9e89b6854",
@@ -16843,7 +17296,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "c4ba708f11fae162d39a4226",
@@ -16891,7 +17347,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "b782dee8cf1900a4e76feeb3",
@@ -16939,7 +17398,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "307c35744d32e93b8cd2f4b1",
@@ -16987,7 +17449,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "b438af2466797d60d2c8db2d",
@@ -17035,7 +17500,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "64500bcdce1814a9f9195ce3",
@@ -17044,7 +17512,7 @@
                       "director":  "Kent Jones",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "NYFF, Venice",
                       "region":  "",
                       "section":  "2 selections",
@@ -17092,7 +17560,10 @@
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate",
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "a4f7753f7317f4db26ca83fb",
@@ -17140,7 +17611,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "adc3fe8ace116cc07eb71a3b",
@@ -17304,7 +17778,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f9acb784fe7f5d61f1e361c3",
@@ -17352,7 +17829,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "419e94cd46c1e878f07e5941",
@@ -17400,7 +17880,10 @@
                       "selectionSummary":  "Taipei Golden Horse Film Festival",
                       "selectionLabels":  [
                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "9deee8101069dfe796ad0563",
@@ -17448,7 +17931,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "54e22c004f99b22b5f4af05e",
@@ -17496,7 +17982,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "935b1b4a3cef88ad78ae8dae",
@@ -17595,7 +18084,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3ea1612b0fbfdf4bb2e428f4",
@@ -17604,7 +18096,7 @@
                       "director":  "Lucrecia Martel",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "NYFF",
                       "region":  "",
                       "section":  "Main Slate",
@@ -17643,7 +18135,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "8684996fbd8203473f5fbe37",
@@ -17652,7 +18147,7 @@
                       "director":  "Shu Qi",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Venezia Competition",
@@ -17691,7 +18186,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "c2119d6932bbab016accca90",
@@ -17739,7 +18237,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "2aa05dccb800d217bd6e031c",
@@ -17787,7 +18288,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "e3c5ad1e44b33ca9f1d38a7c",
@@ -17835,7 +18339,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "4edb68914e995bd18299b96e",
@@ -17883,7 +18390,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "cb9962789e6e15f81510c256",
@@ -17892,7 +18402,7 @@
                       "director":  "Erige SEHIRI",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Cannes",
                       "region":  "",
                       "section":  "Un Certain Regard",
@@ -17931,7 +18441,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "ca98fb217bf9f3750b493842",
@@ -17979,7 +18492,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "dca877a1f4e1e3c5c2b53ebb",
@@ -18027,7 +18543,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "c4abb841b099916b772aacfc",
@@ -18075,7 +18594,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "18d19b46ef09dd171a434c63",
@@ -18123,7 +18645,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "ca6e01184a46cf66d3f878ac",
@@ -18171,7 +18696,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "408106bb2d305399766cf1f1",
@@ -18180,7 +18708,7 @@
                       "director":  "Mark Jenkin",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "NYFF, Venice",
                       "region":  "",
                       "section":  "2 selections",
@@ -18228,7 +18756,10 @@
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate",
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "6ae44c56616af90d684760f5",
@@ -18276,7 +18807,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "d22e23245ee3a4195403d52d",
@@ -18285,7 +18819,7 @@
                       "director":  "Rohan Parashuram Kanawade",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Sundance",
                       "region":  "",
                       "section":  "WORLD CINEMA DRAMATIC COMPETITION",
@@ -18324,7 +18858,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2025 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "2f1f3d4f8940dc1fcaa59f34",
@@ -18372,7 +18909,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "971818c70ad5bfdb201add95",
@@ -18420,7 +18960,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "0f59c195c169d30d1c7947ad",
@@ -18468,7 +19011,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "4412c4f64be881aa64cfb197",
@@ -18516,7 +19062,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f310e55c03c7059ee93e34d8",
@@ -18525,7 +19074,7 @@
                       "director":  "Gianfranco Rosi Italy / 115’ Read more The Smashing Machine Director Benny Safdie",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Venezia Competition",
@@ -18564,7 +19113,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Venezia Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "7caf36a5dbce81728dcdaf34",
@@ -18612,7 +19164,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f5ea27baec2854443271a361",
@@ -18660,7 +19215,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "3ac7c45f02cc6219c75553a3",
@@ -18708,7 +19266,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "53170d90eaf28fd90a940a9d",
@@ -18756,7 +19317,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "740f791e0363fda8684a426f",
@@ -18804,7 +19368,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "a4e3f6650a9710578bda593c",
@@ -18852,7 +19419,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5470455864cd3bd511669389",
@@ -18900,7 +19470,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "dac76f4c2f18ac3c78d5eda5",
@@ -19132,7 +19705,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "c05acb5e78aece55e4027864",
@@ -19180,7 +19756,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "4d49f68d41d770a32a44819e",
@@ -19228,7 +19807,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "2a2fa1202b4005ce78feafcf",
@@ -19237,7 +19819,7 @@
                       "director":  "Claire Denis",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "NYFF",
                       "region":  "",
                       "section":  "Main Slate",
@@ -19276,7 +19858,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "a2053f849c20ccd5a39f0d46",
@@ -19324,7 +19909,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "f8ac4abd0ef9181ac0da5557",
@@ -19524,7 +20112,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 International Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "e1253c3f6a66604423991ca5",
@@ -19572,7 +20163,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 WORLD CINEMA DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "e46b832af2ae8075efa5ea82",
@@ -19620,7 +20214,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "bb1c419ec8282d7102a58011",
@@ -19668,7 +20265,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "e5cd9de96d4b60e5270abd8d",
@@ -19716,7 +20316,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "853dc3cf4ec3af313350c9ae",
@@ -19764,7 +20367,10 @@
                       "selectionSummary":  "Sundance",
                       "selectionLabels":  [
                                               "Sundance 2026 U.S. DRAMATIC COMPETITION"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "7317c9553abba6500e224476",
@@ -19953,7 +20559,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 International Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "2f3469785fe95fd5c79e2111",
@@ -19962,7 +20571,7 @@
                       "director":  "Gastón Solnicki",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -20001,7 +20610,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "3cc669aecbfb1c32de106983",
@@ -20217,7 +20829,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "0cda57beb3d736602010181a",
@@ -20265,7 +20880,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 In Competition - Feature films"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "1f114a91e27c138e5404cc0e",
@@ -20313,7 +20931,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "78ca8910b0667585c31528e5",
@@ -20322,7 +20943,7 @@
                       "director":  "",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Golden Horse Film Festival",
                       "region":  "",
                       "section":  "Best Narrative Feature",
@@ -20361,7 +20982,10 @@
                       "selectionSummary":  "Taipei Golden Horse Film Festival",
                       "selectionLabels":  [
                                               "Taipei Golden Horse Film Festival 2025 Best Narrative Feature"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "bc7b0508065e36ca169d3b0c",
@@ -20602,7 +21226,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "1e146842a25b5f4bc5a97b35",
@@ -20611,7 +21238,7 @@
                       "director":  "Alexandros Voulgaris",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Karlovy Vary",
                       "region":  "",
                       "section":  "Proxima Competition",
@@ -20650,7 +21277,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "3748fd0575a936db4650a898",
@@ -20698,7 +21328,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "5c5bc780c8f8abee11975538",
@@ -20707,7 +21340,7 @@
                       "director":  "ISHIKAWA Kei",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Cannes",
                       "region":  "",
                       "section":  "Un Certain Regard",
@@ -20746,7 +21379,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2025 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "5679227bedefed7e7c75948d",
@@ -20794,7 +21430,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Proxima Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "598ef94d4d72954ee747a252",
@@ -20842,7 +21481,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "8347888b543625255ea0bdb7",
@@ -20890,7 +21532,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "19fb723397f6da71b487fc15",
@@ -20899,7 +21544,7 @@
                       "director":  "Laura Samani",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  2026,
+                      "filmYear":  2025,
                       "festival":  "Venice",
                       "region":  "",
                       "section":  "Orizzonti Competition",
@@ -20938,7 +21583,10 @@
                       "selectionSummary":  "Venice",
                       "selectionLabels":  [
                                               "Venice 2025 Orizzonti Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  2026,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "f2b79c2fb0c727bb782d7d35",
@@ -20986,7 +21634,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "89e139b5e36060eba539a3ab",
@@ -21188,7 +21839,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Animated Feature Film"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "fd6ec0c3f9de29352f765c4b",
@@ -21197,7 +21851,7 @@
                       "director":  "Hong Sangsoo",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "NYFF",
                       "region":  "",
                       "section":  "Main Slate",
@@ -21236,7 +21890,10 @@
                       "selectionSummary":  "NYFF",
                       "selectionLabels":  [
                                               "NYFF 2025 Main Slate"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "e24c0e11326175bdcb59c873",
@@ -21284,7 +21941,10 @@
                       "selectionSummary":  "Karlovy Vary",
                       "selectionLabels":  [
                                               "Karlovy Vary 2025 Crystal Globe Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "137204ebf02388499fde5628",
@@ -21517,7 +22177,10 @@
                       "selectionSummary":  "Academy Awards",
                       "selectionLabels":  [
                                               "Academy Awards 2025 Best Picture"
-                                          ]
+                                          ],
+                      "premiereYear":  2024,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "6764856f3c40d40ed23c0f4f",
@@ -21565,7 +22228,10 @@
                       "selectionSummary":  "Cannes",
                       "selectionLabels":  [
                                               "Cannes 2026 Un Certain Regard"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "official_festival"
                   },
                   {
                       "id":  "aac9a77e06de33fd3ba27715",
@@ -21574,7 +22240,7 @@
                       "director":  "曾威量、尹又巧",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳男主角; 最佳男配角; 最佳女配角; 最佳攝影; 最佳剪輯; 最佳美術設計; 最佳造型設計; 最佳聲音設計",
@@ -21613,7 +22279,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳男主角; 最佳男配角; 最佳女配角; 最佳攝影; 最佳剪輯; 最佳美術設計; 最佳造型設計; 最佳聲音設計"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "43f3b9ab305c688d9dbd56c6",
@@ -21622,7 +22291,7 @@
                       "director":  "韓昌綠",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -21661,7 +22330,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "024dd72b0aa337dc1d60ceef",
@@ -21670,7 +22342,7 @@
                       "director":  "陳玉勳",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳攝影; 最佳原創電影音樂; 最佳原創電影歌曲; 最佳美術設計; 最佳造型設計; 最佳聲音設計; 最佳視覺效果",
@@ -21709,7 +22381,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳攝影; 最佳原創電影音樂; 最佳原創電影歌曲; 最佳美術設計; 最佳造型設計; 最佳聲音設計; 最佳視覺效果"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "96d1d680abed9d0a2070b927",
@@ -21718,7 +22393,7 @@
                       "director":  "山繆．亞伯拉罕",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -21757,7 +22432,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "ac330fae1e775ce3c7f19797",
@@ -21766,7 +22444,7 @@
                       "director":  "徐漢強",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳女配角; 最佳剪輯; 最佳配樂; 最佳美術設計; 最佳造型設計; 最佳聲音設計; 最佳視覺效果; 傑出技術",
@@ -21805,7 +22483,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳女配角; 最佳剪輯; 最佳配樂; 最佳美術設計; 最佳造型設計; 最佳聲音設計; 最佳視覺效果; 傑出技術"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "422d2d7e921f46f2a1020ff4",
@@ -21814,7 +22495,7 @@
                       "director":  "朱駿騰",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -21853,7 +22534,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "03c4d54ea3412ec0c10e3844",
@@ -21862,7 +22546,7 @@
                       "director":  "喬安內．戈梅茲．特雷羅",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -21901,7 +22585,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "93e51735d39bd180e6e8bcee",
@@ -21910,7 +22597,7 @@
                       "director":  "羅倫佐．費洛、盧卡斯．A．維尼亞雷",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -21949,7 +22636,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "1e15c9340f912c4611d351eb",
@@ -21958,7 +22648,7 @@
                       "director":  "蘇菲．容瓦利",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -21997,7 +22687,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "db6586cf8361d144af839bfa",
@@ -22006,7 +22699,7 @@
                       "director":  "寶拉．托馬斯．馬奎斯",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22045,7 +22738,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "8f6d5a817463cfc37cbcde2b",
@@ -22054,7 +22750,7 @@
                       "director":  "楊修華",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男配角; 最佳配樂",
@@ -22093,7 +22789,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男配角; 最佳配樂"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "6ff2b3de4980e54c4f598fe6",
@@ -22102,7 +22801,7 @@
                       "director":  "奧斯卡．哈德森",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22141,7 +22840,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "3a236bf1f132c03528bac374",
@@ -22150,7 +22852,7 @@
                       "director":  "賈烏瑪．克萊雷特．穆夏特",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22189,7 +22891,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "0442d380a05398e9381d9f1c",
@@ -22198,7 +22903,7 @@
                       "director":  "勞里納斯．巴雷薩",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22237,7 +22942,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "f4166c84751b3e9b31cfd781",
@@ -22246,7 +22954,7 @@
                       "director":  "舒淇",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女配角; 最佳攝影; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳造型設計",
@@ -22285,7 +22993,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女配角; 最佳攝影; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳造型設計"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "d85ca2455d185d347b054143",
@@ -22294,7 +23005,7 @@
                       "director":  "帕姿．薇格",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22333,7 +23044,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "96bd5fef5695a323d4912a7e",
@@ -22342,7 +23056,7 @@
                       "director":  "斯特凡．喬爾傑維奇",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22381,7 +23095,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "54ac9f1cbe28df25caeaac20",
@@ -22390,7 +23107,7 @@
                       "director":  "沈可尚",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳男主角; 最佳男配角; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳聲音設計",
@@ -22429,7 +23146,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳男主角; 最佳男配角; 最佳剪輯; 最佳原創電影音樂; 最佳美術設計; 最佳聲音設計"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "24340a0710bd6b47066fbb5b",
@@ -22438,7 +23158,7 @@
                       "director":  "露西亞．阿連尼亞．伊格萊西亞斯",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22477,7 +23197,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "5f46d1e7454a605db6f77c08",
@@ -22486,7 +23209,7 @@
                       "director":  "許承傑",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳女配角; 最佳剪輯; 最佳造型設計",
@@ -22525,7 +23248,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳男主角; 最佳女主角; 最佳男配角; 最佳女配角; 最佳剪輯; 最佳造型設計"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "02faab1236e78c1f2619e586",
@@ -22534,7 +23260,7 @@
                       "director":  "塞菲汀．托克馬克",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22573,7 +23299,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "6a20a5e1c11fd44ea61f20c1",
@@ -22582,7 +23311,7 @@
                       "director":  "潘客印",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22621,7 +23350,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "55de065c5999000c6a9f538c",
@@ -22630,7 +23362,7 @@
                       "director":  "周鉅宏、胡錦筵",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22669,7 +23401,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "b4edb3895d740d7e8a682240",
@@ -22678,7 +23413,7 @@
                       "director":  "林書宇",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女主角; 最佳男配角; 最佳女配角; 最佳新演員; 最佳攝影; 最佳美術設計; 最佳造型設計; 最佳聲音設計",
@@ -22717,7 +23452,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女主角; 最佳男配角; 最佳女配角; 最佳新演員; 最佳攝影; 最佳美術設計; 最佳造型設計; 最佳聲音設計"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "af06d368098a0753555e3c67",
@@ -22726,7 +23464,7 @@
                       "director":  "長久允",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22765,7 +23503,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "9512b090acaea4ba71129146",
@@ -22774,7 +23515,7 @@
                       "director":  "崗珍",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22813,7 +23554,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "d23d8e36cc41f53340ea005b",
@@ -22822,7 +23566,7 @@
                       "director":  "張作驥",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳新演員; 最佳攝影; 最佳配樂; 最佳美術設計",
@@ -22861,7 +23605,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳新演員; 最佳攝影; 最佳配樂; 最佳美術設計"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "62f18375124652bf412136da",
@@ -22870,7 +23617,7 @@
                       "director":  "景一",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22909,7 +23656,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "9824f38efc716bb86c67136a",
@@ -22918,7 +23668,7 @@
                       "director":  "亞歷珊德拉．馬卡洛娃",
                       "year":  2025,
                       "festivalYear":  2025,
-                      "filmYear":  null,
+                      "filmYear":  2025,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "International New Talent Competition",
@@ -22957,7 +23707,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2025 International New Talent Competition"
-                                          ]
+                                          ],
+                      "premiereYear":  2025,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   },
                   {
                       "id":  "e2912cebd5acbbe4ea243be5",
@@ -22966,7 +23719,7 @@
                       "director":  "鄒時擎",
                       "year":  2026,
                       "festivalYear":  2026,
-                      "filmYear":  null,
+                      "filmYear":  2026,
                       "festival":  "Taipei Film Festival",
                       "region":  "",
                       "section":  "Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女主角; 最佳新演員; 最佳攝影; 最佳剪輯; 最佳聲音設計",
@@ -23005,7 +23758,10 @@
                       "selectionSummary":  "Taipei Film Festival",
                       "selectionLabels":  [
                                               "Taipei Film Festival 2026 Taipei Film Awards - 最佳劇情長片; 最佳導演; 最佳編劇; 最佳女主角; 最佳新演員; 最佳攝影; 最佳剪輯; 最佳聲音設計"
-                                          ]
+                                          ],
+                      "premiereYear":  2026,
+                      "releaseYear":  null,
+                      "yearSource":  "festival_year_fallback"
                   }
               ],
     "events":  [
@@ -32251,5 +33007,10 @@
                        "source_urls":  "https://www.themoviedb.org/movie/1485105/watch?locale=GB",
                        "needs_review":  false
                    }
-               ]
+               ],
+    "premiereYears":  [
+                          2026,
+                          2025,
+                          2024
+                      ]
 }

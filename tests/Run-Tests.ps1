@@ -253,6 +253,7 @@ $sentimentalValue = @($wikipediaOscars | Where-Object { $_.title -eq "Sentimenta
 Assert-Equal 1 $sentimentalValue.Count "deduplicates Wikipedia Oscar cross-category films"
 Assert-Equal "Best Picture; International Feature Film" $sentimentalValue[0].section "merges Wikipedia Oscar sections for cross-category films"
 Assert-Equal 2025 $sentimentalValue[0].film_year "sets Oscar film year from previous eligibility year"
+Assert-Equal 2025 $sentimentalValue[0].premiere_year "sets Oscar premiere year from previous eligibility year"
 
 $wikipediaOscarsCombinedTableHtml = @"
 <html>
@@ -281,6 +282,7 @@ $bugoniaCombined = @($wikipediaOscarsCombined | Where-Object { $_.title -eq "Bug
 Assert-Equal 1 $bugoniaCombined.Count "deduplicates combined table cross-category films"
 Assert-Equal "Best Picture; International Feature Film" $bugoniaCombined[0].section "merges combined table Oscar sections"
 Assert-Equal 2025 $bugoniaCombined[0].film_year "sets combined table Oscar film year"
+Assert-Equal "oscars_eligibility" $bugoniaCombined[0].year_source "marks Oscar year source"
 
 $sectionScopedHtml = @"
 <html>
@@ -349,6 +351,7 @@ Assert-Equal "Air Base" $tidf[0].title "keeps TIDF title"
 Assert-Equal "Asian Vision Competition" $tidf[0].section "maps TIDF source URL to section"
 Assert-Equal 2026 $tidf[0].year "keeps TIDF festival year"
 Assert-Equal 2025 $tidf[0].film_year "keeps TIDF film year separately"
+Assert-Equal 2025 $tidf[0].premiere_year "uses official TIDF film year as premiere year"
 
 $kviffHtml = @"
 <html>
@@ -503,7 +506,7 @@ $duplicateFestivalFilms = @(
         director = "Event Director"
         year = 2025
         festival_year = 2025
-        film_year = 2025
+        film_year = 2026
         festival = "Berlin"
         region = "Germany"
         section = "Competition"
@@ -514,6 +517,30 @@ $duplicateFestivalFilms = @(
         poster_url = ""
         overview = ""
         tmdb_rating = 6.8
+        tracking_status = "pending"
+        first_available_date = ""
+        last_checked = ""
+        needs_review = $false
+        authorized_source_urls = @()
+    },
+    [pscustomobject]@{
+        id = "current-canonical-selection"
+        title = "Canonical Event Match"
+        original_title = "Canonical Event Match"
+        director = "Stable Director"
+        year = 2025
+        festival_year = 2025
+        film_year = 2025
+        festival = "NYFF"
+        region = "United States"
+        section = "Main Slate"
+        source_url = "https://example.test/nyff"
+        tmdb_id = 1003
+        imdb_id = ""
+        match_confidence = 1
+        poster_url = ""
+        overview = ""
+        tmdb_rating = 5.8
         tracking_status = "pending"
         first_available_date = ""
         last_checked = ""
@@ -547,6 +574,20 @@ $duplicateEvents = @(
         countries = @("US")
         source_urls = @("https://example.test/rent")
         needs_review = $false
+    },
+    [pscustomobject]@{
+        id = "event-canonical"
+        film_id = "old-selection-id"
+        canonical_key = "tmdb:1003"
+        film_title = "Canonical Event Match"
+        director = "Stable Director"
+        festival = "NYFF"
+        event_date = "2026-05-21"
+        availability_types = @("streaming_subscription")
+        providers = @("Test")
+        countries = @("US")
+        source_urls = @("https://example.test/canonical")
+        needs_review = $false
     }
 )
 ConvertTo-Json -InputObject $duplicateFestivalFilms -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "films.json") -Encoding UTF8
@@ -554,35 +595,71 @@ ConvertTo-Json -InputObject $duplicateEvents -Depth 10 | Set-Content -Path (Join
 & (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir | Out-Null
 $exportedWebData = Get-Content $exportOutput -Raw | ConvertFrom-Json
 $exportedSelectionCount = @($exportedWebData.films | ForEach-Object { @($_.selections) }).Count
-Assert-Equal 2 $exportedWebData.totals.films "exports unique web cards for duplicate TMDb selections"
-Assert-Equal 3 $exportedWebData.totals.selections "keeps all festival selections in export totals"
+Assert-Equal 3 $exportedWebData.totals.films "exports unique web cards for duplicate TMDb selections"
+Assert-Equal 4 $exportedWebData.totals.selections "keeps all festival selections in export totals"
 Assert-Equal $exportedSelectionCount $exportedWebData.totals.selections "keeps totals selections aligned with exported selection records"
 Assert-Equal $exportedSelectionCount $exportedWebData.selectionCount "keeps legacy selectionCount aligned with exported selection records"
 Assert-True ($null -eq $exportedWebData.totals.needsReview) "does not expose legacy review count in main totals"
-Assert-Equal 2 $exportedWebData.totals.available "counts available by unique web film"
-Assert-Equal 2 $exportedWebData.totals.events "keeps finds aligned with raw availability events"
+Assert-Equal 3 $exportedWebData.totals.available "counts available by unique web film"
+Assert-Equal 3 $exportedWebData.totals.events "keeps finds aligned with raw availability events"
 $pendingEventFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Pending With Event" })[0]
 Assert-Equal "available_found" $pendingEventFilm.trackingStatus "normalizes pending films with availability events"
 Assert-Equal "2026-05-20" $pendingEventFilm.firstAvailableDate "fills first available date from availability event"
-Assert-Equal 1 $exportedWebData.diagnostics.pendingWithAvailability "diagnoses source pending films with availability"
+Assert-Equal 2 $exportedWebData.diagnostics.pendingWithAvailability "diagnoses source pending films with availability"
+$canonicalEventFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Canonical Event Match" })[0]
+Assert-Equal "available_found" $canonicalEventFilm.trackingStatus "matches availability events by canonical key when legacy film id changed"
+Assert-Equal "2026-05-21" $canonicalEventFilm.firstAvailableDate "fills first available date from canonical-key event"
+Assert-Equal "event-canonical" $canonicalEventFilm.availability[0].id "attaches canonical-key event to exported film"
 Assert-Equal 1 $exportedWebData.diagnostics.lowConfidence "exports low confidence as diagnostics"
 $duplicateExportFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Duplicate Export" })[0]
 Assert-Equal 2 $duplicateExportFilm.selections.Count "keeps duplicate selections on merged web card"
 Assert-Equal 2024 $duplicateExportFilm.filmYear "keeps film year separate from festival year"
+Assert-Equal 2024 $duplicateExportFilm.premiereYear "exports premiere year from legacy film year when it predates festival year"
 Assert-Equal 7.8 $duplicateExportFilm.imdbRating "exports IMDb rating"
 Assert-Equal 12345 $duplicateExportFilm.imdbVotes "exports IMDb vote count"
 Assert-Equal 0 $exportedWebData.diagnostics.duplicateCanonical "exports duplicate canonical diagnostics"
-Assert-Equal 2 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
+Assert-Equal 3 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
 Assert-Equal 0 $exportedWebData.diagnostics.missingTmdb "exports missing TMDb diagnostics"
 Assert-Equal 0 $exportedWebData.diagnostics.missingDirector "exports missing director diagnostics"
-Assert-Equal 2 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
+Assert-Equal 3 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
 Assert-True (@($exportedWebData.diagnostics.missingPosterFilms | Where-Object { $_.title -eq "Duplicate Export" }).Count -eq 1) "exports diagnostic film title"
 Assert-Equal "Duplicate Export" $exportedWebData.diagnostics.lowConfidenceFilms[0].title "exports low confidence film list"
-Assert-Equal "2025,2024" (($exportedWebData.years | ForEach-Object { [string]$_ }) -join ",") "exports browse years from film years"
-Assert-Equal "2025,2024" (($exportedWebData.filmYears | ForEach-Object { [string]$_ }) -join ",") "exports film year filter options"
+Assert-Equal 2025 $pendingEventFilm.premiereYear "falls back to festival year when legacy TMDb film year is later"
+Assert-Equal 2025 $pendingEventFilm.filmYear "keeps legacy web filmYear aligned with premiere year"
+Assert-Equal 2026 $pendingEventFilm.releaseYear "moves later legacy TMDb film year into release year"
+Assert-Equal "2025,2024" (($exportedWebData.years | ForEach-Object { [string]$_ }) -join ",") "exports browse years from premiere years"
+Assert-Equal "2025,2024" (($exportedWebData.premiereYears | ForEach-Object { [string]$_ }) -join ",") "exports premiere year filter options"
+Assert-Equal "2025,2024" (($exportedWebData.filmYears | ForEach-Object { [string]$_ }) -join ",") "keeps legacy filmYears aligned with premiere years"
 Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
 Assert-Equal "Berlin,Cannes,NYFF" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
 Remove-Item -LiteralPath $exportStateDir -Recurse -Force
+
+$qualityStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-quality-test-" + [guid]::NewGuid().ToString("N"))
+$qualityOutput = Join-Path $qualityStateDir "tracker-data.json"
+New-Item -ItemType Directory -Path $qualityStateDir -Force | Out-Null
+ConvertTo-Json -InputObject @($duplicateFestivalFilms[0]) -Depth 10 | Set-Content -Path (Join-Path $qualityStateDir "films.json") -Encoding UTF8
+ConvertTo-Json -InputObject @(
+    [pscustomobject]@{
+        id = "orphan-event"
+        film_id = "missing-selection"
+        film_title = "Orphan Event"
+        director = "Nobody"
+        festival = "Cannes"
+        event_date = "2026-05-22"
+        availability_types = @("streaming_subscription")
+        providers = @("Test")
+        countries = @("US")
+        source_urls = @("https://example.test/orphan")
+        needs_review = $false
+    }
+) -Depth 10 | Set-Content -Path (Join-Path $qualityStateDir "events.json") -Encoding UTF8
+& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $qualityOutput -StateDir $qualityStateDir | Out-Null
+$qualityScript = Join-Path $PSScriptRoot "..\scripts\Test-TrackerDataQuality.ps1"
+$qualityCheckOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $qualityOutput 2>&1
+$qualityExitCode = $LASTEXITCODE
+Assert-True ($qualityExitCode -ne 0) "quality check fails orphaned availability events"
+Assert-True (([string]($qualityCheckOutput -join "`n")).Contains("orphaned_availability_event")) "quality check reports orphaned availability event code"
+Remove-Item -LiteralPath $qualityStateDir -Recurse -Force
 
 $providerResult = [pscustomobject]@{
     results = [pscustomobject]@{
@@ -604,6 +681,25 @@ Assert-True (@($offers | Where-Object { $_.type -eq "streaming_subscription" -an
 Assert-True (@($offers | Where-Object { $_.type -eq "streaming_free" -and $_.provider -eq "BBC iPlayer" }).Count -eq 1) "maps free to streaming_free"
 Assert-True (@($offers | Where-Object { $_.type -eq "digital_rent" -and $_.provider -eq "Apple TV" }).Count -eq 1) "maps rent to digital_rent"
 Assert-True (@($offers | Where-Object { $_.type -eq "digital_buy" -and $_.provider -eq "Amazon Video" }).Count -eq 1) "maps buy to digital_buy"
+
+$tmdbDetailsWithPremieres = [pscustomobject]@{
+    release_dates = [pscustomobject]@{
+        results = @(
+            [pscustomobject]@{
+                iso_3166_1 = "IT"
+                release_dates = @(
+                    [pscustomobject]@{ type = 1; release_date = "2025-09-01T00:00:00.000Z" },
+                    [pscustomobject]@{ type = 3; release_date = "2026-01-10T00:00:00.000Z" }
+                )
+            },
+            [pscustomobject]@{
+                iso_3166_1 = "TH"
+                release_dates = @([pscustomobject]@{ type = 1; release_date = "2025-08-28T00:00:00.000Z" })
+            }
+        )
+    }
+}
+Assert-Equal 2025 (Get-TmdbPremiereYearFromDetails -Details $tmdbDetailsWithPremieres) "extracts earliest TMDb premiere release year"
 
 $film = New-FilmRecord -Title "Test Film" -Director "Test Director" -Festival "Test Festival" -Region "Test Region" -SourceUrl "https://example.test" -Year 2025
 $event = New-FirstAvailabilityEvent -Film $film -Offers @([pscustomobject]@{
@@ -629,6 +725,8 @@ Assert-True (-not $eventProperties.ContainsKey("Source URLs")) "does not write l
 $film.authorized_source_urls = @("https://example.org/download.mp4")
 $canonicalFilmProperties = ConvertTo-NotionCanonicalFilmProperties -Film $film
 Assert-Equal "https://example.org/download.mp4" $canonicalFilmProperties["Authorized Source URLs"].rich_text[0].text.content "stores authorized URLs on canonical film"
+Assert-Equal 2025 $canonicalFilmProperties["Premiere Year"].number "stores premiere year on canonical film"
+Assert-Equal "festival_year_fallback" $canonicalFilmProperties["Year Source"].rich_text[0].text.content "stores year source on canonical film"
 
 $selectionProperties = ConvertTo-NotionSelectionProperties -Film $film
 Assert-True (-not $selectionProperties.ContainsKey("TMDb ID")) "selection properties omit canonical metadata"
@@ -670,6 +768,7 @@ $completeMetadataFilm.imdb_id = "tt1234567"
 $completeMetadataFilm.poster_url = "https://image.tmdb.org/t/p/w500/poster.jpg"
 $completeMetadataFilm.overview = "Overview"
 $completeMetadataFilm.film_year = 2026
+$completeMetadataFilm.release_year = 2026
 $completeMetadataFilm.tmdb_rating = 7.1
 Assert-True (-not (Test-FilmNeedsTmdbMetadataRefresh -Film $completeMetadataFilm)) "skips TMDb metadata refresh when tracked fields are complete"
 $completeMetadataFilm.poster_url = ""

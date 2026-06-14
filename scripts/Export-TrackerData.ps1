@@ -25,10 +25,17 @@ function ConvertTo-EventRecord {
     $sourceUrlCount = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "Source URL Count")
     if ($null -eq $sourceUrlCount) { $sourceUrlCount = $legacySourceUrls.Count }
     $sourceUrls = if ([string]::IsNullOrWhiteSpace($primarySourceUrl)) { @($legacySourceUrls) } else { @($primarySourceUrl) }
+    $filmProperty = Get-ObjectProperty $Page.properties "Film"
+    $filmRelationIds = @()
+    if ($null -ne $filmProperty -and $null -ne $filmProperty.relation) {
+        $filmRelationIds = @($filmProperty.relation | ForEach-Object { $_.id } | Where-Object { $_ })
+    }
 
     [pscustomobject]@{
         id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
         film_id = Get-NotionTextProperty -Page $Page -Name "Film Tracker ID"
+        canonical_key = Get-NotionTextProperty -Page $Page -Name "Canonical Key"
+        film_relation_ids = $filmRelationIds
         film_title = Get-NotionTextProperty -Page $Page -Name "Film Title"
         director = Get-NotionTextProperty -Page $Page -Name "Director"
         festival = Get-NotionTextProperty -Page $Page -Name "Festival"
@@ -45,6 +52,89 @@ function ConvertTo-EventRecord {
     }
 }
 
+function Test-EventMatchesFilm {
+    param(
+        [Parameter(Mandatory = $true)][object]$Event,
+        [Parameter(Mandatory = $true)][object]$Film,
+        [object[]]$Selections = @()
+    )
+
+    $filmId = [string](Get-ObjectProperty $Film "id" "")
+    $eventFilmId = [string](Get-ObjectProperty $Event "film_id" "")
+    if (-not [string]::IsNullOrWhiteSpace($eventFilmId) -and $eventFilmId -eq $filmId) {
+        return $true
+    }
+
+    $selectionIds = @($Selections | ForEach-Object { [string](Get-ObjectProperty $_ "id" "") } | Where-Object { $_ })
+    if (-not [string]::IsNullOrWhiteSpace($eventFilmId) -and $selectionIds -contains $eventFilmId) {
+        return $true
+    }
+
+    $eventCanonicalKey = [string](Get-ObjectProperty $Event "canonical_key" "")
+    $filmCanonicalKey = [string](Get-ObjectProperty $Film "canonical_key" (Get-ObjectProperty $Film "canonicalFilmKey" ""))
+    if ([string]::IsNullOrWhiteSpace($filmCanonicalKey)) {
+        $filmCanonicalKey = Get-CanonicalFilmKey -Film $Film
+    }
+    if (-not [string]::IsNullOrWhiteSpace($eventCanonicalKey) -and $eventCanonicalKey -eq $filmCanonicalKey) {
+        return $true
+    }
+
+    $filmPageId = [string](Get-ObjectProperty $Film "notion_page_id" "")
+    $eventFilmRelationIds = @((Get-ObjectProperty $Event "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })
+    return (-not [string]::IsNullOrWhiteSpace($filmPageId) -and $eventFilmRelationIds -contains $filmPageId)
+}
+
+function Resolve-YearMetadata {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [object[]]$FestivalYears = @()
+    )
+
+    $validFestivalYears = @(
+        $FestivalYears |
+            ForEach-Object { ConvertTo-OptionalInt $_ } |
+            Where-Object { $null -ne $_ -and $_ -gt 0 } |
+            Sort-Object
+    )
+    $minFestivalYear = if (@($validFestivalYears).Count -gt 0) { [int]$validFestivalYears[0] } else { $null }
+    $premiereYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiere_year" (Get-ObjectProperty $Film "premiereYear" $null))
+    $releaseYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "release_year" (Get-ObjectProperty $Film "releaseYear" $null))
+    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" (Get-ObjectProperty $Film "filmYear" $null))
+    $yearSource = [string](Get-ObjectProperty $Film "year_source" (Get-ObjectProperty $Film "yearSource" ""))
+    $festival = [string](Get-ObjectProperty $Film "festival" "")
+    if ([string]::IsNullOrWhiteSpace($festival) -and $null -ne $Film.PSObject.Properties["selections"]) {
+        $festival = [string](@($Film.selections | ForEach-Object { $_.festival } | Where-Object { $_ } | Select-Object -First 1))
+    }
+
+    if ($null -eq $releaseYear -and $null -ne $filmYear -and $null -ne $minFestivalYear -and $filmYear -gt $minFestivalYear) {
+        $releaseYear = $filmYear
+    }
+
+    if ($null -eq $premiereYear) {
+        if ($null -ne $filmYear -and ($null -eq $minFestivalYear -or $filmYear -le $minFestivalYear)) {
+            $premiereYear = $filmYear
+            if ([string]::IsNullOrWhiteSpace($yearSource)) { $yearSource = "official_festival" }
+        }
+        elseif ($festival -eq "Academy Awards" -and $null -ne $minFestivalYear -and $minFestivalYear -gt 1) {
+            $premiereYear = $minFestivalYear - 1
+            if ([string]::IsNullOrWhiteSpace($yearSource)) { $yearSource = "oscars_eligibility" }
+        }
+        elseif ($null -ne $minFestivalYear) {
+            $premiereYear = $minFestivalYear
+            if ([string]::IsNullOrWhiteSpace($yearSource)) { $yearSource = "festival_year_fallback" }
+        }
+    }
+    elseif ([string]::IsNullOrWhiteSpace($yearSource)) {
+        $yearSource = "official_festival"
+    }
+
+    [pscustomobject]@{
+        premiereYear = $premiereYear
+        releaseYear = $releaseYear
+        yearSource = $yearSource
+    }
+}
+
 function ConvertTo-WebFilm {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
@@ -54,8 +144,8 @@ function ConvertTo-WebFilm {
     $tmdbId = ConvertTo-OptionalInt $Film.tmdb_id
     $imdbId = [string](Get-ObjectProperty $Film "imdb_id" "")
     $festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festival_year" (Get-ObjectProperty $Film "year" $null))
-    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
-    $availability = @($Events | Where-Object { $_.film_id -eq $Film.id })
+    $yearMetadata = Resolve-YearMetadata -Film $Film -FestivalYears @($festivalYear)
+    $availability = @($Events | Where-Object { Test-EventMatchesFilm -Event $_ -Film $Film })
 
     [pscustomobject]@{
         id = $Film.id
@@ -64,7 +154,10 @@ function ConvertTo-WebFilm {
         director = $Film.director
         year = $festivalYear
         festivalYear = $festivalYear
-        filmYear = $filmYear
+        filmYear = $yearMetadata.premiereYear
+        premiereYear = $yearMetadata.premiereYear
+        releaseYear = $yearMetadata.releaseYear
+        yearSource = $yearMetadata.yearSource
         festival = $Film.festival
         region = $Film.region
         section = $Film.section
@@ -107,10 +200,10 @@ function ConvertTo-WebCanonicalFilm {
 
     $tmdbId = ConvertTo-OptionalInt $Film.tmdb_id
     $imdbId = [string](Get-ObjectProperty $Film "imdb_id" "")
-    $selectionIds = @($Selections | ForEach-Object { $_.id })
-    $availability = @($Events | Where-Object { $_.film_id -eq $Film.id -or $selectionIds -contains $_.film_id })
+    $availability = @($Events | Where-Object { Test-EventMatchesFilm -Event $_ -Film $Film -Selections $Selections })
     $festivalYears = @($Selections | ForEach-Object { ConvertTo-OptionalInt (Get-ObjectProperty $_ "festival_year" (Get-ObjectProperty $_ "year" $null)) } | Where-Object { $null -ne $_ })
     $primaryFestivalYear = if (@($festivalYears).Count -gt 0) { @($festivalYears | Sort-Object -Descending)[0] } else { $null }
+    $yearMetadata = Resolve-YearMetadata -Film $Film -FestivalYears $festivalYears
 
     [pscustomobject]@{
         id = $Film.id
@@ -119,7 +212,10 @@ function ConvertTo-WebCanonicalFilm {
         director = $Film.director
         year = $primaryFestivalYear
         festivalYear = $primaryFestivalYear
-        filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
+        filmYear = $yearMetadata.premiereYear
+        premiereYear = $yearMetadata.premiereYear
+        releaseYear = $yearMetadata.releaseYear
+        yearSource = $yearMetadata.yearSource
         festival = ""
         region = ""
         section = ""
@@ -169,7 +265,7 @@ function Get-WebCanonicalFilmKey {
         return "imdb:$($imdbId.Trim().ToLowerInvariant())"
     }
 
-    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "filmYear" $null)
+    $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiereYear" (Get-ObjectProperty $Film "filmYear" $null))
     $yearPart = if ($null -ne $filmYear -and $filmYear -gt 0) { [string]$filmYear } else { "" }
     return "title:${yearPart}:$(ConvertTo-NormalizedTitle $Film.title):$(ConvertTo-NormalizedTitle $Film.director)"
 }
@@ -291,6 +387,19 @@ function Merge-WebFilms {
         $incomingFilmYear = ConvertTo-OptionalInt $film.filmYear
         if (($null -eq $existingFilmYear -or $existingFilmYear -le 0) -and $null -ne $incomingFilmYear -and $incomingFilmYear -gt 0) {
             $existing.filmYear = $incomingFilmYear
+        }
+
+        foreach ($pair in @(
+            @{ name = "premiereYear"; incoming = ConvertTo-OptionalInt $film.premiereYear },
+            @{ name = "releaseYear"; incoming = ConvertTo-OptionalInt $film.releaseYear }
+        )) {
+            $existingValue = ConvertTo-OptionalInt (Get-ObjectProperty $existing $pair.name $null)
+            if (($null -eq $existingValue -or $existingValue -le 0) -and $null -ne $pair.incoming -and $pair.incoming -gt 0) {
+                Set-RecordProperty -Record $existing -Name $pair.name -Value $pair.incoming
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $existing "yearSource" "")) -and -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $film "yearSource" ""))) {
+            Set-RecordProperty -Record $existing -Name "yearSource" -Value $film.yearSource
         }
 
         $existingRating = ConvertTo-OptionalDouble $existing.tmdbRating
@@ -452,6 +561,24 @@ $filmYears = @(
         Where-Object { $null -ne $_ } |
         Sort-Object -Descending -Unique
 )
+$premiereYears = @(
+    $webFilms |
+        ForEach-Object {
+            $premiereYear = ConvertTo-OptionalInt (Get-ObjectProperty $_ "premiereYear" $null)
+            if ($null -ne $premiereYear) {
+                $premiereYear
+            }
+            else {
+                @($_.selections) |
+                    ForEach-Object { ConvertTo-OptionalInt (Get-ObjectProperty $_ "festivalYear" $null) } |
+                    Where-Object { $null -ne $_ } |
+                    Sort-Object |
+                    Select-Object -First 1
+            }
+        } |
+        Where-Object { $null -ne $_ } |
+        Sort-Object -Descending -Unique
+)
 $festivals = @(
     $allSelections |
         ForEach-Object { $_.festival } |
@@ -473,6 +600,9 @@ function ConvertTo-DiagnosticFilm {
         festival = [string](Get-ObjectProperty $Film "festival" "")
         festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festivalYear" $null)
         filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "filmYear" $null)
+        premiereYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiereYear" $null)
+        releaseYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "releaseYear" $null)
+        yearSource = [string](Get-ObjectProperty $Film "yearSource" "")
         tmdbId = ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdbId" $null)
         imdbId = [string](Get-ObjectProperty $Film "imdbId" "")
         canonicalFilmKey = [string](Get-ObjectProperty $Film "canonicalFilmKey" "")
@@ -522,8 +652,10 @@ $payload = [pscustomobject]@{
         lowConfidenceFilms = @($lowConfidenceFilms | Select-Object -First 50 | ForEach-Object { ConvertTo-DiagnosticFilm -Film $_ })
     }
     festivals = $festivals
-    years = $filmYears
-    filmYears = $filmYears
+    years = $premiereYears
+    premiereYears = $premiereYears
+    filmYears = $premiereYears
+    releaseYears = @($webFilms | ForEach-Object { ConvertTo-OptionalInt (Get-ObjectProperty $_ "releaseYear" $null) } | Where-Object { $null -ne $_ } | Sort-Object -Descending -Unique)
     festivalYears = $festivalYears
     selectionCount = $allSelections.Count
     films = @($webFilms)
