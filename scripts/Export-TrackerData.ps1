@@ -25,10 +25,17 @@ function ConvertTo-EventRecord {
     $sourceUrlCount = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "Source URL Count")
     if ($null -eq $sourceUrlCount) { $sourceUrlCount = $legacySourceUrls.Count }
     $sourceUrls = if ([string]::IsNullOrWhiteSpace($primarySourceUrl)) { @($legacySourceUrls) } else { @($primarySourceUrl) }
+    $filmProperty = Get-ObjectProperty $Page.properties "Film"
+    $filmRelationIds = @()
+    if ($null -ne $filmProperty -and $null -ne $filmProperty.relation) {
+        $filmRelationIds = @($filmProperty.relation | ForEach-Object { $_.id } | Where-Object { $_ })
+    }
 
     [pscustomobject]@{
         id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
         film_id = Get-NotionTextProperty -Page $Page -Name "Film Tracker ID"
+        canonical_key = Get-NotionTextProperty -Page $Page -Name "Canonical Key"
+        film_relation_ids = $filmRelationIds
         film_title = Get-NotionTextProperty -Page $Page -Name "Film Title"
         director = Get-NotionTextProperty -Page $Page -Name "Director"
         festival = Get-NotionTextProperty -Page $Page -Name "Festival"
@@ -45,6 +52,38 @@ function ConvertTo-EventRecord {
     }
 }
 
+function Test-EventMatchesFilm {
+    param(
+        [Parameter(Mandatory = $true)][object]$Event,
+        [Parameter(Mandatory = $true)][object]$Film,
+        [object[]]$Selections = @()
+    )
+
+    $filmId = [string](Get-ObjectProperty $Film "id" "")
+    $eventFilmId = [string](Get-ObjectProperty $Event "film_id" "")
+    if (-not [string]::IsNullOrWhiteSpace($eventFilmId) -and $eventFilmId -eq $filmId) {
+        return $true
+    }
+
+    $selectionIds = @($Selections | ForEach-Object { [string](Get-ObjectProperty $_ "id" "") } | Where-Object { $_ })
+    if (-not [string]::IsNullOrWhiteSpace($eventFilmId) -and $selectionIds -contains $eventFilmId) {
+        return $true
+    }
+
+    $eventCanonicalKey = [string](Get-ObjectProperty $Event "canonical_key" "")
+    $filmCanonicalKey = [string](Get-ObjectProperty $Film "canonical_key" (Get-ObjectProperty $Film "canonicalFilmKey" ""))
+    if ([string]::IsNullOrWhiteSpace($filmCanonicalKey)) {
+        $filmCanonicalKey = Get-CanonicalFilmKey -Film $Film
+    }
+    if (-not [string]::IsNullOrWhiteSpace($eventCanonicalKey) -and $eventCanonicalKey -eq $filmCanonicalKey) {
+        return $true
+    }
+
+    $filmPageId = [string](Get-ObjectProperty $Film "notion_page_id" "")
+    $eventFilmRelationIds = @((Get-ObjectProperty $Event "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })
+    return (-not [string]::IsNullOrWhiteSpace($filmPageId) -and $eventFilmRelationIds -contains $filmPageId)
+}
+
 function ConvertTo-WebFilm {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
@@ -55,7 +94,7 @@ function ConvertTo-WebFilm {
     $imdbId = [string](Get-ObjectProperty $Film "imdb_id" "")
     $festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "festival_year" (Get-ObjectProperty $Film "year" $null))
     $filmYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year" $null)
-    $availability = @($Events | Where-Object { $_.film_id -eq $Film.id })
+    $availability = @($Events | Where-Object { Test-EventMatchesFilm -Event $_ -Film $Film })
 
     [pscustomobject]@{
         id = $Film.id
@@ -107,8 +146,7 @@ function ConvertTo-WebCanonicalFilm {
 
     $tmdbId = ConvertTo-OptionalInt $Film.tmdb_id
     $imdbId = [string](Get-ObjectProperty $Film "imdb_id" "")
-    $selectionIds = @($Selections | ForEach-Object { $_.id })
-    $availability = @($Events | Where-Object { $_.film_id -eq $Film.id -or $selectionIds -contains $_.film_id })
+    $availability = @($Events | Where-Object { Test-EventMatchesFilm -Event $_ -Film $Film -Selections $Selections })
     $festivalYears = @($Selections | ForEach-Object { ConvertTo-OptionalInt (Get-ObjectProperty $_ "festival_year" (Get-ObjectProperty $_ "year" $null)) } | Where-Object { $null -ne $_ })
     $primaryFestivalYear = if (@($festivalYears).Count -gt 0) { @($festivalYears | Sort-Object -Descending)[0] } else { $null }
 

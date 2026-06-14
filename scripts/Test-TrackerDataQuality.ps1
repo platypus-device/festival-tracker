@@ -71,6 +71,25 @@ if (Test-Path -LiteralPath $DataPath) {
     $payload = Get-Content -LiteralPath $DataPath -Raw | ConvertFrom-Json
     $films = @($payload.films)
     $selections = @($films | ForEach-Object { @($_.selections) })
+    $events = @($payload.events)
+    $attachedEventIds = @($films | ForEach-Object { @($_.availability) | ForEach-Object { [string](Get-ObjectProperty $_ "id" "") } | Where-Object { $_ } })
+    $orphanedAvailabilityEvents = @($events | Where-Object {
+        $eventId = [string](Get-ObjectProperty $_ "id" "")
+        -not [string]::IsNullOrWhiteSpace($eventId) -and $attachedEventIds -notcontains $eventId
+    })
+    if ($orphanedAvailabilityEvents.Count -gt 0) {
+        $sample = @(
+            $orphanedAvailabilityEvents |
+                Select-Object -First 5 |
+                ForEach-Object {
+                    "{0} ({1}, film_id={2})" -f `
+                        (Get-ObjectProperty $_ "film_title" "Untitled"),
+                        (Get-ObjectProperty $_ "event_date" "no date"),
+                        (Get-ObjectProperty $_ "film_id" "")
+                }
+        ) -join "; "
+        Add-QualityIssue -List $qualityErrors -Code "orphaned_availability_event" -Message "Availability events are not attached to exported film cards: $sample" -Count $orphanedAvailabilityEvents.Count
+    }
 
     $duplicateCanonical = @(
         $films |

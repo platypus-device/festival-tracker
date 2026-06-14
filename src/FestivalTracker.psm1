@@ -2562,6 +2562,7 @@ function ConvertFrom-NotionEventPage {
     [pscustomobject]@{
         id = Get-NotionTextProperty -Page $Page -Name "Tracker ID"
         film_id = Get-NotionTextProperty -Page $Page -Name "Film Tracker ID"
+        canonical_key = Get-NotionTextProperty -Page $Page -Name "Canonical Key"
         film_relation_ids = $filmRelationIds
         film_title = Get-NotionTextProperty -Page $Page -Name "Film Title"
         director = Get-NotionTextProperty -Page $Page -Name "Director"
@@ -3639,6 +3640,7 @@ function ConvertTo-NotionEventProperties {
         "Event Title" = New-TitleProperty $title
         "Tracker ID" = New-RichTextProperty $Event.id
         "Film Tracker ID" = New-RichTextProperty $Event.film_id
+        "Canonical Key" = New-RichTextProperty ([string](Get-ObjectProperty $Event "canonical_key" ""))
         "Film Title" = New-RichTextProperty $Event.film_title
         "Director" = New-RichTextProperty $Event.director
         "Festival" = New-RichTextProperty $Event.festival
@@ -3826,6 +3828,7 @@ function Ensure-NotionThreeTableSchema {
                 }
             }
             "Primary Source URL" = @{ url = @{} }
+            "Canonical Key" = @{ rich_text = @{} }
             "Source URL Count" = @{ number = @{ format = "number" } }
             "Provider Count" = @{ number = @{ format = "number" } }
             "Country Count" = @{ number = @{ format = "number" } }
@@ -4154,6 +4157,7 @@ function New-NotionTrackerDatabases {
             }
             "Tracker ID" = @{ rich_text = @{} }
             "Film Tracker ID" = @{ rich_text = @{} }
+            "Canonical Key" = @{ rich_text = @{} }
             "Film Title" = @{ rich_text = @{} }
             "Director" = @{ rich_text = @{} }
             "Festival" = @{ rich_text = @{} }
