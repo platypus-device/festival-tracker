@@ -91,6 +91,7 @@ jobs:
           $trackerArgs = @{
             Mode = $mode
             UseNotion = $true
+            EnsureNotionSchema = $true
           }
           $respectWindows = "${{ github.event.inputs.respect_festival_windows }}"
           if ($forceRespectWindows -or (($mode -eq "Lineups" -or $mode -eq "All") -and $respectWindows -ne "false")) {
