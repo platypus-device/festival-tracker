@@ -69,6 +69,60 @@ $changedPatch = Get-NotionChangedProperties -DesiredProperties @{ "TMDb Rating" 
 Assert-Equal 1 $changedPatch.Count "patches changed Notion property only"
 Assert-True $changedPatch.ContainsKey("TMDb Rating") "includes changed rating property"
 
+$desiredSchemaProperties = @{
+    "Year Source" = @{ rich_text = @{} }
+    "Premiere Year" = @{ number = @{ format = "number" } }
+}
+$existingSchemaProperties = [pscustomobject]@{
+    "Year Source" = [pscustomobject]@{
+        type = "rich_text"
+        rich_text = [pscustomobject]@{}
+    }
+}
+$missingSchemaProperties = Get-NotionMissingSchemaProperties -ExistingProperties $existingSchemaProperties -DesiredProperties $desiredSchemaProperties
+Assert-Equal 1 $missingSchemaProperties.Count "schema diff includes missing properties only"
+Assert-True $missingSchemaProperties.Contains("Premiere Year") "schema diff includes missing premiere year"
+Assert-True (-not $missingSchemaProperties.Contains("Year Source")) "schema diff skips existing compatible properties"
+
+$incompatibleSchemaProperties = [pscustomobject]@{
+    "Year Source" = [pscustomobject]@{
+        type = "number"
+        number = [pscustomobject]@{ format = "number" }
+    }
+}
+$incompatibleSchemaError = ""
+try {
+    Get-NotionMissingSchemaProperties -ExistingProperties $incompatibleSchemaProperties -DesiredProperties $desiredSchemaProperties | Out-Null
+}
+catch {
+    $incompatibleSchemaError = $_.Exception.Message
+}
+Assert-True $incompatibleSchemaError.Contains("Year Source exists but is not rich_text") "schema diff fails incompatible property types"
+
+$desiredRelationProperties = @{
+    "Film" = @{
+        relation = @{
+            database_id = "11111111-1111-1111-1111-111111111111"
+            type = "single_property"
+            single_property = @{}
+        }
+    }
+}
+$missingRelationProperties = Get-NotionMissingSchemaProperties -ExistingProperties ([pscustomobject]@{}) -DesiredProperties $desiredRelationProperties
+Assert-Equal 1 $missingRelationProperties.Count "schema diff creates missing relation properties"
+$existingRelationProperties = [pscustomobject]@{
+    "Film" = [pscustomobject]@{
+        type = "relation"
+        relation = [pscustomobject]@{
+            database_id = "11111111111111111111111111111111"
+            type = "single_property"
+            single_property = [pscustomobject]@{}
+        }
+    }
+}
+$unchangedRelationProperties = Get-NotionMissingSchemaProperties -ExistingProperties $existingRelationProperties -DesiredProperties $desiredRelationProperties
+Assert-Equal 0 $unchangedRelationProperties.Count "schema diff skips existing compatible relation properties"
+
 $mojibakeCredit = Repair-MojibakeText ("Scriptwriter{0}Editor{1}LI Luo" -f (New-StringFromCodePoints @(0x00EF, 0x00BC, 0x008F)), (New-StringFromCodePoints @(0x00EF, 0x00BD, 0x009C)))
 Assert-Equal "Scriptwriter/Editor|LI Luo" $mojibakeCredit "repairs mojibake full-width separators"
 

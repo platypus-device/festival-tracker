@@ -3842,26 +3842,174 @@ function Sync-NotionEvent {
     return $Event
 }
 
+function Get-SchemaObjectProperty {
+    param(
+        [object]$Object,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [object]$Default = $null
+    )
+
+    if ($null -eq $Object) {
+        return $Default
+    }
+
+    if ($Object -is [hashtable]) {
+        if ($Object.ContainsKey($Name)) {
+            return $Object[$Name]
+        }
+        return $Default
+    }
+
+    return Get-ObjectProperty -Object $Object -Name $Name -Default $Default
+}
+
+function Get-NotionSchemaDefinitionType {
+    param([Parameter(Mandatory = $true)][object]$Definition)
+
+    if ($Definition -is [hashtable]) {
+        foreach ($key in @($Definition.Keys)) {
+            if ($key -notin @("id", "name", "description")) {
+                return [string]$key
+            }
+        }
+    }
+    else {
+        $type = [string](Get-ObjectProperty $Definition "type" "")
+        if (-not [string]::IsNullOrWhiteSpace($type)) {
+            return $type
+        }
+
+        foreach ($property in @($Definition.PSObject.Properties)) {
+            if ($property.Name -notin @("id", "name", "description")) {
+                return [string]$property.Name
+            }
+        }
+    }
+
+    return ""
+}
+
+function Get-NotionDatabaseProperty {
+    param(
+        [object]$Properties,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if ($null -eq $Properties) {
+        return $null
+    }
+
+    if ($Properties -is [hashtable]) {
+        if ($Properties.ContainsKey($Name)) {
+            return $Properties[$Name]
+        }
+        return $null
+    }
+
+    $property = $Properties.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+
+    return $property.Value
+}
+
+function ConvertTo-NotionSchemaIdKey {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ""
+    }
+
+    return $Value.Replace("-", "").ToLowerInvariant()
+}
+
+function Assert-NotionSchemaPropertyCompatible {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][object]$DesiredProperty,
+        [Parameter(Mandatory = $true)][object]$ExistingProperty
+    )
+
+    $desiredType = Get-NotionSchemaDefinitionType -Definition $DesiredProperty
+    $existingType = [string](Get-SchemaObjectProperty -Object $ExistingProperty -Name "type" -Default "")
+    if ([string]::IsNullOrWhiteSpace($existingType)) {
+        $existingType = Get-NotionSchemaDefinitionType -Definition $ExistingProperty
+    }
+
+    if ($existingType -ne $desiredType) {
+        throw "$Name exists but is not $desiredType (found $existingType)."
+    }
+
+    if ($desiredType -eq "relation") {
+        $desiredRelation = Get-SchemaObjectProperty -Object $DesiredProperty -Name "relation"
+        $existingRelation = Get-SchemaObjectProperty -Object $ExistingProperty -Name "relation"
+        $desiredDatabaseId = [string](Get-SchemaObjectProperty -Object $desiredRelation -Name "database_id" -Default "")
+        $existingDatabaseId = [string](Get-SchemaObjectProperty -Object $existingRelation -Name "database_id" -Default "")
+        if (-not [string]::IsNullOrWhiteSpace($desiredDatabaseId) -and
+            -not [string]::IsNullOrWhiteSpace($existingDatabaseId) -and
+            (ConvertTo-NotionSchemaIdKey $desiredDatabaseId) -ne (ConvertTo-NotionSchemaIdKey $existingDatabaseId)) {
+            throw "$Name relation points to $existingDatabaseId, expected $desiredDatabaseId."
+        }
+    }
+}
+
+function Get-NotionMissingSchemaProperties {
+    param(
+        [object]$ExistingProperties,
+        [Parameter(Mandatory = $true)][hashtable]$DesiredProperties
+    )
+
+    $missingProperties = [ordered]@{}
+    foreach ($name in @($DesiredProperties.Keys | Sort-Object)) {
+        $existingProperty = Get-NotionDatabaseProperty -Properties $ExistingProperties -Name $name
+        if ($null -eq $existingProperty) {
+            $missingProperties[$name] = $DesiredProperties[$name]
+            continue
+        }
+
+        Assert-NotionSchemaPropertyCompatible -Name $name -DesiredProperty $DesiredProperties[$name] -ExistingProperty $existingProperty
+    }
+
+    return $missingProperties
+}
+
+function Update-NotionDatabaseSchemaProperties {
+    param(
+        [Parameter(Mandatory = $true)][string]$DatabaseId,
+        [Parameter(Mandatory = $true)][string]$DatabaseLabel,
+        [Parameter(Mandatory = $true)][hashtable]$DesiredProperties
+    )
+
+    $database = Invoke-NotionRequest -Method "GET" -Path "/v1/databases/$DatabaseId"
+    $missingProperties = Get-NotionMissingSchemaProperties -ExistingProperties $database.properties -DesiredProperties $DesiredProperties
+    if ($missingProperties.Count -eq 0) {
+        Write-Host "$DatabaseLabel Notion schema already up to date."
+        return $missingProperties
+    }
+
+    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$DatabaseId" -Body @{ properties = $missingProperties } | Out-Null
+    Write-Host "Added $DatabaseLabel schema properties: $((@($missingProperties.Keys) | Sort-Object) -join ', ')"
+    return $missingProperties
+}
+
 function Ensure-NotionFilmMetadataProperties {
     param([Parameter(Mandatory = $true)][string]$DatabaseId)
 
-    $body = @{
-        properties = @{
-            "Poster URL" = @{ url = @{} }
-            "Overview" = @{ rich_text = @{} }
-            "TMDb Rating" = @{ number = @{ format = "number" } }
-            "IMDb Rating" = @{ number = @{ format = "number" } }
-            "IMDb Votes" = @{ number = @{ format = "number" } }
-            "IMDb Rating Checked At" = @{ date = @{} }
-            "Rating Source" = @{ rich_text = @{} }
-            "Film Year" = @{ number = @{ format = "number" } }
-            "Premiere Year" = @{ number = @{ format = "number" } }
-            "Release Year" = @{ number = @{ format = "number" } }
-            "Year Source" = @{ rich_text = @{} }
-            "Festival Year" = @{ number = @{ format = "number" } }
-        }
-    }
-    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$DatabaseId" -Body $body | Out-Null
+    Update-NotionDatabaseSchemaProperties -DatabaseId $DatabaseId -DatabaseLabel "Films" -DesiredProperties @{
+        "Poster URL" = @{ url = @{} }
+        "Overview" = @{ rich_text = @{} }
+        "TMDb Rating" = @{ number = @{ format = "number" } }
+        "IMDb Rating" = @{ number = @{ format = "number" } }
+        "IMDb Votes" = @{ number = @{ format = "number" } }
+        "IMDb Rating Checked At" = @{ date = @{} }
+        "Rating Source" = @{ rich_text = @{} }
+        "Film Year" = @{ number = @{ format = "number" } }
+        "Premiere Year" = @{ number = @{ format = "number" } }
+        "Release Year" = @{ number = @{ format = "number" } }
+        "Year Source" = @{ rich_text = @{} }
+        "Festival Year" = @{ number = @{ format = "number" } }
+    } | Out-Null
 }
 
 function Ensure-NotionEventRelationProperty {
@@ -3870,32 +4018,27 @@ function Ensure-NotionEventRelationProperty {
         [Parameter(Mandatory = $true)][string]$FilmsDatabaseId
     )
 
-    $body = @{
-        properties = @{
-            "Film" = @{
-                relation = @{
-                    database_id = $FilmsDatabaseId
-                    type = "single_property"
-                    single_property = @{}
-                }
+    Update-NotionDatabaseSchemaProperties -DatabaseId $EventsDatabaseId -DatabaseLabel "Events" -DesiredProperties @{
+        "Film" = @{
+            relation = @{
+                database_id = $FilmsDatabaseId
+                type = "single_property"
+                single_property = @{}
             }
         }
-    }
-    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$EventsDatabaseId" -Body $body | Out-Null
+    } | Out-Null
 }
 
 function Ensure-NotionSelectionSchema {
     param([Parameter(Mandatory = $true)][string]$SelectionsDatabaseId)
 
-    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$SelectionsDatabaseId" -Body @{
-        properties = @{
-            "Director" = @{ rich_text = @{} }
-            "Festival" = @{ rich_text = @{} }
-            "Region" = @{ rich_text = @{} }
-            "Section" = @{ rich_text = @{} }
-            "Source URL" = @{ url = @{} }
-            "Festival Year" = @{ number = @{ format = "number" } }
-        }
+    Update-NotionDatabaseSchemaProperties -DatabaseId $SelectionsDatabaseId -DatabaseLabel "Selections" -DesiredProperties @{
+        "Director" = @{ rich_text = @{} }
+        "Festival" = @{ rich_text = @{} }
+        "Region" = @{ rich_text = @{} }
+        "Section" = @{ rich_text = @{} }
+        "Source URL" = @{ url = @{} }
+        "Festival Year" = @{ number = @{ format = "number" } }
     } | Out-Null
 }
 
@@ -3936,38 +4079,40 @@ function Ensure-NotionThreeTableSchema {
         "Last Checked" = @{ date = @{} }
         "Needs Review" = @{ checkbox = @{} }
     }
-    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$FilmsDatabaseId" -Body @{ properties = $filmProperties } | Out-Null
+    Update-NotionDatabaseSchemaProperties -DatabaseId $FilmsDatabaseId -DatabaseLabel "Films" -DesiredProperties $filmProperties | Out-Null
 
-    Ensure-NotionSelectionSchema -SelectionsDatabaseId $SelectionsDatabaseId
-
-    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$SelectionsDatabaseId" -Body @{
-        properties = @{
-            "Film" = @{
-                relation = @{
-                    database_id = $FilmsDatabaseId
-                    type = "single_property"
-                    single_property = @{}
-                }
+    $selectionProperties = @{
+        "Director" = @{ rich_text = @{} }
+        "Festival" = @{ rich_text = @{} }
+        "Region" = @{ rich_text = @{} }
+        "Section" = @{ rich_text = @{} }
+        "Source URL" = @{ url = @{} }
+        "Festival Year" = @{ number = @{ format = "number" } }
+        "Film" = @{
+            relation = @{
+                database_id = $FilmsDatabaseId
+                type = "single_property"
+                single_property = @{}
             }
         }
-    } | Out-Null
+    }
+    Update-NotionDatabaseSchemaProperties -DatabaseId $SelectionsDatabaseId -DatabaseLabel "Selections" -DesiredProperties $selectionProperties | Out-Null
 
-    Invoke-NotionRequest -Method "PATCH" -Path "/v1/databases/$EventsDatabaseId" -Body @{
-        properties = @{
-            "Film" = @{
-                relation = @{
-                    database_id = $FilmsDatabaseId
-                    type = "single_property"
-                    single_property = @{}
-                }
+    $eventProperties = @{
+        "Film" = @{
+            relation = @{
+                database_id = $FilmsDatabaseId
+                type = "single_property"
+                single_property = @{}
             }
-            "Primary Source URL" = @{ url = @{} }
-            "Canonical Key" = @{ rich_text = @{} }
-            "Source URL Count" = @{ number = @{ format = "number" } }
-            "Provider Count" = @{ number = @{ format = "number" } }
-            "Country Count" = @{ number = @{ format = "number" } }
         }
-    } | Out-Null
+        "Primary Source URL" = @{ url = @{} }
+        "Canonical Key" = @{ rich_text = @{} }
+        "Source URL Count" = @{ number = @{ format = "number" } }
+        "Provider Count" = @{ number = @{ format = "number" } }
+        "Country Count" = @{ number = @{ format = "number" } }
+    }
+    Update-NotionDatabaseSchemaProperties -DatabaseId $EventsDatabaseId -DatabaseLabel "Events" -DesiredProperties $eventProperties | Out-Null
 }
 
 function New-NotionCanonicalFilmsDatabase {
