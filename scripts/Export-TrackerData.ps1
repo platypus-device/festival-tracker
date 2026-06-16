@@ -100,6 +100,77 @@ function Test-EventMatchesFilm {
     return $false
 }
 
+function Find-UniqueEventWebFilm {
+    param(
+        [Parameter(Mandatory = $true)][object]$Event,
+        [object[]]$Films = @()
+    )
+
+    $directMatches = @($Films | Where-Object { Test-EventMatchesFilm -Event $Event -Film $_ -Selections @($_.selections) })
+    if ($directMatches.Count -eq 1) {
+        return $directMatches[0]
+    }
+    if ($directMatches.Count -gt 1) {
+        return $null
+    }
+
+    $eventTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Event "film_title" ""))
+    if ([string]::IsNullOrWhiteSpace($eventTitle)) {
+        return $null
+    }
+
+    $titleMatches = @($Films | Where-Object {
+        $filmTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $_ "title" ""))
+        $filmOriginalTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $_ "originalTitle" (Get-ObjectProperty $_ "original_title" "")))
+        $filmTitle -eq $eventTitle -or (-not [string]::IsNullOrWhiteSpace($filmOriginalTitle) -and $filmOriginalTitle -eq $eventTitle)
+    })
+    if ($titleMatches.Count -ne 1) {
+        return $null
+    }
+
+    $eventDirector = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Event "director" ""))
+    $filmDirector = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $titleMatches[0] "director" ""))
+    if (-not [string]::IsNullOrWhiteSpace($eventDirector) -and
+        -not [string]::IsNullOrWhiteSpace($filmDirector) -and
+        $eventDirector -ne $filmDirector) {
+        return $null
+    }
+
+    return $titleMatches[0]
+}
+
+function Add-OrphanAvailabilityEventsToWebFilms {
+    param(
+        [object[]]$Films = @(),
+        [object[]]$Events = @()
+    )
+
+    $attachedEventIds = @(
+        $Films |
+            ForEach-Object { @($_.availability) } |
+            ForEach-Object { [string](Get-ObjectProperty $_ "id" "") } |
+            Where-Object { $_ }
+    )
+    foreach ($event in @($Events)) {
+        $eventId = [string](Get-ObjectProperty $event "id" "")
+        if ([string]::IsNullOrWhiteSpace($eventId) -or $attachedEventIds -contains $eventId) {
+            continue
+        }
+
+        $film = Find-UniqueEventWebFilm -Event $event -Films $Films
+        if ($null -eq $film) {
+            continue
+        }
+
+        $film.availability = @(
+            @($film.availability) + $event |
+                Sort-Object event_date, id -Unique
+        )
+        Normalize-WebFilmAvailability -Film $film
+        $attachedEventIds += $eventId
+    }
+}
+
 function Resolve-YearMetadata {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
@@ -549,6 +620,7 @@ if ($usingCanonicalFilms) {
         Add-Member -InputObject $film -NotePropertyName "selectionLabels" -NotePropertyValue @($film.selections | ForEach-Object { Get-SelectionLabel -Selection $_ } | Where-Object { $_ }) -Force
     }
 }
+Add-OrphanAvailabilityEventsToWebFilms -Films $webFilms -Events $events
 $allSelections = @(
     $webFilms |
         ForEach-Object { @($_.selections) }

@@ -497,6 +497,76 @@ $sampleYears = @(
 )
 Assert-Equal "2026,2025,2024" ($sampleYears -join ",") "exports web years descending and unique"
 
+$linkRepairFilm = [pscustomobject]@{
+    id = "current-canonical-film"
+    canonical_key = "title:2026:legacy event:repair director"
+    title = "Legacy Event"
+    original_title = "Legacy Event"
+    director = "Repair Director"
+    film_year = 2026
+    premiere_year = 2026
+    notion_page_id = "current-film-page"
+}
+$linkRepairSelection = [pscustomobject]@{
+    id = "current-selection-id"
+    title = "Legacy Event"
+    original_title = "Legacy Event"
+    director = "Repair Director"
+    film_year = 2026
+    festival_year = 2026
+}
+$legacyEvent = [pscustomobject]@{
+    id = "legacy-event"
+    film_id = "old-selection-id"
+    canonical_key = ""
+    film_relation_ids = @("old-film-page")
+    film_title = "Legacy Event"
+    director = "Repair Director"
+}
+$titleDirectorLink = Resolve-AvailabilityEventFilmLink -Event $legacyEvent -Films @($linkRepairFilm) -Selections @($linkRepairSelection)
+Assert-Equal "title_director" $titleDirectorLink.reason "resolves legacy event by unique title and director"
+Assert-Equal "current-film-page" $titleDirectorLink.notion_page_id "resolves legacy event to current film page"
+$linkRepair = Get-AvailabilityEventLinkRepair -Event $legacyEvent -Link $titleDirectorLink
+Assert-Equal "title:2026:legacy event:repair director" $linkRepair.canonical_key "repairs missing event canonical key"
+Assert-Equal "current-film-page" $linkRepair.film_notion_page_id "repairs stale event film relation"
+Assert-True $linkRepair.needs_relation "detects stale event relation"
+
+$selectionLinkedEvent = [pscustomobject]@{
+    id = "selection-linked-event"
+    film_id = "current-selection-id"
+    canonical_key = ""
+    film_relation_ids = @()
+    film_title = "Legacy Event"
+    director = "Repair Director"
+}
+$selectionLink = Resolve-AvailabilityEventFilmLink -Event $selectionLinkedEvent -Films @($linkRepairFilm) -Selections @($linkRepairSelection)
+Assert-Equal "selection_id" $selectionLink.reason "resolves event through current selection id"
+
+$alreadyLinkedEvent = [pscustomobject]@{
+    id = "already-linked-event"
+    film_id = "current-selection-id"
+    canonical_key = "title:2026:legacy event:repair director"
+    film_relation_ids = @("current-film-page")
+    film_title = "Legacy Event"
+    director = "Repair Director"
+}
+Assert-True ($null -eq (Get-AvailabilityEventLinkRepair -Event $alreadyLinkedEvent -Link $selectionLink)) "skips already repaired event links"
+
+$ambiguousLink = Resolve-AvailabilityEventFilmLink -Event $legacyEvent -Films @(
+    $linkRepairFilm,
+    [pscustomobject]@{
+        id = "duplicate-canonical-film"
+        canonical_key = "title:2026:legacy event:repair director:duplicate"
+        title = "Legacy Event"
+        original_title = "Legacy Event"
+        director = "Repair Director"
+        film_year = 2026
+        premiere_year = 2026
+        notion_page_id = "duplicate-film-page"
+    }
+) -Selections @()
+Assert-True ($null -eq $ambiguousLink) "does not resolve ambiguous title-director event links"
+
 $exportStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-export-test-" + [guid]::NewGuid().ToString("N"))
 $exportOutput = Join-Path $exportStateDir "tracker-data.json"
 New-Item -ItemType Directory -Path $exportStateDir | Out-Null
@@ -624,6 +694,30 @@ $duplicateFestivalFilms = @(
         last_checked = ""
         needs_review = $false
         authorized_source_urls = @()
+    },
+    [pscustomobject]@{
+        id = "current-title-only-selection"
+        title = "Title Only Event Match"
+        original_title = "Title Only Event Match"
+        director = ""
+        year = 2025
+        festival_year = 2025
+        film_year = 2025
+        festival = "Locarno"
+        region = "Switzerland"
+        section = "Competition"
+        source_url = "https://example.test/locarno"
+        tmdb_id = 1005
+        imdb_id = ""
+        match_confidence = 1
+        poster_url = ""
+        overview = ""
+        tmdb_rating = 6.5
+        tracking_status = "pending"
+        first_available_date = ""
+        last_checked = ""
+        needs_review = $false
+        authorized_source_urls = @()
     }
 )
 $duplicateEvents = @(
@@ -679,6 +773,19 @@ $duplicateEvents = @(
         countries = @("US")
         source_urls = @("https://example.test/title-director")
         needs_review = $false
+    },
+    [pscustomobject]@{
+        id = "event-title-only"
+        film_id = "old-title-only-selection"
+        film_title = "Title Only Event Match"
+        director = "Documented Director"
+        festival = "Locarno"
+        event_date = "2026-05-23"
+        availability_types = @("digital_buy")
+        providers = @("Test")
+        countries = @("US")
+        source_urls = @("https://example.test/title-only")
+        needs_review = $false
     }
 )
 ConvertTo-Json -InputObject $duplicateFestivalFilms -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "films.json") -Encoding UTF8
@@ -686,17 +793,17 @@ ConvertTo-Json -InputObject $duplicateEvents -Depth 10 | Set-Content -Path (Join
 & (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir | Out-Null
 $exportedWebData = Get-Content $exportOutput -Raw | ConvertFrom-Json
 $exportedSelectionCount = @($exportedWebData.films | ForEach-Object { @($_.selections) }).Count
-Assert-Equal 4 $exportedWebData.totals.films "exports unique web cards for duplicate TMDb selections"
-Assert-Equal 5 $exportedWebData.totals.selections "keeps all festival selections in export totals"
+Assert-Equal 5 $exportedWebData.totals.films "exports unique web cards for duplicate TMDb selections"
+Assert-Equal 6 $exportedWebData.totals.selections "keeps all festival selections in export totals"
 Assert-Equal $exportedSelectionCount $exportedWebData.totals.selections "keeps totals selections aligned with exported selection records"
 Assert-Equal $exportedSelectionCount $exportedWebData.selectionCount "keeps legacy selectionCount aligned with exported selection records"
 Assert-True ($null -eq $exportedWebData.totals.needsReview) "does not expose legacy review count in main totals"
-Assert-Equal 4 $exportedWebData.totals.available "counts available by unique web film"
-Assert-Equal 4 $exportedWebData.totals.events "keeps finds aligned with raw availability events"
+Assert-Equal 5 $exportedWebData.totals.available "counts available by unique web film"
+Assert-Equal 5 $exportedWebData.totals.events "keeps finds aligned with raw availability events"
 $pendingEventFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Pending With Event" })[0]
 Assert-Equal "available_found" $pendingEventFilm.trackingStatus "normalizes pending films with availability events"
 Assert-Equal "2026-05-20" $pendingEventFilm.firstAvailableDate "fills first available date from availability event"
-Assert-Equal 3 $exportedWebData.diagnostics.pendingWithAvailability "diagnoses source pending films with availability"
+Assert-Equal 4 $exportedWebData.diagnostics.pendingWithAvailability "diagnoses source pending films with availability"
 $canonicalEventFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Canonical Event Match" })[0]
 Assert-Equal "available_found" $canonicalEventFilm.trackingStatus "matches availability events by canonical key when legacy film id changed"
 Assert-Equal "2026-05-21" $canonicalEventFilm.firstAvailableDate "fills first available date from canonical-key event"
@@ -704,6 +811,9 @@ Assert-Equal "event-canonical" $canonicalEventFilm.availability[0].id "attaches 
 $titleEventFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Title Event Match" })[0]
 Assert-Equal "available_found" $titleEventFilm.trackingStatus "matches legacy availability events by title and director"
 Assert-Equal "event-title-director" $titleEventFilm.availability[0].id "attaches title-director matched event to exported film"
+$titleOnlyEventFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Title Only Event Match" })[0]
+Assert-Equal "available_found" $titleOnlyEventFilm.trackingStatus "attaches unique title-only orphan event after web merge"
+Assert-Equal "event-title-only" $titleOnlyEventFilm.availability[0].id "attaches unique title-only event to exported film"
 Assert-Equal 1 $exportedWebData.diagnostics.lowConfidence "exports low confidence as diagnostics"
 $duplicateExportFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Duplicate Export" })[0]
 Assert-Equal 2 $duplicateExportFilm.selections.Count "keeps duplicate selections on merged web card"
@@ -712,10 +822,10 @@ Assert-Equal 2024 $duplicateExportFilm.premiereYear "exports premiere year from 
 Assert-Equal 7.8 $duplicateExportFilm.imdbRating "exports IMDb rating"
 Assert-Equal 12345 $duplicateExportFilm.imdbVotes "exports IMDb vote count"
 Assert-Equal 0 $exportedWebData.diagnostics.duplicateCanonical "exports duplicate canonical diagnostics"
-Assert-Equal 4 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
+Assert-Equal 5 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
 Assert-Equal 0 $exportedWebData.diagnostics.missingTmdb "exports missing TMDb diagnostics"
-Assert-Equal 0 $exportedWebData.diagnostics.missingDirector "exports missing director diagnostics"
-Assert-Equal 4 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
+Assert-Equal 1 $exportedWebData.diagnostics.missingDirector "exports missing director diagnostics"
+Assert-Equal 5 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
 Assert-True (@($exportedWebData.diagnostics.missingPosterFilms | Where-Object { $_.title -eq "Duplicate Export" }).Count -eq 1) "exports diagnostic film title"
 Assert-Equal "Duplicate Export" $exportedWebData.diagnostics.lowConfidenceFilms[0].title "exports low confidence film list"
 Assert-Equal 2025 $pendingEventFilm.premiereYear "falls back to festival year when legacy TMDb film year is later"
@@ -725,7 +835,7 @@ Assert-Equal "2025,2024" (($exportedWebData.years | ForEach-Object { [string]$_ 
 Assert-Equal "2025,2024" (($exportedWebData.premiereYears | ForEach-Object { [string]$_ }) -join ",") "exports premiere year filter options"
 Assert-Equal "2025,2024" (($exportedWebData.filmYears | ForEach-Object { [string]$_ }) -join ",") "keeps legacy filmYears aligned with premiere years"
 Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
-Assert-Equal "Berlin,Cannes,NYFF,Venice" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
+Assert-Equal "Berlin,Cannes,Locarno,NYFF,Venice" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
 Remove-Item -LiteralPath $exportStateDir -Recurse -Force
 
 $qualityStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-quality-test-" + [guid]::NewGuid().ToString("N"))
@@ -754,6 +864,83 @@ $qualityExitCode = $LASTEXITCODE
 Assert-True ($qualityExitCode -ne 0) "quality check fails orphaned availability events"
 Assert-True (([string]($qualityCheckOutput -join "`n")).Contains("orphaned_availability_event")) "quality check reports orphaned availability event code"
 Remove-Item -LiteralPath $qualityStateDir -Recurse -Force
+
+$ambiguousStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-ambiguous-event-test-" + [guid]::NewGuid().ToString("N"))
+$ambiguousOutput = Join-Path $ambiguousStateDir "tracker-data.json"
+New-Item -ItemType Directory -Path $ambiguousStateDir -Force | Out-Null
+ConvertTo-Json -InputObject @(
+    [pscustomobject]@{
+        id = "ambiguous-a"
+        title = "Ambiguous Event Match"
+        original_title = "Ambiguous Event Match"
+        director = ""
+        year = 2026
+        festival_year = 2026
+        film_year = 2026
+        festival = "Cannes"
+        region = "France"
+        section = "Competition"
+        source_url = "https://example.test/a"
+        tmdb_id = 2001
+        imdb_id = ""
+        match_confidence = 1
+        poster_url = ""
+        overview = ""
+        tmdb_rating = 5.1
+        tracking_status = "pending"
+        first_available_date = ""
+        last_checked = ""
+        needs_review = $false
+        authorized_source_urls = @()
+    },
+    [pscustomobject]@{
+        id = "ambiguous-b"
+        title = "Ambiguous Event Match"
+        original_title = "Ambiguous Event Match"
+        director = ""
+        year = 2026
+        festival_year = 2026
+        film_year = 2026
+        festival = "Venice"
+        region = "Italy"
+        section = "Competition"
+        source_url = "https://example.test/b"
+        tmdb_id = 2002
+        imdb_id = ""
+        match_confidence = 1
+        poster_url = ""
+        overview = ""
+        tmdb_rating = 5.2
+        tracking_status = "pending"
+        first_available_date = ""
+        last_checked = ""
+        needs_review = $false
+        authorized_source_urls = @()
+    }
+) -Depth 10 | Set-Content -Path (Join-Path $ambiguousStateDir "films.json") -Encoding UTF8
+ConvertTo-Json -InputObject @(
+    [pscustomobject]@{
+        id = "ambiguous-event"
+        film_id = "old-ambiguous-selection"
+        film_title = "Ambiguous Event Match"
+        director = "Known Director"
+        festival = "Cannes"
+        event_date = "2026-05-24"
+        availability_types = @("streaming_subscription")
+        providers = @("Test")
+        countries = @("US")
+        source_urls = @("https://example.test/ambiguous")
+        needs_review = $false
+    }
+) -Depth 10 | Set-Content -Path (Join-Path $ambiguousStateDir "events.json") -Encoding UTF8
+& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $ambiguousOutput -StateDir $ambiguousStateDir | Out-Null
+$ambiguousWebData = Get-Content $ambiguousOutput -Raw | ConvertFrom-Json
+$ambiguousAttachedCount = @($ambiguousWebData.films | ForEach-Object { @($_.availability) }).Count
+Assert-Equal 0 $ambiguousAttachedCount "does not attach ambiguous title-only orphan event"
+$ambiguousQualityOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $ambiguousOutput 2>&1
+$ambiguousQualityExitCode = $LASTEXITCODE
+Assert-True ($ambiguousQualityExitCode -ne 0) "quality check still fails ambiguous orphaned event"
+Remove-Item -LiteralPath $ambiguousStateDir -Recurse -Force
 
 $providerResult = [pscustomobject]@{
     results = [pscustomobject]@{

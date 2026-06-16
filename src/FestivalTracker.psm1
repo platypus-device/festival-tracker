@@ -3486,6 +3486,7 @@ function New-NotionSyncStats {
         events_created = 0
         events_patched = 0
         events_skipped = 0
+        event_links_repaired = 0
     }
 }
 
@@ -3842,6 +3843,202 @@ function Sync-NotionEvent {
     return $Event
 }
 
+function Add-AvailabilityFilmIndexItem {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Index,
+        [AllowNull()][string]$Key,
+        [Parameter(Mandatory = $true)][object]$Film
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Key)) {
+        return
+    }
+
+    if (-not $Index.ContainsKey($Key)) {
+        $Index[$Key] = New-Object System.Collections.Generic.List[object]
+    }
+    $Index[$Key].Add($Film) | Out-Null
+}
+
+function Get-AvailabilityFilmIndexItem {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Index,
+        [AllowNull()][string]$Key
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Key) -or -not $Index.ContainsKey($Key)) {
+        return $null
+    }
+
+    $matches = @($Index[$Key].ToArray())
+    if ($matches.Count -ne 1) {
+        return $null
+    }
+
+    return $matches[0]
+}
+
+function New-AvailabilityEventFilmLink {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [Parameter(Mandatory = $true)][string]$Reason
+    )
+
+    $canonicalKey = [string](Get-ObjectProperty $Film "canonical_key" "")
+    if ([string]::IsNullOrWhiteSpace($canonicalKey)) {
+        $canonicalKey = Get-CanonicalFilmKey -Film $Film
+    }
+
+    [pscustomobject]@{
+        film = $Film
+        canonical_key = $canonicalKey
+        notion_page_id = [string](Get-ObjectProperty $Film "notion_page_id" "")
+        reason = $Reason
+    }
+}
+
+function Resolve-AvailabilityEventFilmLink {
+    param(
+        [Parameter(Mandatory = $true)][object]$Event,
+        [object[]]$Films = @(),
+        [object[]]$Selections = @()
+    )
+
+    $canonicalByKey = @{}
+    $canonicalById = @{}
+    $canonicalByPageId = @{}
+    foreach ($film in @($Films)) {
+        $canonicalKey = [string](Get-ObjectProperty $film "canonical_key" "")
+        if ([string]::IsNullOrWhiteSpace($canonicalKey)) {
+            $canonicalKey = Get-CanonicalFilmKey -Film $film
+        }
+        Add-AvailabilityFilmIndexItem -Index $canonicalByKey -Key $canonicalKey -Film $film
+        Add-AvailabilityFilmIndexItem -Index $canonicalById -Key ([string](Get-ObjectProperty $film "id" "")) -Film $film
+        Add-AvailabilityFilmIndexItem -Index $canonicalByPageId -Key ([string](Get-ObjectProperty $film "notion_page_id" "")) -Film $film
+    }
+
+    $selectionCanonicalById = @{}
+    foreach ($selection in @($Selections)) {
+        $selectionId = [string](Get-ObjectProperty $selection "id" "")
+        if ([string]::IsNullOrWhiteSpace($selectionId)) {
+            continue
+        }
+        $selectionCanonicalById[$selectionId] = Get-CanonicalFilmKey -Film $selection
+    }
+
+    $eventCanonicalKey = [string](Get-ObjectProperty $Event "canonical_key" "")
+    $match = Get-AvailabilityFilmIndexItem -Index $canonicalByKey -Key $eventCanonicalKey
+    if ($null -ne $match) {
+        return (New-AvailabilityEventFilmLink -Film $match -Reason "canonical_key")
+    }
+
+    $eventFilmId = [string](Get-ObjectProperty $Event "film_id" "")
+    $match = Get-AvailabilityFilmIndexItem -Index $canonicalById -Key $eventFilmId
+    if ($null -ne $match) {
+        return (New-AvailabilityEventFilmLink -Film $match -Reason "film_id")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($eventFilmId) -and $selectionCanonicalById.ContainsKey($eventFilmId)) {
+        $match = Get-AvailabilityFilmIndexItem -Index $canonicalByKey -Key $selectionCanonicalById[$eventFilmId]
+        if ($null -ne $match) {
+            return (New-AvailabilityEventFilmLink -Film $match -Reason "selection_id")
+        }
+    }
+
+    foreach ($filmPageId in @((Get-ObjectProperty $Event "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })) {
+        $match = Get-AvailabilityFilmIndexItem -Index $canonicalByPageId -Key $filmPageId
+        if ($null -ne $match) {
+            return (New-AvailabilityEventFilmLink -Film $match -Reason "relation")
+        }
+    }
+
+    $eventTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Event "film_title" ""))
+    $eventDirector = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $Event "director" ""))
+    if ([string]::IsNullOrWhiteSpace($eventTitle) -or [string]::IsNullOrWhiteSpace($eventDirector)) {
+        return $null
+    }
+
+    $titleDirectorMatches = @(
+        $Films | Where-Object {
+            $filmTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $_ "title" ""))
+            $filmOriginalTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $_ "original_title" ""))
+            $filmDirector = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $_ "director" ""))
+            -not [string]::IsNullOrWhiteSpace($filmDirector) -and
+                $filmDirector -eq $eventDirector -and
+                ($filmTitle -eq $eventTitle -or (-not [string]::IsNullOrWhiteSpace($filmOriginalTitle) -and $filmOriginalTitle -eq $eventTitle))
+        }
+    )
+    if ($titleDirectorMatches.Count -eq 1) {
+        return (New-AvailabilityEventFilmLink -Film $titleDirectorMatches[0] -Reason "title_director")
+    }
+
+    return $null
+}
+
+function Get-AvailabilityEventLinkRepair {
+    param(
+        [Parameter(Mandatory = $true)][object]$Event,
+        [AllowNull()][object]$Link
+    )
+
+    if ($null -eq $Link) {
+        return $null
+    }
+
+    $targetCanonicalKey = [string](Get-ObjectProperty $Link "canonical_key" "")
+    $targetFilmPageId = [string](Get-ObjectProperty $Link "notion_page_id" "")
+    if ([string]::IsNullOrWhiteSpace($targetCanonicalKey) -and [string]::IsNullOrWhiteSpace($targetFilmPageId)) {
+        return $null
+    }
+
+    $currentCanonicalKey = [string](Get-ObjectProperty $Event "canonical_key" "")
+    $currentRelationIds = @((Get-ObjectProperty $Event "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })
+    $needsCanonicalKey = -not [string]::IsNullOrWhiteSpace($targetCanonicalKey) -and $currentCanonicalKey -ne $targetCanonicalKey
+    $needsRelation = -not [string]::IsNullOrWhiteSpace($targetFilmPageId) -and $currentRelationIds -notcontains $targetFilmPageId
+    if (-not $needsCanonicalKey -and -not $needsRelation) {
+        return $null
+    }
+
+    [pscustomobject]@{
+        canonical_key = $targetCanonicalKey
+        film_notion_page_id = $targetFilmPageId
+        reason = [string](Get-ObjectProperty $Link "reason" "")
+        needs_canonical_key = $needsCanonicalKey
+        needs_relation = $needsRelation
+    }
+}
+
+function Repair-NotionAvailabilityEventLinks {
+    param(
+        [object[]]$ExistingEvents = @(),
+        [object[]]$CanonicalFilms = @(),
+        [object[]]$Selections = @(),
+        [Parameter(Mandatory = $true)][string]$EventsDatabaseId,
+        [Parameter(Mandatory = $true)][object]$Context
+    )
+
+    foreach ($event in @($ExistingEvents)) {
+        $eventId = [string](Get-ObjectProperty $event "id" "")
+        if ([string]::IsNullOrWhiteSpace($eventId) -or -not $Context.eventPagesByTrackerId.ContainsKey($eventId)) {
+            continue
+        }
+
+        $link = Resolve-AvailabilityEventFilmLink -Event $event -Films $CanonicalFilms -Selections $Selections
+        $repair = Get-AvailabilityEventLinkRepair -Event $event -Link $link
+        if ($null -eq $repair) {
+            continue
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($repair.canonical_key)) {
+            Set-RecordProperty -Record $event -Name "canonical_key" -Value $repair.canonical_key
+        }
+        if (-not [string]::IsNullOrWhiteSpace($repair.film_notion_page_id)) {
+            Set-RecordProperty -Record $event -Name "film_notion_page_id" -Value $repair.film_notion_page_id
+        }
+        Sync-NotionEvent -Event $event -DatabaseId $EventsDatabaseId -Context $Context | Out-Null
+        Add-NotionSyncStat -Stats $Context.stats -Name "event_links_repaired"
+    }
+}
+
 function Get-SchemaObjectProperty {
     param(
         [object]$Object,
@@ -4144,6 +4341,7 @@ function Sync-NotionState {
     param(
         [object[]]$Films = @(),
         [object[]]$NewEvents = @(),
+        [object[]]$ExistingEvents = @(),
         [switch]$EnsureNotionSchema
     )
 
@@ -4175,7 +4373,7 @@ function Sync-NotionState {
         }
 
         $contextSelectionsDb = if (@($selectionItems).Count -gt 0) { $selectionsDb } else { "" }
-        $contextEventsDb = if (@($NewEvents).Count -gt 0) { $eventsDb } else { "" }
+        $contextEventsDb = if (@($NewEvents).Count -gt 0 -or @($ExistingEvents).Count -gt 0) { $eventsDb } else { "" }
         $syncContext = New-NotionSyncContext -FilmsDatabaseId $canonicalFilmsDb -SelectionsDatabaseId $contextSelectionsDb -EventsDatabaseId $contextEventsDb
 
         if (@($selectionItems).Count -gt 0) {
@@ -4223,6 +4421,10 @@ function Sync-NotionState {
             }
         }
 
+        if (@($ExistingEvents).Count -gt 0) {
+            Repair-NotionAvailabilityEventLinks -ExistingEvents $ExistingEvents -CanonicalFilms @($syncedCanonicalFilms.ToArray()) -Selections $selectionItems -EventsDatabaseId $eventsDb -Context $syncContext
+        }
+
         $syncedEvents = New-Object System.Collections.Generic.List[object]
         foreach ($event in @($NewEvents)) {
             $canonicalKey = [string](Get-ObjectProperty $event "canonical_key" "")
@@ -4232,11 +4434,12 @@ function Sync-NotionState {
             $syncedEvents.Add((Sync-NotionEvent -Event $event -DatabaseId $eventsDb -FilmPageIdByTrackerId $filmPageIdByTrackerId -Context $syncContext))
         }
 
-        Write-Host ("Notion sync stats: films created={0}, patched={1}, skipped={2}; selections created={3}, patched={4}, skipped={5}; relations patched={6}, skipped={7}; events created={8}, patched={9}, skipped={10}" -f `
+        Write-Host ("Notion sync stats: films created={0}, patched={1}, skipped={2}; selections created={3}, patched={4}, skipped={5}; relations patched={6}, skipped={7}; events created={8}, patched={9}, skipped={10}; event links repaired={11}" -f `
             $syncContext.stats.films_created, $syncContext.stats.films_patched, $syncContext.stats.films_skipped, `
             $syncContext.stats.selections_created, $syncContext.stats.selections_patched, $syncContext.stats.selections_skipped, `
             $syncContext.stats.relations_patched, $syncContext.stats.relations_skipped, `
-            $syncContext.stats.events_created, $syncContext.stats.events_patched, $syncContext.stats.events_skipped)
+            $syncContext.stats.events_created, $syncContext.stats.events_patched, $syncContext.stats.events_skipped, `
+            $syncContext.stats.event_links_repaired)
 
         return [pscustomobject]@{
             films = @($syncedCanonicalFilms.ToArray())
@@ -4582,7 +4785,7 @@ function Invoke-FestivalTracker {
             if ($Mode -eq "Lineups" -and @($lineupRecords).Count -gt 0) {
                 $notionSyncFilms = $lineupRecords
             }
-            Sync-NotionState -Films $notionSyncFilms -NewEvents $newEvents -EnsureNotionSchema:$EnsureNotionSchema | Out-Null
+            Sync-NotionState -Films $notionSyncFilms -NewEvents $newEvents -ExistingEvents $events -EnsureNotionSchema:$EnsureNotionSchema | Out-Null
         }
     }
     else {
