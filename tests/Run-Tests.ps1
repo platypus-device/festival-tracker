@@ -767,6 +767,31 @@ $duplicateFestivalFilms = @(
         authorized_source_urls = @()
     },
     [pscustomobject]@{
+        id = "selection-explicit-late-premiere"
+        title = "Explicit Late Premiere"
+        original_title = "Explicit Late Premiere"
+        director = "Year Director"
+        year = 2025
+        festival_year = 2025
+        film_year = 2026
+        premiere_year = 2026
+        festival = "Berlin"
+        region = "Germany"
+        section = "Competition"
+        source_url = "https://example.test/berlin-late"
+        tmdb_id = 1006
+        imdb_id = ""
+        match_confidence = 1
+        poster_url = ""
+        overview = ""
+        tmdb_rating = 6.2
+        tracking_status = "pending"
+        first_available_date = ""
+        last_checked = ""
+        needs_review = $false
+        authorized_source_urls = @()
+    },
+    [pscustomobject]@{
         id = "current-canonical-selection"
         title = "Canonical Event Match"
         original_title = "Canonical Event Match"
@@ -912,8 +937,8 @@ ConvertTo-Json -InputObject $duplicateEvents -Depth 10 | Set-Content -Path (Join
 & (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir | Out-Null
 $exportedWebData = Get-Content $exportOutput -Raw | ConvertFrom-Json
 $exportedSelectionCount = @($exportedWebData.films | ForEach-Object { @($_.selections) }).Count
-Assert-Equal 5 $exportedWebData.totals.films "exports unique web cards for duplicate TMDb selections"
-Assert-Equal 6 $exportedWebData.totals.selections "keeps all festival selections in export totals"
+Assert-Equal 6 $exportedWebData.totals.films "exports unique web cards for duplicate TMDb selections"
+Assert-Equal 7 $exportedWebData.totals.selections "keeps all festival selections in export totals"
 Assert-Equal $exportedSelectionCount $exportedWebData.totals.selections "keeps totals selections aligned with exported selection records"
 Assert-Equal $exportedSelectionCount $exportedWebData.selectionCount "keeps legacy selectionCount aligned with exported selection records"
 Assert-True ($null -eq $exportedWebData.totals.needsReview) "does not expose legacy review count in main totals"
@@ -941,15 +966,20 @@ Assert-Equal 2024 $duplicateExportFilm.premiereYear "exports premiere year from 
 Assert-Equal 7.8 $duplicateExportFilm.imdbRating "exports IMDb rating"
 Assert-Equal 12345 $duplicateExportFilm.imdbVotes "exports IMDb vote count"
 Assert-Equal 0 $exportedWebData.diagnostics.duplicateCanonical "exports duplicate canonical diagnostics"
-Assert-Equal 5 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
+Assert-Equal 6 $exportedWebData.diagnostics.missingPoster "exports missing poster diagnostics after merge"
 Assert-Equal 0 $exportedWebData.diagnostics.missingTmdb "exports missing TMDb diagnostics"
 Assert-Equal 1 $exportedWebData.diagnostics.missingDirector "exports missing director diagnostics"
-Assert-Equal 5 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
+Assert-Equal 6 $exportedWebData.diagnostics.missingPosterFilms.Count "exports missing poster film list"
 Assert-True (@($exportedWebData.diagnostics.missingPosterFilms | Where-Object { $_.title -eq "Duplicate Export" }).Count -eq 1) "exports diagnostic film title"
 Assert-Equal "Duplicate Export" $exportedWebData.diagnostics.lowConfidenceFilms[0].title "exports low confidence film list"
 Assert-Equal 2025 $pendingEventFilm.premiereYear "falls back to festival year when legacy TMDb film year is later"
 Assert-Equal 2025 $pendingEventFilm.filmYear "keeps legacy web filmYear aligned with premiere year"
 Assert-Equal 2026 $pendingEventFilm.releaseYear "moves later legacy TMDb film year into release year"
+$explicitLatePremiereFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Explicit Late Premiere" })[0]
+Assert-Equal 2025 $explicitLatePremiereFilm.premiereYear "repairs explicit premiere year later than earliest festival year"
+Assert-Equal 2025 $explicitLatePremiereFilm.filmYear "keeps explicit late premiere web filmYear aligned with repaired premiere year"
+Assert-Equal 2026 $explicitLatePremiereFilm.releaseYear "preserves explicit late premiere year as release year"
+Assert-Equal "festival_year_fallback" $explicitLatePremiereFilm.yearSource "marks explicit late premiere repair as festival year fallback"
 Assert-Equal "2025,2024" (($exportedWebData.years | ForEach-Object { [string]$_ }) -join ",") "exports browse years from premiere years"
 Assert-Equal "2025,2024" (($exportedWebData.premiereYears | ForEach-Object { [string]$_ }) -join ",") "exports premiere year filter options"
 Assert-Equal "2025,2024" (($exportedWebData.filmYears | ForEach-Object { [string]$_ }) -join ",") "keeps legacy filmYears aligned with premiere years"

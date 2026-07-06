@@ -111,6 +111,7 @@ jobs:
           if ($mode -eq "Lineups") {
             & ./scripts/Invoke-FestivalTracker.ps1 -Mode Availability -UseNotion
           }
+          & ./scripts/Repair-YearMetadata.ps1 -UseNotion -Apply
           & ./scripts/Export-TrackerData.ps1 -UseNotion
           & ./scripts/Test-TrackerDataQuality.ps1 -UseNotion -DataPath ./web/data/tracker-data.json
 
@@ -124,6 +125,7 @@ jobs:
           NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
           NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
+          & ./scripts/Repair-YearMetadata.ps1 -UseNotion -Apply
           & ./scripts/Export-TrackerData.ps1 -UseNotion
           & ./scripts/Test-TrackerDataQuality.ps1 -UseNotion -DataPath ./web/data/tracker-data.json
 

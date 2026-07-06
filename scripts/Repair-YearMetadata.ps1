@@ -35,6 +35,9 @@ function Get-RepairTargetYears {
     if ($null -eq $targetReleaseYear -and $null -ne $filmYear -and $null -ne $minFestivalYear -and $filmYear -gt $minFestivalYear) {
         $targetReleaseYear = $filmYear
     }
+    if ($null -eq $targetReleaseYear -and $null -ne $premiereYear -and $null -ne $minFestivalYear -and $premiereYear -gt $minFestivalYear) {
+        $targetReleaseYear = $premiereYear
+    }
 
     $targetPremiereYear = $premiereYear
     $yearSource = [string](Get-ObjectProperty $Film "yearSource" (Get-ObjectProperty $Film "year_source" ""))

@@ -196,19 +196,22 @@ function Resolve-YearMetadata {
     if ($null -eq $releaseYear -and $null -ne $filmYear -and $null -ne $minFestivalYear -and $filmYear -gt $minFestivalYear) {
         $releaseYear = $filmYear
     }
+    if ($null -eq $releaseYear -and $null -ne $premiereYear -and $null -ne $minFestivalYear -and $premiereYear -gt $minFestivalYear) {
+        $releaseYear = $premiereYear
+    }
 
-    if ($null -eq $premiereYear) {
+    if ($null -eq $premiereYear -or ($null -ne $minFestivalYear -and $premiereYear -gt $minFestivalYear)) {
         if ($null -ne $filmYear -and ($null -eq $minFestivalYear -or $filmYear -le $minFestivalYear)) {
             $premiereYear = $filmYear
-            if ([string]::IsNullOrWhiteSpace($yearSource)) { $yearSource = "official_festival" }
+            $yearSource = "official_festival"
         }
         elseif ($festival -eq "Academy Awards" -and $null -ne $minFestivalYear -and $minFestivalYear -gt 1) {
             $premiereYear = $minFestivalYear - 1
-            if ([string]::IsNullOrWhiteSpace($yearSource)) { $yearSource = "oscars_eligibility" }
+            $yearSource = "oscars_eligibility"
         }
         elseif ($null -ne $minFestivalYear) {
             $premiereYear = $minFestivalYear
-            if ([string]::IsNullOrWhiteSpace($yearSource)) { $yearSource = "festival_year_fallback" }
+            $yearSource = "festival_year_fallback"
         }
     }
     elseif ([string]::IsNullOrWhiteSpace($yearSource)) {
