@@ -181,6 +181,22 @@
       "lineupWindow": { "startMonth": 5, "endMonth": 7 },
       "sources": [
         {
+          "url": "https://www.kviff.com/en/programme/catalogue-of-films/sekce/999-crystal-globe-competition",
+          "parser": "kviff_archive_section",
+          "year": 2026,
+          "sectionScope": [
+            "Crystal Globe Competition"
+          ]
+        },
+        {
+          "url": "https://www.kviff.com/en/programme/catalogue-of-films/sekce/1002-proxima-competition",
+          "parser": "kviff_archive_section",
+          "year": 2026,
+          "sectionScope": [
+            "Proxima Competition"
+          ]
+        },
+        {
           "url": "https://www.kviff.com/en/programme/archive-of-films/2025/section/948-crystal-globe-competition",
           "enabled": false,
           "parser": "kviff_archive_section",

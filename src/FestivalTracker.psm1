@@ -1317,21 +1317,31 @@ function ConvertFrom-KviffArchiveHtml {
 
     $records = New-Object System.Collections.Generic.List[object]
     $section = Get-SectionNameFromSourceUrl -SourceUrl $SourceUrl -Default "Competition"
-    $pattern = '<a href="(?<href>[^"]+)" class="film-name">(?<title>.*?)</a><br\s*/>\s*(?:\((?<original>.*?)\)\s*)?</div>\s*<div class="col second">\s*Directed by:\s*(?<director>.*?)\s*/\s*(?<meta>.*?)<br\s*/>'
+    $pattern = '<a href="(?<href>[^"]+)" class="film-name">(?<title>.*?)</a>(?<body>.*?)(?=<a href="[^"]+" class="film-name">|</body>|$)'
     foreach ($match in [regex]::Matches($Html, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
         $title = ConvertTo-CleanHtmlText $match.Groups["title"].Value
         if ([string]::IsNullOrWhiteSpace($title)) {
             continue
         }
 
-        $originalTitle = ConvertTo-CleanHtmlText $match.Groups["original"].Value
+        $body = $match.Groups["body"].Value
+        $detailMatch = [regex]::Match($body, 'Directed by:\s*(?<director>.*?)\s*/\s*(?<meta>.*?)<br\s*/>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        if (-not $detailMatch.Success) {
+            continue
+        }
+
+        $originalTitle = ""
+        $originalMatch = [regex]::Match($body, '<br\s*/>\s*(?:<[^>]+>\s*)*\((?<original>.*?)\)', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        if ($originalMatch.Success) {
+            $originalTitle = ConvertTo-CleanHtmlText $originalMatch.Groups["original"].Value
+        }
         if ([string]::IsNullOrWhiteSpace($originalTitle)) {
             $originalTitle = $title
         }
 
-        $director = ConvertTo-CleanHtmlText $match.Groups["director"].Value
+        $director = ConvertTo-CleanHtmlText $detailMatch.Groups["director"].Value
         $filmYear = $Year
-        $meta = ConvertTo-CleanHtmlText $match.Groups["meta"].Value
+        $meta = ConvertTo-CleanHtmlText $detailMatch.Groups["meta"].Value
         if ($meta -match '(?<year>(19|20)\d{2})') {
             $filmYear = [int]$Matches.year
         }

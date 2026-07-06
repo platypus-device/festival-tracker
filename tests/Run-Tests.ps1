@@ -426,6 +426,42 @@ Assert-Equal "Better Go Mad in the Wild" $kviff[0].title "keeps KVIFF title"
 Assert-Equal "Miro Remo" $kviff[0].director "extracts KVIFF director"
 Assert-Equal "Crystal Globe Competition" $kviff[0].section "maps KVIFF source URL to section"
 
+$kviffCatalogueHtml = @"
+<html>
+<body>
+<div class="col2 table no-border-top list-movies">
+  <div class="col first film-49509">
+    <div class="title-wrapper">
+      <div class="film-title">
+        <a href="/en/programme/film/84/49509-a-happy-family" class="film-name">A Happy Family</a>
+      </div>
+      <br />
+      (Stastna rodina / A Happy Family)
+    </div>
+    <br />
+    Directed by: Jan-Eric Mack / Switzerland, 2026, 121&nbsp;min<br />
+  </div>
+  <div class="col first film-49516">
+    <div class="title-wrapper">
+      <div class="film-title">
+        <a href="/en/programme/film/84/49516-pipes" class="film-name">Pipes</a>
+      </div>
+    </div>
+    <br />
+    Directed by: Karim Kassem / Lebanon, Qatar, Saudi Arabia, 2025, 114&nbsp;min<br />
+  </div>
+</div>
+</body>
+</html>
+"@
+$kviffCatalogue = @(ConvertFrom-LineupHtml -Html $kviffCatalogueHtml -Festival "Karlovy Vary" -Region "Czech Republic" -SourceUrl "https://www.kviff.com/en/programme/catalogue-of-films/sekce/999-crystal-globe-competition" -Parser "kviff_archive_section" -Year 2026)
+Assert-Equal 2 $kviffCatalogue.Count "parses KVIFF catalogue film cards"
+Assert-Equal "A Happy Family" $kviffCatalogue[0].title "keeps KVIFF catalogue title"
+Assert-Equal "Jan-Eric Mack" $kviffCatalogue[0].director "extracts KVIFF catalogue director"
+Assert-Equal "Crystal Globe Competition" $kviffCatalogue[0].section "maps KVIFF catalogue source URL to section"
+Assert-Equal 2026 $kviffCatalogue[0].film_year "extracts KVIFF catalogue film year"
+Assert-Equal 2025 $kviffCatalogue[1].film_year "extracts KVIFF catalogue prior film year"
+
 $taipeiBestNarrativeFeature = New-StringFromCodePoints @(0x6700, 0x4f73, 0x5287, 0x60c5, 0x9577, 0x7247)
 $taipeiBestDocumentary = New-StringFromCodePoints @(0x6700, 0x4f73, 0x7d00, 0x9304, 0x7247)
 $taipeiBestAnimation = New-StringFromCodePoints @(0x6700, 0x4f73, 0x52d5, 0x756b, 0x7247)
