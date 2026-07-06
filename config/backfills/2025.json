@@ -43,15 +43,22 @@
       "lineupWindow": { "startMonth": 12, "endMonth": 3 },
       "sources": [
         {
-          "url": "https://www.berlinale.de/en/2025/programme/landing-programme.html",
-          "enabled": false,
-          "parser": "generic_title_by_director",
+          "url": "https://berlinale.de/en/programme/berlinale-programme.html?sort=1&section_id=60&day_id=0&y=2025",
+          "parser": "berlinale_programme_index",
           "year": 2025,
           "sectionScope": [
-            "Competition",
-            "Encounters"
+            "Competition"
           ],
-          "notes": "Official archive is stable for film detail pages, but no strict section-list parser is enabled yet."
+          "notes": "Official programme index for 2025 Competition; parser resolves stable film detail pages."
+        },
+        {
+          "url": "https://berlinale.de/en/programme/berlinale-programme.html?sort=1&section_id=71&day_id=0&y=2025",
+          "parser": "berlinale_programme_index",
+          "year": 2025,
+          "sectionScope": [
+            "Perspectives"
+          ],
+          "notes": "Perspectives replaced Encounters in the 2025 Berlinale structure."
         }
       ]
     },
@@ -120,14 +127,13 @@
       "lineupWindow": { "startMonth": 8, "endMonth": 10 },
       "sources": [
         {
-          "url": "https://www.biff.kr/eng/html/archive/arc_history.asp?1=1&page_name=showing&pyear=2025",
-          "enabled": false,
-          "parser": "generic_title_by_director",
+          "url": "https://www.biff.kr/eng/html/program/prog_all_list.asp?allYear=2025",
+          "parser": "busan_selection_list",
           "year": 2025,
           "sectionScope": [
-            "New Currents"
+            "Competition"
           ],
-          "notes": "Official archive exists, but the current generic parser is too broad for safe New Currents-only import."
+          "notes": "BIFF 2025 introduced Competition after merging New Currents and Jiseok into the new competitive section."
         }
       ]
     },

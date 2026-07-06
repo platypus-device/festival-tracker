@@ -20,6 +20,11 @@ on:
         required: true
         type: boolean
         default: true
+      config_path:
+        description: "Tracker config path"
+        required: false
+        type: string
+        default: "config/festivals.json"
   schedule:
     - cron: "30 23 * * *"
     - cron: "45 23 * * 1"
@@ -92,6 +97,10 @@ jobs:
             Mode = $mode
             UseNotion = $true
             EnsureNotionSchema = $true
+          }
+          $configPath = "${{ github.event.inputs.config_path }}"
+          if (-not [string]::IsNullOrWhiteSpace($configPath)) {
+            $trackerArgs["ConfigPath"] = $configPath
           }
           $respectWindows = "${{ github.event.inputs.respect_festival_windows }}"
           if ($forceRespectWindows -or (($mode -eq "Lineups" -or $mode -eq "All") -and $respectWindows -ne "false")) {

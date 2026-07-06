@@ -160,6 +160,24 @@ $cannesScoped = @(ConvertFrom-LineupHtml -Html $cannesScopedHtml -Festival "Cann
 Assert-Equal 2 $cannesScoped.Count "keeps Cannes core sections only"
 Assert-True (@($cannesScoped | Where-Object { $_.title -eq "FORTNIGHT SAMPLE" }).Count -eq 0) "excludes Cannes non-core sections after UCR"
 
+$cannesNoFeatureSubheadingHtml = @"
+<html>
+<body>
+<h2>In Competition</h2>
+<p>Opening Film</p>
+<p>PARTIR UN JOUR by Amelie BONNIN | 1st film - Out of Competition</p>
+<p>THE PHOENICIAN SCHEME by Wes ANDERSON</p>
+<p>EDDINGTON by Ari ASTER</p>
+<h2>Un Certain Regard</h2>
+<p>UCR SAMPLE by UCR DIRECTOR</p>
+</body>
+</html>
+"@
+$cannesNoFeatureSubheading = @(ConvertFrom-LineupHtml -Html $cannesNoFeatureSubheadingHtml -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Parser "cannes_selection" -Year 2025)
+Assert-Equal 3 $cannesNoFeatureSubheading.Count "parses Cannes Competition without feature subheading"
+Assert-True (@($cannesNoFeatureSubheading | Where-Object { $_.title -eq "PARTIR UN JOUR" }).Count -eq 0) "excludes Cannes opening film marked out of competition"
+Assert-Equal "In Competition - Feature films" $cannesNoFeatureSubheading[0].section "normalizes Cannes Competition feature section"
+
 $byInTitleHtml = @"
 <html>
 <body>
@@ -202,6 +220,20 @@ $sundanceFilteredHtml = @"
 $sundanceFiltered = @(ConvertFrom-LineupHtml -Html $sundanceFilteredHtml -Festival "Sundance" -Region "United States" -SourceUrl "https://example.test/sundance" -Parser "sundance_article" -Year 2026)
 Assert-Equal 1 $sundanceFiltered.Count "filters Sundance to selected fiction/NEXT sections"
 Assert-Equal "Next Sample" $sundanceFiltered[0].title "keeps Sundance NEXT title"
+
+$sundanceNextDoubleDashHtml = @"
+<html>
+<body>
+<h2>NEXT</h2>
+<p>Pure, bold works distinguish this program.</p>
+<p>BLKNWS: Terms & Conditions / U.S.A. (Director, Screenwriter, and Producer: Kahlil Joseph, Producers: Producer) -- A story.</p>
+<p>By Design / U.S.A. (Director and Screenwriter: Amanda Kramer, Producers: Producer) -- A story.</p>
+</body>
+</html>
+"@
+$sundanceNextDoubleDash = @(ConvertFrom-LineupHtml -Html $sundanceNextDoubleDashHtml -Festival "Sundance" -Region "United States" -SourceUrl "https://example.test/sundance" -Parser "sundance_article" -Year 2025)
+Assert-Equal 2 $sundanceNextDoubleDash.Count "parses Sundance NEXT double-dash entries"
+Assert-Equal "BLKNWS: Terms & Conditions" $sundanceNextDoubleDash[0].title "keeps Sundance NEXT first title"
 
 $veniceTextHtml = @"
 <html>
@@ -353,6 +385,57 @@ $sectionScopedHtml = @"
 $sectionScoped = @(ConvertFrom-LineupHtml -Html $sectionScopedHtml -Festival "Berlinale" -Region "Germany" -SourceUrl "https://example.test/berlinale" -Parser "generic_title_by_director" -Year 2026 -SectionScope @("Competition", "Encounters"))
 Assert-Equal 2 $sectionScoped.Count "filters generic parser to configured section scope"
 Assert-True (@($sectionScoped | Where-Object { $_.title -eq "Panorama Sample" }).Count -eq 0) "excludes sections outside configured scope"
+
+$berlinaleDetailHtml = @"
+<html>
+<body>
+<h1 class="ft__title">O ultimo azul</h1>
+<span class="ft__other-title">The Blue Trail</span>
+<span class="section-tag section-tag--small"><span class="color-tag"></span>Competition 2025</span>
+<span class="film-meta staff">by Gabriel Mascaro (Director, Screenplay), Tiberio Azul (Screenplay)<br />with Cast</span>
+<span class="film-meta country">Brazil / Mexico / Chile / Netherlands 2025</span>
+</body>
+</html>
+"@
+$berlinaleDetail = @(ConvertFrom-BerlinaleDetailHtml -Html $berlinaleDetailHtml -Festival "Berlinale" -Region "Germany" -SourceUrl "https://www.berlinale.de/en/2025/programme/202510635.html" -Year 2025 -AllowedSections @("Competition"))
+Assert-Equal 1 $berlinaleDetail.Count "parses Berlinale detail page"
+Assert-Equal "The Blue Trail" $berlinaleDetail[0].title "uses Berlinale English title when present"
+Assert-Equal "O ultimo azul" $berlinaleDetail[0].original_title "keeps Berlinale original title"
+Assert-Equal "Gabriel Mascaro" $berlinaleDetail[0].director "extracts Berlinale director"
+Assert-Equal "Competition" $berlinaleDetail[0].section "extracts Berlinale section"
+
+$busanSelectionHtml = @"
+<html>
+<body>
+<div class="list_sec">
+  <h3><strong class="">Competition</strong><small>Competition description</small></h3>
+  <div class="program20"><table><tbody>
+    <tr class="href_view">
+      <th class="title" data-label="Title"><b onclick="location.href = '/eng/html/program/prog_view.asp?idx=82333&amp;c_idx=427&amp;sp_idx=&amp;QueryStep=2' ">Another Birth</b><button><span>Trailer</span></button></th>
+      <td class="director" data-label="Director"> Isabelle KALANDAR</td>
+      <td class="country" data-label="Country">Tajikistan / United States / Qatar</td>
+    </tr>
+    <tr class="href_view">
+      <th class="title" data-label="Title"><b onclick="location.href = '/eng/html/program/prog_view.asp?idx=82334&amp;c_idx=427&amp;sp_idx=&amp;QueryStep=2' ">Girl</b></th>
+      <td class="director" data-label="Director"> Shu Qi</td>
+      <td class="country" data-label="Country">Taiwan</td>
+    </tr>
+  </tbody></table></div>
+</div>
+<div class="list_sec">
+  <h3><strong class="">Icons</strong></h3>
+  <div class="program20"><table><tbody>
+    <tr class="href_view"><th class="title" data-label="Title"><b>Icon Sample</b></th><td class="director" data-label="Director"> Icon Director</td></tr>
+  </tbody></table></div>
+</div>
+</body>
+</html>
+"@
+$busanSelection = @(ConvertFrom-LineupHtml -Html $busanSelectionHtml -Festival "Busan" -Region "South Korea" -SourceUrl "https://www.biff.kr/eng/html/program/prog_all_list.asp?allYear=2025" -Parser "busan_selection_list" -Year 2025 -SectionScope @("Competition"))
+Assert-Equal 2 $busanSelection.Count "parses Busan selection list competition"
+Assert-Equal "Another Birth" $busanSelection[0].title "keeps Busan title"
+Assert-Equal "Isabelle KALANDAR" $busanSelection[0].director "extracts Busan director"
+Assert-Equal "Competition" $busanSelection[0].section "keeps Busan section"
 
 $goldenHorseHtml = @"
 <html>

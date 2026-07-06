@@ -405,6 +405,9 @@ function ConvertFrom-TitleByDirectorText {
         }
 
         $effectiveSection = if (-not [string]::IsNullOrWhiteSpace($subSection)) { "$section - $subSection" } else { $section }
+        if ($effectiveSection -eq "In Competition" -and @($AllowedSections) -contains "In Competition - Feature films") {
+            $effectiveSection = "In Competition - Feature films"
+        }
 
         if ($line -cmatch '^by\s+(?<director>[^<>]{2,120})$' -and -not [string]::IsNullOrWhiteSpace($pendingTitle)) {
             $title = $pendingTitle.Trim(" -")
@@ -423,6 +426,9 @@ function ConvertFrom-TitleByDirectorText {
         if ($line -cmatch '^(?<title>.{2,180})\s+by\s+(?<director>[^<>]{2,120})$') {
             $title = $Matches.title.Trim(" -")
             $director = $Matches.director.Trim(" .")
+            if ($effectiveSection -eq "In Competition - Feature films" -and $director -match '(?i)\bOut of Competition\b') {
+                continue
+            }
             if ($director -match '(?i)\b(filmmakers|programme|program|festival|screening|opening event|newsletter|tickets?)\b') {
                 continue
             }
@@ -471,8 +477,12 @@ function ConvertFrom-SundanceText {
         "PARK CITY LEGACY"
     )
     $normalized = ($Text -replace '\s+', ' ').Trim()
+    $programStart = $normalized.IndexOf("The 2025 Sundance Film Festival Feature Films are:", [System.StringComparison]::Ordinal)
+    if ($programStart -lt 0) {
+        $programStart = 0
+    }
     foreach ($section in $allowedSections) {
-        $sectionStart = $normalized.IndexOf($section, [System.StringComparison]::Ordinal)
+        $sectionStart = $normalized.IndexOf($section, $programStart, [System.StringComparison]::Ordinal)
         if ($sectionStart -lt 0) {
             continue
         }
@@ -490,7 +500,7 @@ function ConvertFrom-SundanceText {
         }
 
         $segment = $normalized.Substring($segmentStart, $segmentEnd - $segmentStart)
-        $pattern = '(?<title>[^/]{2,160})\s*/\s*(?<countries>[^()]{2,180})\s+\((?<credits>.+?)\)\s*[\u2013\u2014-]'
+        $pattern = '(?<title>[^/]{2,160})\s*/\s*(?<countries>[^()]{2,180})\s+\((?<credits>.+?)\)\s*[\u2013\u2014-]+'
         foreach ($match in [regex]::Matches($segment, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
             $title = ($match.Groups["title"].Value -replace '\s+', ' ').Trim()
             $lastSentence = $title.LastIndexOf(". ")
@@ -1276,6 +1286,156 @@ function Get-TidfDirectorFromFilmPage {
     }
 }
 
+function ConvertFrom-BerlinaleDetailHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year,
+        [string[]]$AllowedSections = @()
+    )
+
+    $titleMatch = [regex]::Match($Html, '<h1[^>]*class="[^"]*\bft__title\b[^"]*"[^>]*>(?<title>.*?)</h1>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if (-not $titleMatch.Success) {
+        return @()
+    }
+
+    $originalTitle = ConvertTo-CleanHtmlText $titleMatch.Groups["title"].Value
+    $otherTitle = ""
+    $otherMatch = [regex]::Match($Html, '<span[^>]*class="[^"]*\bft__other-title\b[^"]*"[^>]*>(?<title>.*?)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if ($otherMatch.Success) {
+        $otherTitle = ConvertTo-CleanHtmlText $otherMatch.Groups["title"].Value
+    }
+    $title = if ([string]::IsNullOrWhiteSpace($otherTitle)) { $originalTitle } else { $otherTitle }
+    if ([string]::IsNullOrWhiteSpace($title)) {
+        return @()
+    }
+
+    $section = "Competition"
+    $sectionMatch = [regex]::Match($Html, '<span[^>]*class="[^"]*\bsection-tag\b[^"]*"[^>]*>.*?</span>\s*(?<section>[^<]+)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if (-not $sectionMatch.Success) {
+        $sectionMatch = [regex]::Match($Html, '<span[^>]*class="[^"]*\bsection-tag\b[^"]*"[^>]*>(?<section>.*?)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    }
+    if ($sectionMatch.Success) {
+        $section = ConvertTo-CleanHtmlText $sectionMatch.Groups["section"].Value
+        $section = ($section -replace "\b(19|20)\d{2}\b", "").Trim()
+    }
+    if (@($AllowedSections).Count -gt 0 -and $AllowedSections -notcontains $section) {
+        return @()
+    }
+
+    $director = ""
+    $staffMatch = [regex]::Match($Html, '<span[^>]*class="[^"]*\bfilm-meta\b[^"]*\bstaff\b[^"]*"[^>]*>(?<staff>.*?)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if ($staffMatch.Success) {
+        $staff = ConvertTo-CleanHtmlText $staffMatch.Groups["staff"].Value
+        if ($staff -match '(?i)\bby\s+(?<director>.+?)\s*\((?:Co-)?Directors?[,)]') {
+            $director = $Matches.director.Trim()
+        }
+        elseif ($staff -match '(?i)\bby\s+(?<director>.+?)\s*\(Director') {
+            $director = $Matches.director.Trim()
+        }
+    }
+
+    $filmYear = $Year
+    $countryMatch = [regex]::Match($Html, '<span[^>]*class="[^"]*\bfilm-meta\b[^"]*\bcountry\b[^"]*"[^>]*>(?<country>.*?)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if ($countryMatch.Success) {
+        $countryText = ConvertTo-CleanHtmlText $countryMatch.Groups["country"].Value
+        if ($countryText -match '(?<year>(19|20)\d{2})') {
+            $filmYear = [int]$Matches.year
+        }
+    }
+
+    return @(
+        New-FilmRecord -Title $title -OriginalTitle $originalTitle -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $Year -FilmYear $filmYear
+    )
+}
+
+function ConvertFrom-BerlinaleProgrammeIndexHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year,
+        [string[]]$AllowedSections = @()
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $links = @(
+        [regex]::Matches($Html, '/en/\d{4}/programme/20\d+\.html') |
+            ForEach-Object { $_.Value } |
+            Select-Object -Unique
+    )
+
+    foreach ($href in $links) {
+        $filmUrl = Join-Url -BaseUrl $SourceUrl -Href $href
+        try {
+            $filmHtml = Invoke-TextRequest -Url $filmUrl
+            $parsed = @(ConvertFrom-BerlinaleDetailHtml -Html $filmHtml -Festival $Festival -Region $Region -SourceUrl $filmUrl -Year $Year -AllowedSections $AllowedSections)
+            foreach ($record in $parsed) {
+                $records.Add($record)
+            }
+        }
+        catch {
+            Write-Warning "Failed to fetch Berlinale film detail ${filmUrl}: $($_.Exception.Message)"
+        }
+    }
+
+    return $records
+}
+
+function ConvertFrom-BusanSelectionListHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year,
+        [string[]]$AllowedSections = @()
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $sectionPattern = '<div class="list_sec">(?<sectionHtml>.*?)(?=<div class="list_sec">|</div>\s*</div>\s*</div>\s*</section>|$)'
+    foreach ($sectionMatch in [regex]::Matches($Html, $sectionPattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
+        $sectionHtml = $sectionMatch.Groups["sectionHtml"].Value
+        $headingMatch = [regex]::Match($sectionHtml, '<strong[^>]*>(?<section>.*?)</strong>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        if (-not $headingMatch.Success) {
+            continue
+        }
+
+        $section = ConvertTo-CleanHtmlText $headingMatch.Groups["section"].Value
+        if (@($AllowedSections).Count -gt 0 -and $AllowedSections -notcontains $section) {
+            continue
+        }
+
+        foreach ($rowMatch in [regex]::Matches($sectionHtml, '<tr[^>]*class="[^"]*\bhref_view\b[^"]*"[^>]*>(?<row>.*?)</tr>', [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
+            $row = $rowMatch.Groups["row"].Value
+            $titleMatch = [regex]::Match($row, '<b\b[^>]*>(?<title>.*?)</b>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+            $directorMatch = [regex]::Match($row, '<td[^>]*class="[^"]*\bdirector\b[^"]*"[^>]*>(?<director>.*?)</td>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+            if (-not $titleMatch.Success -or -not $directorMatch.Success) {
+                continue
+            }
+
+            $title = ConvertTo-CleanHtmlText $titleMatch.Groups["title"].Value
+            $director = ConvertTo-CleanHtmlText $directorMatch.Groups["director"].Value
+            if ([string]::IsNullOrWhiteSpace($title) -or [string]::IsNullOrWhiteSpace($director)) {
+                continue
+            }
+
+            $filmUrl = $SourceUrl
+            $hrefMatch = [regex]::Match($row, "location\.href\s*=\s*'(?<href>[^']+)'")
+            if ($hrefMatch.Success) {
+                $filmUrl = Join-Url -BaseUrl $SourceUrl -Href $hrefMatch.Groups["href"].Value
+            }
+
+            $records.Add((New-FilmRecord -Title $title -Director $director -Festival $Festival -Region $Region -Section $section -SourceUrl $filmUrl -Year $Year -FilmYear $Year))
+        }
+    }
+
+    return $records
+}
+
 function ConvertFrom-TidfCategoryHtml {
     param(
         [Parameter(Mandatory = $true)][string]$Html,
@@ -1587,6 +1747,12 @@ function ConvertFrom-LineupHtml {
         }
         "nyff_main_slate" {
             return ConvertFrom-NyffMainSlateText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+        }
+        "berlinale_programme_index" {
+            return ConvertFrom-BerlinaleProgrammeIndexHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedSections $SectionScope
+        }
+        "busan_selection_list" {
+            return ConvertFrom-BusanSelectionListHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedSections $SectionScope
         }
         "tidf_category" {
             return ConvertFrom-TidfCategoryHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
