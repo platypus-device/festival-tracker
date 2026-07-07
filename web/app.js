@@ -368,7 +368,7 @@ function renderFilmGrid() {
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
             <p class="film-subtitle">${escapeHtml(film.director || "Unknown director")}</p>
-            <div class="film-facts">
+            <div class="film-facts film-card-facts">
               <span>${escapeHtml(selectionSummaryLabel(film))}</span>
               <span>${escapeHtml(primaryRatingLabel(film))}</span>
             </div>

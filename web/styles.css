@@ -665,6 +665,22 @@ select:focus-visible {
   padding: 4px 7px;
 }
 
+.film-card-facts {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  align-items: flex-start;
+  align-self: end;
+  flex-wrap: nowrap;
+}
+
+.film-card-facts span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .event-list {
   display: grid;
   gap: var(--space-2);
