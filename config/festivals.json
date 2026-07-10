@@ -259,28 +259,31 @@
           "enabled": false,
           "parser": "golden_horse_awards",
           "year": 2025,
+          "winnerOnly": true,
           "sectionScope": [
             "Best Narrative Feature"
           ],
-          "notes": "Historical 2025 source moved to config/backfills/2025.json."
+          "notes": "Historical 2025 source moved to config/backfills/2025.json; only the Best Narrative Feature winner is retained."
         }
       ]
     },
     {
       "name": "Taipei Film Festival",
       "region": "Taiwan",
-      "enabled": true,
+      "enabled": false,
       "lineupWindow": { "startMonth": 5, "endMonth": 7 },
       "sources": [
         {
           "url": "https://www.taipeiff.taipei/tw/tfa?tab=shortlist",
           "parser": "taipeiff_tfa_nominees",
-          "year": 2026
+          "year": 2026,
+          "notes": "Disabled: Taipei Film Festival is no longer tracked."
         },
         {
           "url": "https://www.taipeiff.taipei/tw/intc?tab=shortlist",
           "parser": "taipeiff_new_talent",
-          "year": 2026
+          "year": 2026,
+          "notes": "Disabled: Taipei Film Festival is no longer tracked."
         }
       ]
     },

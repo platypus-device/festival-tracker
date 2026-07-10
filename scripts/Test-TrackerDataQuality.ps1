@@ -33,11 +33,18 @@ function Test-TaipeiSelectionInScope {
         return $true
     }
 
-    $section = [string](Get-ObjectProperty $Selection "section" "")
-    return (
-        $section -eq "International New Talent Competition" -or
-        $section -match '\u6700\u4f73\u5287\u60c5\u9577\u7247'
-    )
+    return $false
+}
+
+function Test-GoldenHorseSelectionInScope {
+    param([Parameter(Mandatory = $true)][object]$Selection)
+
+    $festival = [string](Get-ObjectProperty $Selection "festival" "")
+    if ($festival -ne "Taipei Golden Horse Film Festival") {
+        return $true
+    }
+
+    return [string](Get-ObjectProperty $Selection "section" "") -eq "Best Narrative Feature - Winner"
 }
 
 function Get-SelectionFestivalYear {
@@ -133,7 +140,12 @@ if (Test-Path -LiteralPath $DataPath) {
 
     $taipeiOutOfScope = @($selections | Where-Object { -not (Test-TaipeiSelectionInScope -Selection $_) })
     if ($taipeiOutOfScope.Count -gt 0) {
-        Add-QualityIssue -List $qualityErrors -Code "taipei_out_of_scope" -Message "Taipei Film Festival selections outside the approved scope are visible in web export." -Count $taipeiOutOfScope.Count
+        Add-QualityIssue -List $qualityErrors -Code "disabled_taipei_festival_selection" -Message "Disabled Taipei Film Festival selections are visible in web export." -Count $taipeiOutOfScope.Count
+    }
+
+    $goldenHorseOutOfScope = @($selections | Where-Object { -not (Test-GoldenHorseSelectionInScope -Selection $_) })
+    if ($goldenHorseOutOfScope.Count -gt 0) {
+        Add-QualityIssue -List $qualityErrors -Code "golden_horse_non_winner_selection" -Message "Golden Horse selections other than the Best Narrative Feature winner are visible in web export." -Count $goldenHorseOutOfScope.Count
     }
 
     $sourceYearMismatch = @($selections | Where-Object { -not (Test-SelectionSourceYearMatches -Selection $_) })
@@ -176,8 +188,7 @@ if (Test-Path -LiteralPath $DataPath) {
         "Karlovy Vary" = @{ warnMin = 20; warnMax = 30; failMax = 35 }
         "NYFF" = @{ warnMin = 25; warnMax = 35; failMax = 40 }
         "Sundance" = @{ warnMin = 15; warnMax = 45; failMax = 50 }
-        "Taipei Film Festival" = @{ warnMin = 10; warnMax = 20; failMax = 25 }
-        "Taipei Golden Horse Film Festival" = @{ warnMin = 3; warnMax = 10; failMax = 15 }
+        "Taipei Golden Horse Film Festival" = @{ warnMin = 1; warnMax = 1; failMax = 1 }
         "Venice" = @{ warnMin = 35; warnMax = 45; failMax = 50 }
     }
     $festivalYearLimitOverrides = @{
@@ -228,7 +239,12 @@ if ($UseNotion) {
 
         $notionTaipeiOutOfScope = @($notionSelections | Where-Object { -not (Test-TaipeiSelectionInScope -Selection $_) })
         if ($notionTaipeiOutOfScope.Count -gt 0) {
-            Add-QualityIssue -List $qualityErrors -Code "notion_taipei_out_of_scope" -Message "Taipei Film Festival selections outside the approved scope remain active in Notion." -Count $notionTaipeiOutOfScope.Count
+            Add-QualityIssue -List $qualityErrors -Code "notion_disabled_taipei_festival_selection" -Message "Disabled Taipei Film Festival selections remain active in Notion." -Count $notionTaipeiOutOfScope.Count
+        }
+
+        $notionGoldenHorseOutOfScope = @($notionSelections | Where-Object { -not (Test-GoldenHorseSelectionInScope -Selection $_) })
+        if ($notionGoldenHorseOutOfScope.Count -gt 0) {
+            Add-QualityIssue -List $qualityErrors -Code "notion_golden_horse_non_winner_selection" -Message "Golden Horse selections other than the Best Narrative Feature winner remain active in Notion." -Count $notionGoldenHorseOutOfScope.Count
         }
 
         $notionSourceYearMismatch = @($notionSelections | Where-Object { -not (Test-SelectionSourceYearMatches -Selection $_) })

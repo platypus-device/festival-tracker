@@ -171,6 +171,7 @@
           "url": "https://www.goldenhorse.org.tw/awards/nw/?ins=51&r=en&sc=8&search_regist_year=2025&serach_type=award",
           "parser": "golden_horse_awards",
           "year": 2025,
+          "winnerOnly": true,
           "sectionScope": [
             "Best Narrative Feature"
           ]
@@ -180,7 +181,7 @@
     {
       "name": "Taipei Film Festival",
       "region": "Taiwan",
-      "enabled": true,
+      "enabled": false,
       "lineupWindow": { "startMonth": 5, "endMonth": 7 },
       "sources": [
         {

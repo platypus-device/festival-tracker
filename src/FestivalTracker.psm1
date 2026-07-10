@@ -1024,6 +1024,60 @@ function ConvertFrom-GoldenHorseAwardsText {
     return $records
 }
 
+function ConvertFrom-GoldenHorseAwardsHtml {
+    param(
+        [Parameter(Mandatory = $true)][string]$Html,
+        [Parameter(Mandatory = $true)][string]$Festival,
+        [string]$Region,
+        [string]$SourceUrl,
+        [int]$Year = (Get-Date).Year,
+        [switch]$WinnerOnly
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $foundNarrativeCategory = $false
+    foreach ($tableMatch in [regex]::Matches($Html, '(?is)<table\b[^>]*\bclass\s*=\s*[''"][^''"]*\baward\b[^''"]*[''"][^>]*>.*?</table>')) {
+        $tableHtml = $tableMatch.Value
+        $headingMatch = [regex]::Match($tableHtml, '(?is)<th\b[^>]*>\s*(?<heading>.*?)\s*</th>')
+        if (-not $headingMatch.Success) {
+            continue
+        }
+
+        $category = (ConvertTo-PlainText $headingMatch.Groups["heading"].Value) -replace '\s+', ' '
+        if ($category.Trim() -ne "Best Narrative Feature") {
+            continue
+        }
+        $foundNarrativeCategory = $true
+
+        foreach ($rowMatch in [regex]::Matches($tableHtml, '(?is)<tr\b(?<attributes>[^>]*)>(?<row>.*?)</tr>')) {
+            $rowHtml = $rowMatch.Groups["row"].Value
+            $cells = @([regex]::Matches($rowHtml, '(?is)<td\b[^>]*>(?<cell>.*?)</td>') | ForEach-Object { $_.Groups["cell"].Value })
+            if ($cells.Count -eq 0) {
+                continue
+            }
+
+            $isWinner = $rowMatch.Groups["attributes"].Value -match '(?i)\bclass\s*=\s*[''"][^''"]*\bmark\b[^''"]*[''"]'
+            if ($WinnerOnly -and -not $isWinner) {
+                continue
+            }
+
+            $title = Repair-MojibakeText (((ConvertTo-PlainText $cells[0]) -replace '\s+', ' ').Trim())
+            if ([string]::IsNullOrWhiteSpace($title)) {
+                continue
+            }
+
+            $section = if ($isWinner) { "Best Narrative Feature - Winner" } else { "Best Narrative Feature" }
+            $records.Add((New-FilmRecord -Title $title -Director "" -Festival $Festival -Region $Region -Section $section -SourceUrl $SourceUrl -Year $Year))
+        }
+    }
+
+    if (-not $foundNarrativeCategory -and -not $WinnerOnly) {
+        return ConvertFrom-GoldenHorseAwardsText -Text (ConvertTo-PlainText $Html) -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+    }
+
+    return $records
+}
+
 function Get-WikipediaSectionHtml {
     param(
         [Parameter(Mandatory = $true)][string]$Html,
@@ -1713,7 +1767,8 @@ function ConvertFrom-LineupHtml {
         [string]$SourceUrl,
         [string]$Parser = "generic_title_by_director",
         [int]$Year = (Get-Date).Year,
-        [string[]]$SectionScope = @()
+        [string[]]$SectionScope = @(),
+        [switch]$WinnerOnly
     )
 
     $text = ConvertTo-PlainText $Html
@@ -1743,7 +1798,7 @@ function ConvertFrom-LineupHtml {
             return ConvertFrom-WikipediaOscarsHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -AllowedCategories $allowedOscarCategories
         }
         "golden_horse_awards" {
-            return ConvertFrom-GoldenHorseAwardsText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
+            return ConvertFrom-GoldenHorseAwardsHtml -Html $Html -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year -WinnerOnly:$WinnerOnly
         }
         "nyff_main_slate" {
             return ConvertFrom-NyffMainSlateText -Text $text -Festival $Festival -Region $Region -SourceUrl $SourceUrl -Year $Year
@@ -1889,7 +1944,8 @@ function Get-FestivalLineupRecords {
                 $parser = Get-ObjectProperty $source "parser" "generic_title_by_director"
                 $year = [int](Get-ObjectProperty $source "year" $currentYear)
                 $sectionScope = @((Get-ObjectProperty $source "sectionScope" @()) | ForEach-Object { [string]$_ })
-                $parsed = ConvertFrom-LineupHtml -Html $html -Festival $festival.name -Region $festival.region -SourceUrl $url -Parser $parser -Year $year -SectionScope $sectionScope
+                $winnerOnly = [bool](Get-ObjectProperty $source "winnerOnly" $false)
+                $parsed = ConvertFrom-LineupHtml -Html $html -Festival $festival.name -Region $festival.region -SourceUrl $url -Parser $parser -Year $year -SectionScope $sectionScope -WinnerOnly:$winnerOnly
                 foreach ($record in @($parsed)) {
                     $records.Add($record)
                 }

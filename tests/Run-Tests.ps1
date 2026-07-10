@@ -440,20 +440,30 @@ Assert-Equal "Competition" $busanSelection[0].section "keeps Busan section"
 $goldenHorseHtml = @"
 <html>
 <body>
-<h2>Best Narrative Feature</h2>
-<p>A Foggy Tale</p>
-<p>Taiwan Creative Content Agency, MandarinVision Co., Ltd.</p>
-<p>Left-Handed Girl</p>
-<p>Left-Handed Girl Film Production Co., Ltd.</p>
-<h2>Best Documentary Feature</h2>
-<p>Documentary Sample</p>
-<p>Documentary Director</p>
+<table class="table special award"><tbody>
+  <tr><th colspan="2">Best Narrative Feature</th></tr>
+  <tr class="mark"><td><a href="#"><div>A Foggy Tale</div></a></td><td>Taiwan Creative Content Agency</td></tr>
+  <tr><td><a href="#"><div>Left-Handed Girl</div></a></td><td>Left-Handed Girl Film Production Co., Ltd.</td></tr>
+</tbody></table>
+<table class="table special award"><tbody>
+  <tr><th colspan="2">Best Documentary Feature</th></tr>
+  <tr class="mark"><td><a href="#"><div>Documentary Sample</div></a></td><td>Documentary Director</td></tr>
+</tbody></table>
 </body>
 </html>
 "@
 $goldenHorse = @(ConvertFrom-LineupHtml -Html $goldenHorseHtml -Festival "Taipei Golden Horse Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/goldenhorse" -Parser "golden_horse_awards" -Year 2025)
 Assert-Equal 2 $goldenHorse.Count "parses Golden Horse best narrative feature nominees"
 Assert-True (@($goldenHorse | Where-Object { $_.title -eq "Documentary Sample" }).Count -eq 0) "excludes Golden Horse documentary nominees"
+$goldenHorseWinners = @(ConvertFrom-LineupHtml -Html $goldenHorseHtml -Festival "Taipei Golden Horse Film Festival" -Region "Taiwan" -SourceUrl "https://example.test/goldenhorse" -Parser "golden_horse_awards" -Year 2025 -WinnerOnly)
+Assert-Equal 1 $goldenHorseWinners.Count "keeps only Golden Horse winners when configured"
+Assert-Equal "A Foggy Tale" $goldenHorseWinners[0].title "keeps the Golden Horse Best Narrative Feature winner"
+Assert-Equal "Best Narrative Feature - Winner" $goldenHorseWinners[0].section "labels Golden Horse winners"
+$festivalConfig = Get-Content (Join-Path $PSScriptRoot "..\config\festivals.json") -Raw | ConvertFrom-Json
+$taipeiFestival = @($festivalConfig.festivals | Where-Object { $_.name -eq "Taipei Film Festival" })[0]
+$goldenHorseFestival = @($festivalConfig.festivals | Where-Object { $_.name -eq "Taipei Golden Horse Film Festival" })[0]
+Assert-Equal $false $taipeiFestival.enabled "disables Taipei Film Festival sync"
+Assert-Equal $true $goldenHorseFestival.sources[0].winnerOnly "configures Golden Horse to retain winners only"
 
 $nyffHtml = @"
 <html>
@@ -1013,6 +1023,45 @@ $qualityExitCode = $LASTEXITCODE
 Assert-True ($qualityExitCode -ne 0) "quality check fails orphaned availability events"
 Assert-True (([string]($qualityCheckOutput -join "`n")).Contains("orphaned_availability_event")) "quality check reports orphaned availability event code"
 Remove-Item -LiteralPath $qualityStateDir -Recurse -Force
+
+$sourcePolicyQualityDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-source-policy-test-" + [guid]::NewGuid().ToString("N"))
+$sourcePolicyQualityOutput = Join-Path $sourcePolicyQualityDir "tracker-data.json"
+New-Item -ItemType Directory -Path $sourcePolicyQualityDir -Force | Out-Null
+[pscustomobject]@{
+    films = @(
+        [pscustomobject]@{
+            id = "taipei-disabled"
+            title = "Taipei Disabled Film"
+            selections = @([pscustomobject]@{
+                id = "taipei-disabled-selection"
+                festival = "Taipei Film Festival"
+                section = "Taipei Film Awards - Best Narrative Feature"
+                festivalYear = 2025
+                sourceUrl = ""
+            })
+            availability = @()
+        },
+        [pscustomobject]@{
+            id = "golden-horse-nominee"
+            title = "Golden Horse Nominee"
+            selections = @([pscustomobject]@{
+                id = "golden-horse-nominee-selection"
+                festival = "Taipei Golden Horse Film Festival"
+                section = "Best Narrative Feature"
+                festivalYear = 2025
+                sourceUrl = ""
+            })
+            availability = @()
+        }
+    )
+    events = @()
+} | ConvertTo-Json -Depth 10 | Set-Content -Path $sourcePolicyQualityOutput -Encoding UTF8
+$sourcePolicyQualityCheckOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $sourcePolicyQualityOutput 2>&1
+$sourcePolicyQualityExitCode = $LASTEXITCODE
+Assert-True ($sourcePolicyQualityExitCode -ne 0) "quality check fails disabled Taipei and non-winner Golden Horse selections"
+Assert-True (([string]($sourcePolicyQualityCheckOutput -join "`n")).Contains("disabled_taipei_festival_selection")) "quality check reports disabled Taipei selection code"
+Assert-True (([string]($sourcePolicyQualityCheckOutput -join "`n")).Contains("golden_horse_non_winner_selection")) "quality check reports Golden Horse non-winner code"
+Remove-Item -LiteralPath $sourcePolicyQualityDir -Recurse -Force
 
 $ambiguousStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-ambiguous-event-test-" + [guid]::NewGuid().ToString("N"))
 $ambiguousOutput = Join-Path $ambiguousStateDir "tracker-data.json"
