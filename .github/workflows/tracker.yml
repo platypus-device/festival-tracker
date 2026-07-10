@@ -57,6 +57,20 @@ jobs:
         run: |
           & ./scripts/Restore-AccidentallyArchivedPages.ps1 -Apply
 
+      - name: Archive availability events for removed source selections
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[cleanup-policy-events]')
+        shell: pwsh
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: |
+          & ./scripts/Archive-PolicyAvailabilityEvents.ps1 -Apply -FilmTrackerIds @(
+            "941ce1aa89ff8f83c7749109",
+            "d4b273ff6aba55fb0b5a6c68",
+            "ef62146f51d16f4da25844db",
+            "771473776c24ab8ef47a9cc0"
+          )
+
       - name: Set IMDb cache key
         if: github.event_name != 'push'
         shell: pwsh
