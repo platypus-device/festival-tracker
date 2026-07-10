@@ -44,7 +44,7 @@ function Test-GoldenHorseSelectionInScope {
         return $true
     }
 
-    return [string](Get-ObjectProperty $Selection "section" "") -eq "Best Narrative Feature - Winner"
+    return $false
 }
 
 function Get-SelectionFestivalYear {
@@ -145,7 +145,7 @@ if (Test-Path -LiteralPath $DataPath) {
 
     $goldenHorseOutOfScope = @($selections | Where-Object { -not (Test-GoldenHorseSelectionInScope -Selection $_) })
     if ($goldenHorseOutOfScope.Count -gt 0) {
-        Add-QualityIssue -List $qualityErrors -Code "golden_horse_non_winner_selection" -Message "Golden Horse selections other than the Best Narrative Feature winner are visible in web export." -Count $goldenHorseOutOfScope.Count
+        Add-QualityIssue -List $qualityErrors -Code "disabled_golden_horse_selection" -Message "Disabled Taipei Golden Horse Film Festival selections are visible in web export." -Count $goldenHorseOutOfScope.Count
     }
 
     $sourceYearMismatch = @($selections | Where-Object { -not (Test-SelectionSourceYearMatches -Selection $_) })
@@ -188,7 +188,6 @@ if (Test-Path -LiteralPath $DataPath) {
         "Karlovy Vary" = @{ warnMin = 20; warnMax = 30; failMax = 35 }
         "NYFF" = @{ warnMin = 25; warnMax = 35; failMax = 40 }
         "Sundance" = @{ warnMin = 15; warnMax = 45; failMax = 50 }
-        "Taipei Golden Horse Film Festival" = @{ warnMin = 1; warnMax = 1; failMax = 1 }
         "Venice" = @{ warnMin = 35; warnMax = 45; failMax = 50 }
     }
     $festivalYearLimitOverrides = @{
@@ -244,7 +243,7 @@ if ($UseNotion) {
 
         $notionGoldenHorseOutOfScope = @($notionSelections | Where-Object { -not (Test-GoldenHorseSelectionInScope -Selection $_) })
         if ($notionGoldenHorseOutOfScope.Count -gt 0) {
-            Add-QualityIssue -List $qualityErrors -Code "notion_golden_horse_non_winner_selection" -Message "Golden Horse selections other than the Best Narrative Feature winner remain active in Notion." -Count $notionGoldenHorseOutOfScope.Count
+            Add-QualityIssue -List $qualityErrors -Code "notion_disabled_golden_horse_selection" -Message "Disabled Taipei Golden Horse Film Festival selections remain active in Notion." -Count $notionGoldenHorseOutOfScope.Count
         }
 
         $notionSourceYearMismatch = @($notionSelections | Where-Object { -not (Test-SelectionSourceYearMatches -Selection $_) })

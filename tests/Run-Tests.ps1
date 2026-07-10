@@ -463,7 +463,7 @@ $festivalConfig = Get-Content (Join-Path $PSScriptRoot "..\config\festivals.json
 $taipeiFestival = @($festivalConfig.festivals | Where-Object { $_.name -eq "Taipei Film Festival" })[0]
 $goldenHorseFestival = @($festivalConfig.festivals | Where-Object { $_.name -eq "Taipei Golden Horse Film Festival" })[0]
 Assert-Equal $false $taipeiFestival.enabled "disables Taipei Film Festival sync"
-Assert-Equal $true $goldenHorseFestival.sources[0].winnerOnly "configures Golden Horse to retain winners only"
+Assert-Equal $false $goldenHorseFestival.enabled "disables Taipei Golden Horse Film Festival sync"
 
 $nyffHtml = @"
 <html>
@@ -1058,9 +1058,9 @@ New-Item -ItemType Directory -Path $sourcePolicyQualityDir -Force | Out-Null
 } | ConvertTo-Json -Depth 10 | Set-Content -Path $sourcePolicyQualityOutput -Encoding UTF8
 $sourcePolicyQualityCheckOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $sourcePolicyQualityOutput 2>&1
 $sourcePolicyQualityExitCode = $LASTEXITCODE
-Assert-True ($sourcePolicyQualityExitCode -ne 0) "quality check fails disabled Taipei and non-winner Golden Horse selections"
+Assert-True ($sourcePolicyQualityExitCode -ne 0) "quality check fails selections from both disabled Taipei festivals"
 Assert-True (([string]($sourcePolicyQualityCheckOutput -join "`n")).Contains("disabled_taipei_festival_selection")) "quality check reports disabled Taipei selection code"
-Assert-True (([string]($sourcePolicyQualityCheckOutput -join "`n")).Contains("golden_horse_non_winner_selection")) "quality check reports Golden Horse non-winner code"
+Assert-True (([string]($sourcePolicyQualityCheckOutput -join "`n")).Contains("disabled_golden_horse_selection")) "quality check reports disabled Golden Horse code"
 Remove-Item -LiteralPath $sourcePolicyQualityDir -Recurse -Force
 
 $ambiguousStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-ambiguous-event-test-" + [guid]::NewGuid().ToString("N"))

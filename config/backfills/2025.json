@@ -164,7 +164,7 @@
     {
       "name": "Taipei Golden Horse Film Festival",
       "region": "Taiwan",
-      "enabled": true,
+      "enabled": false,
       "lineupWindow": { "startMonth": 9, "endMonth": 12 },
       "sources": [
         {
@@ -174,7 +174,8 @@
           "winnerOnly": true,
           "sectionScope": [
             "Best Narrative Feature"
-          ]
+          ],
+          "notes": "Disabled: Taipei Golden Horse Film Festival is no longer tracked."
         }
       ]
     },
