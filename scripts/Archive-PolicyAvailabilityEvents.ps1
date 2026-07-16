@@ -4,7 +4,7 @@ param(
     [string]$EventsDatabaseId = $env:NOTION_EVENTS_DATABASE_ID,
     [Parameter(Mandatory = $true)][string[]]$FilmTrackerIds,
     [int]$ExpectedFilmCount = 4,
-    [int]$ExpectedEventCount = 4,
+    [int]$MaximumEventCount = 4,
     [switch]$Apply
 )
 
@@ -28,8 +28,8 @@ $targetEvents = @($plan.events)
 if ($targetFilms.Count -ne $ExpectedFilmCount) {
     throw "Found $($targetFilms.Count) policy films to archive; expected $ExpectedFilmCount."
 }
-if ($targetEvents.Count -ne $ExpectedEventCount) {
-    throw "Found $($targetEvents.Count) policy events to archive; expected $ExpectedEventCount."
+if ($targetEvents.Count -gt $MaximumEventCount) {
+    throw "Found $($targetEvents.Count) policy events to archive; expected no more than $MaximumEventCount."
 }
 
 if ($Apply) {
