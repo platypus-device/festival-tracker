@@ -692,6 +692,15 @@ $orphanCleanupPlan = Get-PolicyOrphanCleanupPlan -Films $activeCanonicalFilms -S
 Assert-Equal 1 @($orphanCleanupPlan.films).Count "plans cleanup for an explicitly targeted orphan canonical film"
 Assert-Equal 1 @($orphanCleanupPlan.events).Count "plans cleanup for events linked to a targeted orphan canonical film"
 
+$historicalOrphanEvent = [pscustomobject]@{
+    film_id = "historical-orphan-id"
+    film_title = "Historical Orphan Film"
+    film_relation_ids = @()
+}
+$historicalCleanupPlan = Get-PolicyOrphanCleanupPlan -Films @() -Selections @() -Events @($historicalOrphanEvent) -FilmTrackerIds @("historical-orphan-id")
+Assert-Equal 0 @($historicalCleanupPlan.films).Count "keeps policy cleanup idempotent after canonical films are archived"
+Assert-Equal 1 @($historicalCleanupPlan.events).Count "cleans a historical orphan event by its explicit film id"
+
 $protectedCleanupError = ""
 try {
     Get-PolicyOrphanCleanupPlan -Films $activeCanonicalFilms -Selections $activeSelectionRecords -Events @() -FilmTrackerIds @("active-film") | Out-Null

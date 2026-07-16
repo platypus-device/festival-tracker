@@ -3,8 +3,8 @@ param(
     [string]$SelectionsDatabaseId = $env:NOTION_SELECTIONS_DATABASE_ID,
     [string]$EventsDatabaseId = $env:NOTION_EVENTS_DATABASE_ID,
     [Parameter(Mandatory = $true)][string[]]$FilmTrackerIds,
-    [int]$ExpectedFilmCount = 4,
-    [int]$MaximumEventCount = 4,
+    [int]$MaximumFilmCount = 5,
+    [int]$MaximumEventCount = 5,
     [switch]$Apply
 )
 
@@ -25,8 +25,8 @@ $plan = Get-PolicyOrphanCleanupPlan -Films $films -Selections $selections -Event
 $targetFilms = @($plan.films)
 $targetEvents = @($plan.events)
 
-if ($targetFilms.Count -ne $ExpectedFilmCount) {
-    throw "Found $($targetFilms.Count) policy films to archive; expected $ExpectedFilmCount."
+if ($targetFilms.Count -gt $MaximumFilmCount) {
+    throw "Found $($targetFilms.Count) policy films to archive; expected no more than $MaximumFilmCount."
 }
 if ($targetEvents.Count -gt $MaximumEventCount) {
     throw "Found $($targetEvents.Count) policy events to archive; expected no more than $MaximumEventCount."

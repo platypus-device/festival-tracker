@@ -97,7 +97,8 @@ if ($ArchiveOrphanFilms -and -not [string]::IsNullOrWhiteSpace($FilmsDatabaseId)
                 $linkedByIdentity = $orphanFilmTrackerIds.ContainsKey([string]$_.film_id) -or
                     $orphanCanonicalKeys.ContainsKey([string]$_.canonical_key) -or
                     $orphanSelectionIds.ContainsKey([string]$_.film_id)
-                $allRelationsOrphaned -or $linkedByIdentity
+                $resolvedLink = Resolve-AvailabilityEventFilmLink -Event $_ -Films $orphanFilms -Selections $outOfScope
+                $allRelationsOrphaned -or $linkedByIdentity -or $null -ne $resolvedLink
             }
     )
 }
