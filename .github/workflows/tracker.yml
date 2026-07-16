@@ -42,6 +42,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -95,6 +96,7 @@ jobs:
 
       - name: Sync tracker data
         if: github.event_name != 'push'
+        timeout-minutes: 35
         shell: pwsh
         env:
           TMDB_BEARER_TOKEN: ${{ secrets.TMDB_BEARER_TOKEN }}
@@ -138,13 +140,9 @@ jobs:
           if ($mode -eq "Lineups") {
             & ./scripts/Invoke-FestivalTracker.ps1 -Mode Availability -UseNotion
           }
-          & ./scripts/Archive-OutOfScopeSelections.ps1 -Apply -ArchiveOrphanFilms
-          & ./scripts/Repair-YearMetadata.ps1 -UseNotion -Apply
-          & ./scripts/Export-TrackerData.ps1 -UseNotion
-          & ./scripts/Test-TrackerDataQuality.ps1 -UseNotion -DataPath ./web/data/tracker-data.json
 
-      - name: Export tracker data
-        if: github.event_name == 'push'
+      - name: Archive out-of-scope selections
+        timeout-minutes: 10
         shell: pwsh
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
@@ -154,8 +152,41 @@ jobs:
           NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
           & ./scripts/Archive-OutOfScopeSelections.ps1 -Apply -ArchiveOrphanFilms
+
+      - name: Repair year metadata
+        timeout-minutes: 10
+        shell: pwsh
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
+          NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
+          NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: |
           & ./scripts/Repair-YearMetadata.ps1 -UseNotion -Apply
+
+      - name: Export tracker data
+        timeout-minutes: 10
+        shell: pwsh
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
+          NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
+          NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: |
           & ./scripts/Export-TrackerData.ps1 -UseNotion
+
+      - name: Validate tracker data
+        timeout-minutes: 10
+        shell: pwsh
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
+          NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
+          NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: |
           & ./scripts/Test-TrackerDataQuality.ps1 -UseNotion -DataPath ./web/data/tracker-data.json
 
       - name: Prepare Pages artifact
