@@ -671,6 +671,36 @@ $selectionLinkedEvent = [pscustomobject]@{
 $selectionLink = Resolve-AvailabilityEventFilmLink -Event $selectionLinkedEvent -Films @($linkRepairFilm) -Selections @($linkRepairSelection)
 Assert-Equal "selection_id" $selectionLink.reason "resolves event through current selection id"
 
+$activeCanonicalFilms = @(
+    [pscustomobject]@{ id = "active-film"; notion_page_id = "active-page"; canonical_key = "active-key"; title = "Active Film" },
+    [pscustomobject]@{ id = "orphan-film"; notion_page_id = "orphan-page"; canonical_key = "orphan-key"; title = "Orphan Film" }
+)
+$activeSelectionRecords = @(
+    [pscustomobject]@{ id = "active-selection"; title = "Active Film"; film_relation_ids = @("active-page") }
+)
+$availabilityFilms = @(Select-CanonicalFilmsWithActiveSelections -Films $activeCanonicalFilms -Selections $activeSelectionRecords)
+Assert-Equal 1 $availabilityFilms.Count "filters Availability to canonical films with active selections"
+Assert-Equal "active-film" $availabilityFilms[0].id "keeps the canonical film referenced by an active selection"
+
+$orphanCleanupEvent = [pscustomobject]@{
+    film_id = "orphan-film"
+    canonical_key = "orphan-key"
+    film_relation_ids = @("orphan-page")
+    film_title = "Orphan Film"
+}
+$orphanCleanupPlan = Get-PolicyOrphanCleanupPlan -Films $activeCanonicalFilms -Selections $activeSelectionRecords -Events @($orphanCleanupEvent) -FilmTrackerIds @("orphan-film")
+Assert-Equal 1 @($orphanCleanupPlan.films).Count "plans cleanup for an explicitly targeted orphan canonical film"
+Assert-Equal 1 @($orphanCleanupPlan.events).Count "plans cleanup for events linked to a targeted orphan canonical film"
+
+$protectedCleanupError = ""
+try {
+    Get-PolicyOrphanCleanupPlan -Films $activeCanonicalFilms -Selections $activeSelectionRecords -Events @() -FilmTrackerIds @("active-film") | Out-Null
+}
+catch {
+    $protectedCleanupError = $_.Exception.Message
+}
+Assert-True $protectedCleanupError.Contains("still have active selections") "refuses policy cleanup when a target film still has an active selection"
+
 $alreadyLinkedEvent = [pscustomobject]@{
     id = "already-linked-event"
     film_id = "current-selection-id"

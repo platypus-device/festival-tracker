@@ -4110,6 +4110,89 @@ function Get-AvailabilityFilmIndexItem {
     return $matches[0]
 }
 
+function Select-CanonicalFilmsWithActiveSelections {
+    param(
+        [object[]]$Films = @(),
+        [object[]]$Selections = @()
+    )
+
+    $activeFilmPageIds = @{}
+    foreach ($selection in @($Selections)) {
+        foreach ($filmPageId in @((Get-ObjectProperty $selection "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })) {
+            $activeFilmPageIds[$filmPageId] = $true
+        }
+    }
+
+    return @(
+        $Films |
+            Where-Object {
+                $filmPageId = [string](Get-ObjectProperty $_ "notion_page_id" "")
+                -not [string]::IsNullOrWhiteSpace($filmPageId) -and $activeFilmPageIds.ContainsKey($filmPageId)
+            }
+    )
+}
+
+function Get-PolicyOrphanCleanupPlan {
+    param(
+        [object[]]$Films = @(),
+        [object[]]$Selections = @(),
+        [object[]]$Events = @(),
+        [Parameter(Mandatory = $true)][string[]]$FilmTrackerIds
+    )
+
+    $targetIds = @{}
+    foreach ($filmTrackerId in @($FilmTrackerIds)) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$filmTrackerId)) {
+            $targetIds[[string]$filmTrackerId] = $true
+        }
+    }
+
+    $targetFilms = @(
+        $Films |
+            Where-Object { $targetIds.ContainsKey([string](Get-ObjectProperty $_ "id" "")) }
+    )
+    $targetFilmPageIds = @{}
+    $targetCanonicalKeys = @{}
+    foreach ($film in $targetFilms) {
+        $filmPageId = [string](Get-ObjectProperty $film "notion_page_id" "")
+        $canonicalKey = [string](Get-ObjectProperty $film "canonical_key" "")
+        if (-not [string]::IsNullOrWhiteSpace($filmPageId)) {
+            $targetFilmPageIds[$filmPageId] = $true
+        }
+        if (-not [string]::IsNullOrWhiteSpace($canonicalKey)) {
+            $targetCanonicalKeys[$canonicalKey] = $true
+        }
+    }
+
+    $blockingSelections = @(
+        $Selections |
+            Where-Object {
+                @((Get-ObjectProperty $_ "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $targetFilmPageIds.ContainsKey($_) }).Count -gt 0
+            }
+    )
+    if ($blockingSelections.Count -gt 0) {
+        $sample = @($blockingSelections | ForEach-Object { [string](Get-ObjectProperty $_ "title" "") } | Where-Object { $_ } | Select-Object -First 5) -join ", "
+        throw "Refusing to archive policy films that still have active selections: $sample"
+    }
+
+    $targetEvents = @(
+        $Events |
+            Where-Object {
+                $eventFilmId = [string](Get-ObjectProperty $_ "film_id" "")
+                $eventCanonicalKey = [string](Get-ObjectProperty $_ "canonical_key" "")
+                $relatedToTarget = @((Get-ObjectProperty $_ "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $targetFilmPageIds.ContainsKey($_) }).Count -gt 0
+                $targetIds.ContainsKey($eventFilmId) -or
+                    $targetCanonicalKeys.ContainsKey($eventCanonicalKey) -or
+                    $relatedToTarget
+            }
+    )
+
+    return [pscustomobject]@{
+        films = $targetFilms
+        events = $targetEvents
+    }
+}
+
 function New-AvailabilityEventFilmLink {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
@@ -4936,10 +5019,16 @@ function Invoke-FestivalTracker {
     if ($UseNotion) {
         if ($useThreeTableNotion -and ($Mode -eq "Availability")) {
             $canonicalFilmsDb = Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"
+            $selectionsDb = Get-EnvValue "NOTION_SELECTIONS_DATABASE_ID"
             try {
-                $films = @(Import-NotionCanonicalFilms -DatabaseId $canonicalFilmsDb)
+                if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
+                    throw "Set NOTION_SELECTIONS_DATABASE_ID before running Availability in the three-table Notion model."
+                }
+                $canonicalFilms = @(Import-NotionCanonicalFilms -DatabaseId $canonicalFilmsDb)
+                $activeSelections = @(Import-NotionSelections -DatabaseId $selectionsDb)
+                $films = @(Select-CanonicalFilmsWithActiveSelections -Films $canonicalFilms -Selections $activeSelections)
                 $importedFilmsFromNotion = $true
-                Write-Host "Imported $($films.Count) canonical film records from Notion."
+                Write-Host "Imported $($canonicalFilms.Count) canonical film records from Notion; $($films.Count) have active selections."
             }
             catch {
                 Write-Warning "Could not import canonical films from Notion: $($_.Exception.Message)"
