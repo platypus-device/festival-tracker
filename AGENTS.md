@@ -148,6 +148,7 @@ If changing parsing, export, canonicalization, availability, Notion sync, or yea
 - Do not reset, discard, or overwrite existing user changes unless explicitly asked.
 - Keep code changes scoped to the requested behavior.
 - Treat `web/data/tracker-data.json` as generated output from Notion. Keep generated data changes separate from code changes when possible.
+- When analyzing or reporting current production state, query Notion or the JSON deployed on the live GitHub Pages site. Do not use the repository copy of `web/data/tracker-data.json` as evidence of current production state; it is only a potentially stale development snapshot.
 - Treat `.tracker/` as ignored local fallback/cache. Do not rely on it for production behavior or committed project state.
 - Prefer structured parsing and existing module helpers over ad hoc string handling.
 - For GitHub Pages/frontend cache-sensitive changes, update `web/index.html` asset query versions.
