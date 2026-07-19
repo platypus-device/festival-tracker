@@ -26,7 +26,6 @@ const els = {
   viewKicker: document.querySelector("#viewKicker"),
   viewTitle: document.querySelector("#viewTitle"),
   viewMeta: document.querySelector("#viewMeta"),
-  spotlight: document.querySelector("#spotlight"),
   filmGrid: document.querySelector("#filmGrid"),
   eventList: document.querySelector("#eventList"),
   detailPanel: document.querySelector("#detailPanel"),
@@ -301,39 +300,6 @@ function filteredFilms() {
   return films;
 }
 
-function renderSpotlight(films) {
-  if (state.view !== "available" || films.length === 0) {
-    els.spotlight.classList.add("hidden");
-    els.spotlight.innerHTML = "";
-    return;
-  }
-
-  const film = films[0];
-  const event = Array.isArray(film.availability) ? film.availability[0] : null;
-  els.spotlight.classList.remove("hidden");
-  els.spotlight.innerHTML = `
-    <article class="spotlight-card">
-      <div class="poster">${posterMarkup(film)}</div>
-      <div class="spotlight-copy">
-        <span class="eyebrow">Latest legal availability</span>
-        <h2>${escapeHtml(film.title || "Untitled")}</h2>
-        <p>${escapeHtml(film.overview || `${film.director || "Unknown director"} - ${film.festival || "Festival"}`)}</p>
-        <div class="film-facts">
-          <span>${escapeHtml(film.festival || "Festival")}</span>
-          <span>${escapeHtml(primaryRatingLabel(film))}</span>
-          ${event ? `<span>${escapeHtml((event.availability_types || []).join(", "))}</span>` : ""}
-        </div>
-        <div class="spotlight-actions">
-          <button class="primary-action" data-film-id="${escapeHtml(film.id)}">View Details</button>
-          ${film.tmdbUrl ? `<a class="secondary-action" href="${escapeHtml(film.tmdbUrl)}" target="_blank" rel="noreferrer">TMDb</a>` : ""}
-        </div>
-      </div>
-    </article>
-  `;
-  const button = els.spotlight.querySelector("[data-film-id]");
-  button?.addEventListener("click", () => openDetail(film));
-}
-
 function renderViewHeader(count) {
   const copy = viewCopy[state.view] || viewCopy.available;
   els.viewKicker.textContent = copy.kicker;
@@ -350,8 +316,6 @@ function renderFilmGrid() {
   const films = filteredFilms();
   setMode("grid");
   renderViewHeader(films.length);
-  renderSpotlight(films);
-
   if (films.length === 0) {
     els.filmGrid.innerHTML = `<div class="empty">No films match this view.</div>`;
     return;
@@ -408,8 +372,6 @@ function renderEvents() {
   events.sort((a, b) => String(b.event_date || "").localeCompare(String(a.event_date || "")));
   setMode("events");
   renderViewHeader(events.length);
-  renderSpotlight([]);
-
   if (events.length === 0) {
     els.eventList.innerHTML = `<div class="empty">No availability events yet.</div>`;
     return;
