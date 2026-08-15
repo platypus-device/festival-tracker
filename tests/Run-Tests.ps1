@@ -1250,6 +1250,91 @@ $selectionProperties = ConvertTo-NotionSelectionProperties -Film $film
 Assert-True (-not $selectionProperties.ContainsKey("TMDb ID")) "selection properties omit canonical metadata"
 Assert-True (-not $selectionProperties.ContainsKey("Authorized Source URLs")) "selection properties omit authorized source URLs"
 
+$existingSelection = New-FilmRecord -Title "Existing Selection" -Director "Existing Director" -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/existing" -Year 2025
+$incomingLineup = New-FilmRecord -Title "Incoming Lineup" -Director "Incoming Director" -Festival "Busan" -Region "South Korea" -SourceUrl "https://example.test/incoming" -Year 2026
+$emptyLineupSyncFilms = @(Select-NotionSyncFilms -Mode Lineups -Films @($existingSelection) -LineupRecords @())
+Assert-Equal 0 $emptyLineupSyncFilms.Count "does not fall back to existing selections when lineup sync returns no records"
+$lineupSyncFilms = @(Select-NotionSyncFilms -Mode Lineups -Films @($existingSelection) -LineupRecords @($incomingLineup))
+Assert-Equal 1 $lineupSyncFilms.Count "syncs only incoming lineup records in Lineups mode"
+Assert-Equal $incomingLineup.id $lineupSyncFilms[0].id "keeps the incoming lineup record as the Notion sync input"
+$availabilitySyncFilms = @(Select-NotionSyncFilms -Mode Availability -Films @($existingSelection) -LineupRecords @($incomingLineup))
+Assert-Equal 1 $availabilitySyncFilms.Count "syncs the active film collection in Availability mode"
+Assert-Equal $existingSelection.id $availabilitySyncFilms[0].id "keeps the active film record as the Availability sync input"
+
+$healthyRecoveryFilm = [pscustomobject]@{
+    id = "healthy-recovery-film"
+    canonical_key = "tmdb:9001"
+    title = "Recovery Film"
+    director = "Recovery Director"
+    premiere_year = 2025
+    tmdb_id = 9001
+    imdb_id = "tt9001001"
+    poster_url = "https://example.test/recovery.jpg"
+    overview = "Complete metadata"
+    notion_page_id = "healthy-recovery-page"
+    created_at = "2026-07-01T00:00:00Z"
+}
+$pollutedRecoveryFilm = [pscustomobject]@{
+    id = "polluted-recovery-film"
+    canonical_key = "title:2026:recovery film:"
+    title = "Recovery Film"
+    director = ""
+    premiere_year = 2026
+    tmdb_id = $null
+    imdb_id = ""
+    poster_url = ""
+    overview = ""
+    notion_page_id = "polluted-recovery-page"
+    created_at = "2026-08-04T01:10:00Z"
+}
+$pollutedRecoverySelection = [pscustomobject]@{
+    id = "recovery-selection"
+    title = "Recovery Film"
+    director = ""
+    festival = "Academy Awards"
+    festival_year = 2026
+    film_relation_ids = @("polluted-recovery-page")
+    notion_page_id = "recovery-selection-page"
+}
+$pollutedRecoveryEvent = [pscustomobject]@{
+    id = "recovery-event"
+    film_id = "polluted-recovery-film"
+    canonical_key = "title:2026:recovery film:"
+    film_title = "Recovery Film"
+    film_relation_ids = @("polluted-recovery-page")
+    notion_page_id = "recovery-event-page"
+}
+$pollutionRepairPlan = Get-LineupPollutionRepairPlan -Films @($healthyRecoveryFilm, $pollutedRecoveryFilm) -Selections @($pollutedRecoverySelection) -Events @($pollutedRecoveryEvent)
+Assert-Equal 1 @($pollutionRepairPlan.polluted_films).Count "scopes canonical pollution repair to the incident creation window"
+Assert-Equal 1 @($pollutionRepairPlan.resolved).Count "resolves an incident film to one richer canonical record"
+Assert-Equal "healthy-recovery-page" $pollutionRepairPlan.resolved[0].target.notion_page_id "selects the richer canonical recovery target"
+Assert-Equal 1 @($pollutionRepairPlan.resolved[0].selections).Count "plans selection relation recovery"
+Assert-Equal 1 @($pollutionRepairPlan.resolved[0].events).Count "plans availability event relation recovery"
+
+$ambiguousPollutedFilm = [pscustomobject]@{
+    id = "ambiguous-polluted-film"
+    canonical_key = "title:2026:ambiguous recovery:"
+    title = "Ambiguous Recovery"
+    director = ""
+    premiere_year = 2026
+    tmdb_id = $null
+    imdb_id = ""
+    poster_url = ""
+    overview = ""
+    notion_page_id = "ambiguous-polluted-page"
+    created_at = "2026-08-04T01:11:00Z"
+}
+$ambiguousCandidates = @(
+    [pscustomobject]@{ id = "candidate-a"; canonical_key = "tmdb:9101"; title = "Ambiguous Recovery"; director = "Director A"; premiere_year = 2026; tmdb_id = 9101; imdb_id = ""; poster_url = ""; overview = ""; notion_page_id = "candidate-a-page"; created_at = "2026-07-01T00:00:00Z" },
+    [pscustomobject]@{ id = "candidate-b"; canonical_key = "tmdb:9102"; title = "Ambiguous Recovery"; director = "Director B"; premiere_year = 2026; tmdb_id = 9102; imdb_id = ""; poster_url = ""; overview = ""; notion_page_id = "candidate-b-page"; created_at = "2026-07-01T00:00:00Z" }
+)
+$ambiguousSelection = [pscustomobject]@{ id = "ambiguous-selection"; title = "Ambiguous Recovery"; director = ""; festival = "Busan"; festival_year = 2026; film_relation_ids = @("ambiguous-polluted-page"); notion_page_id = "ambiguous-selection-page" }
+$ambiguousRepairFilms = @($ambiguousPollutedFilm) + $ambiguousCandidates
+$ambiguousRepairPlan = Get-LineupPollutionRepairPlan -Films $ambiguousRepairFilms -Selections @($ambiguousSelection) -Events @()
+Assert-Equal 0 @($ambiguousRepairPlan.resolved).Count "does not guess between multiple stable recovery candidates"
+Assert-Equal 1 @($ambiguousRepairPlan.unresolved).Count "reports ambiguous recovery candidates for review"
+Assert-Equal "ambiguous_stable_candidates" $ambiguousRepairPlan.unresolved[0].reason "labels ambiguous stable candidates"
+
 $duplicateA = New-FilmRecord -Title "Duplicate Film" -Director "A Director" -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Year 2025
 $duplicateA.tmdb_id = 12345
 $duplicateB = New-FilmRecord -Title "Duplicate Film" -Director "" -Festival "Academy Awards" -Region "United States" -SourceUrl "https://example.test/oscars" -Year 2025

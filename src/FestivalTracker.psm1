@@ -4989,6 +4989,148 @@ function New-NotionTrackerDatabases {
     }
 }
 
+function Get-CanonicalFilmMetadataScore {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $score = 0
+    if ((ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdb_id" $null)) -gt 0) { $score += 100 }
+    if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "imdb_id" ""))) { $score += 80 }
+    if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "director" ""))) { $score += 40 }
+    if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "poster_url" ""))) { $score += 20 }
+    if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "overview" ""))) { $score += 10 }
+    return $score
+}
+
+function Get-LineupPollutionRepairPlan {
+    param(
+        [object[]]$Films = @(),
+        [object[]]$Selections = @(),
+        [object[]]$Events = @(),
+        [datetimeoffset]$IncidentStartUtc = [datetimeoffset]"2026-08-04T01:06:00Z",
+        [datetimeoffset]$IncidentEndUtc = [datetimeoffset]"2026-08-04T01:14:00Z"
+    )
+
+    $pollutedFilms = @($Films | Where-Object {
+        $createdAt = [datetimeoffset]::MinValue
+        [datetimeoffset]::TryParse([string](Get-ObjectProperty $_ "created_at" ""), [ref]$createdAt) -and
+            $createdAt -ge $IncidentStartUtc -and $createdAt -lt $IncidentEndUtc
+    })
+    $pollutedPageIds = @{}
+    foreach ($film in $pollutedFilms) {
+        $pollutedPageIds[[string](Get-ObjectProperty $film "notion_page_id" "")] = $true
+    }
+    $healthyFilms = @($Films | Where-Object { -not $pollutedPageIds.ContainsKey([string](Get-ObjectProperty $_ "notion_page_id" "")) })
+
+    $resolved = New-Object System.Collections.Generic.List[object]
+    $unresolved = New-Object System.Collections.Generic.List[object]
+    foreach ($source in $pollutedFilms) {
+        $sourcePageId = [string](Get-ObjectProperty $source "notion_page_id" "")
+        $sourceId = [string](Get-ObjectProperty $source "id" "")
+        $sourceKey = [string](Get-ObjectProperty $source "canonical_key" "")
+        $relatedSelections = @($Selections | Where-Object { @((Get-ObjectProperty $_ "film_relation_ids" @()) | ForEach-Object { [string]$_ }) -contains $sourcePageId })
+        $relatedEvents = @($Events | Where-Object {
+            @((Get-ObjectProperty $_ "film_relation_ids" @()) | ForEach-Object { [string]$_ }) -contains $sourcePageId -or
+                (-not [string]::IsNullOrWhiteSpace($sourceId) -and [string](Get-ObjectProperty $_ "film_id" "") -eq $sourceId) -or
+                (-not [string]::IsNullOrWhiteSpace($sourceKey) -and [string](Get-ObjectProperty $_ "canonical_key" "") -eq $sourceKey)
+        })
+
+        $normalizedTitle = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $source "title" ""))
+        $candidates = @($healthyFilms | Where-Object {
+            -not [string]::IsNullOrWhiteSpace($normalizedTitle) -and
+                (ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $_ "title" ""))) -eq $normalizedTitle
+        })
+        $selectionDirectors = @($relatedSelections |
+            ForEach-Object { ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $_ "director" "")) } |
+            Where-Object { $_ } |
+            Sort-Object -Unique)
+        if ($selectionDirectors.Count -gt 0) {
+            $candidates = @($candidates | Where-Object {
+                $selectionDirectors -contains (ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $_ "director" "")))
+            })
+        }
+
+        $allowedYears = New-Object System.Collections.Generic.List[int]
+        foreach ($selection in $relatedSelections) {
+            $festivalYear = ConvertTo-OptionalInt (Get-ObjectProperty $selection "festival_year" (Get-ObjectProperty $selection "year" $null))
+            if ($null -eq $festivalYear -or $festivalYear -le 0) { continue }
+            if (-not $allowedYears.Contains($festivalYear)) { $allowedYears.Add($festivalYear) }
+            if ([string](Get-ObjectProperty $selection "festival" "") -eq "Academy Awards" -and -not $allowedYears.Contains($festivalYear - 1)) {
+                $allowedYears.Add($festivalYear - 1)
+            }
+        }
+        if ($allowedYears.Count -gt 0) {
+            $yearMatches = @($candidates | Where-Object {
+                $candidateYear = Get-RecordPremiereYear -Film $_
+                $null -ne $candidateYear -and $allowedYears.Contains([int]$candidateYear)
+            })
+            if ($yearMatches.Count -gt 0) { $candidates = $yearMatches }
+        }
+
+        $stableCandidates = @($candidates | Where-Object {
+            (ConvertTo-OptionalInt (Get-ObjectProperty $_ "tmdb_id" $null)) -gt 0 -or
+                -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "imdb_id" ""))
+        })
+        $target = $null
+        $reason = "no_unique_candidate"
+        if ($stableCandidates.Count -eq 1) {
+            $target = $stableCandidates[0]
+        }
+        elseif ($stableCandidates.Count -gt 1) {
+            $reason = "ambiguous_stable_candidates"
+        }
+        elseif ($selectionDirectors.Count -gt 0 -and $candidates.Count -eq 1) {
+            $target = $candidates[0]
+        }
+        elseif ($candidates.Count -gt 1) {
+            $reason = "ambiguous_title_candidates"
+        }
+
+        if ($null -ne $target -and (Get-CanonicalFilmMetadataScore -Film $target) -le (Get-CanonicalFilmMetadataScore -Film $source)) {
+            $target = $null
+            $reason = "candidate_not_richer"
+        }
+
+        if ($null -eq $target) {
+            $unresolved.Add([pscustomobject]@{
+                film = $source
+                selections = $relatedSelections
+                events = $relatedEvents
+                reason = $reason
+                candidates = @($candidates)
+            }) | Out-Null
+            continue
+        }
+
+        $resolved.Add([pscustomobject]@{
+            film = $source
+            target = $target
+            selections = $relatedSelections
+            events = $relatedEvents
+        }) | Out-Null
+    }
+
+    return [pscustomobject]@{
+        incident_start_utc = $IncidentStartUtc.ToString("o")
+        incident_end_utc = $IncidentEndUtc.ToString("o")
+        polluted_films = $pollutedFilms
+        resolved = @($resolved.ToArray())
+        unresolved = @($unresolved.ToArray())
+    }
+}
+
+function Select-NotionSyncFilms {
+    param(
+        [ValidateSet("Lineups", "Availability", "All")][string]$Mode,
+        [object[]]$Films = @(),
+        [object[]]$LineupRecords = @()
+    )
+
+    if ($Mode -eq "Lineups") {
+        return @($LineupRecords)
+    }
+    return @($Films)
+}
+
 function Invoke-FestivalTracker {
     param(
         [ValidateSet("Lineups", "Availability", "All")][string]$Mode = "All",
@@ -5102,11 +5244,13 @@ function Invoke-FestivalTracker {
         Write-JsonFile -Path $filmsPath -Value $films
         Write-JsonFile -Path $eventsPath -Value $events
         if ($UseNotion) {
-            $notionSyncFilms = $films
-            if ($Mode -eq "Lineups" -and @($lineupRecords).Count -gt 0) {
-                $notionSyncFilms = $lineupRecords
+            $notionSyncFilms = @(Select-NotionSyncFilms -Mode $Mode -Films $films -LineupRecords $lineupRecords)
+            if ($Mode -eq "Lineups" -and $notionSyncFilms.Count -eq 0) {
+                Write-Host "Notion sync skipped; lineup sync produced no records."
             }
-            Sync-NotionState -Films $notionSyncFilms -NewEvents $newEvents -ExistingEvents $events -EnsureNotionSchema:$EnsureNotionSchema | Out-Null
+            else {
+                Sync-NotionState -Films $notionSyncFilms -NewEvents $newEvents -ExistingEvents $events -EnsureNotionSchema:$EnsureNotionSchema | Out-Null
+            }
         }
     }
     else {

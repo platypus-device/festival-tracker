@@ -25,6 +25,15 @@ on:
         required: false
         type: string
         default: "config/festivals.json"
+      repair_lineup_pollution:
+        description: "Repair canonical film relations damaged by the 2026-08-04 empty Lineups run"
+        required: true
+        type: choice
+        options:
+          - None
+          - DryRun
+          - Apply
+        default: None
   schedule:
     - cron: "30 23 * * *"
     - cron: "45 23 * * 1"
@@ -48,6 +57,23 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Repair empty-Lineups canonical pollution
+        if: github.event_name == 'workflow_dispatch' && inputs.repair_lineup_pollution != 'None'
+        timeout-minutes: 15
+        shell: pwsh
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
+          NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
+          NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: |
+          $repairArgs = @{}
+          if ("${{ inputs.repair_lineup_pollution }}" -eq "Apply") {
+            $repairArgs["Apply"] = $true
+          }
+          & ./scripts/Repair-LineupCanonicalPollution.ps1 @repairArgs
 
       - name: Restore availability records archived by policy cleanup
         if: github.event_name == 'push' && contains(github.event.head_commit.message, '[restore-availability]')
