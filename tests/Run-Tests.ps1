@@ -1278,12 +1278,12 @@ $pollutedRecoveryFilm = [pscustomobject]@{
     id = "polluted-recovery-film"
     canonical_key = "title:2026:recovery film:"
     title = "Recovery Film"
-    director = ""
+    director = "Recovery Director"
     premiere_year = 2026
-    tmdb_id = $null
-    imdb_id = ""
-    poster_url = ""
-    overview = ""
+    tmdb_id = 9001
+    imdb_id = "tt9001001"
+    poster_url = "https://example.test/recovery.jpg"
+    overview = "Complete metadata"
     notion_page_id = "polluted-recovery-page"
     created_at = "2026-08-04T01:10:00Z"
 }
@@ -1298,18 +1298,18 @@ $pollutedRecoverySelection = [pscustomobject]@{
 }
 $pollutedRecoveryEvent = [pscustomobject]@{
     id = "recovery-event"
-    film_id = "polluted-recovery-film"
-    canonical_key = "title:2026:recovery film:"
+    film_id = "recovery-selection"
+    canonical_key = ""
     film_title = "Recovery Film"
-    film_relation_ids = @("polluted-recovery-page")
+    film_relation_ids = @()
     notion_page_id = "recovery-event-page"
 }
 $pollutionRepairPlan = Get-LineupPollutionRepairPlan -Films @($healthyRecoveryFilm, $pollutedRecoveryFilm) -Selections @($pollutedRecoverySelection) -Events @($pollutedRecoveryEvent)
 Assert-Equal 1 @($pollutionRepairPlan.polluted_films).Count "scopes canonical pollution repair to the incident creation window"
-Assert-Equal 1 @($pollutionRepairPlan.resolved).Count "resolves an incident film to one richer canonical record"
+Assert-Equal 1 @($pollutionRepairPlan.resolved).Count "resolves an incident film after later metadata enrichment"
 Assert-Equal "healthy-recovery-page" $pollutionRepairPlan.resolved[0].target.notion_page_id "selects the richer canonical recovery target"
 Assert-Equal 1 @($pollutionRepairPlan.resolved[0].selections).Count "plans selection relation recovery"
-Assert-Equal 1 @($pollutionRepairPlan.resolved[0].events).Count "plans availability event relation recovery"
+Assert-Equal 1 @($pollutionRepairPlan.resolved[0].events).Count "finds availability events through the affected selection id"
 
 $ambiguousPollutedFilm = [pscustomobject]@{
     id = "ambiguous-polluted-film"
@@ -1334,6 +1334,20 @@ $ambiguousRepairPlan = Get-LineupPollutionRepairPlan -Films $ambiguousRepairFilm
 Assert-Equal 0 @($ambiguousRepairPlan.resolved).Count "does not guess between multiple stable recovery candidates"
 Assert-Equal 1 @($ambiguousRepairPlan.unresolved).Count "reports ambiguous recovery candidates for review"
 Assert-Equal "ambiguous_stable_candidates" $ambiguousRepairPlan.unresolved[0].reason "labels ambiguous stable candidates"
+
+$sameIdentityPollutedFilm = [pscustomobject]@{ id = "same-identity-polluted"; canonical_key = "title:2026:same identity recovery:"; title = "Same Identity Recovery"; director = ""; premiere_year = 2026; tmdb_id = 9201; imdb_id = "tt9201001"; poster_url = ""; overview = ""; notion_page_id = "same-identity-polluted-page"; created_at = "2026-08-04T01:12:00Z" }
+$sameIdentityCandidates = @(
+    [pscustomobject]@{ id = "same-identity-a"; canonical_key = "tmdb:9201"; title = "Same Identity Recovery"; director = "Identity Director"; premiere_year = 2026; tmdb_id = 9201; imdb_id = "tt9201001"; poster_url = ""; overview = ""; notion_page_id = "same-identity-a-page"; created_at = "2026-06-01T00:00:00Z" },
+    [pscustomobject]@{ id = "same-identity-b"; canonical_key = "tmdb:9201"; title = "Same Identity Recovery"; director = "Identity Director"; premiere_year = 2026; tmdb_id = 9201; imdb_id = "tt9201001"; poster_url = ""; overview = ""; notion_page_id = "same-identity-b-page"; created_at = "2026-07-01T00:00:00Z" }
+)
+$sameIdentitySelections = @(
+    [pscustomobject]@{ id = "same-identity-incident-selection"; title = "Same Identity Recovery"; director = ""; festival = "Academy Awards"; festival_year = 2026; film_relation_ids = @("same-identity-polluted-page"); notion_page_id = "same-identity-incident-selection-page" },
+    [pscustomobject]@{ id = "same-identity-existing-selection"; title = "Same Identity Recovery"; director = "Identity Director"; festival = "Cannes"; festival_year = 2026; film_relation_ids = @("same-identity-b-page"); notion_page_id = "same-identity-existing-selection-page" }
+)
+$sameIdentityRepairFilms = @($sameIdentityPollutedFilm) + $sameIdentityCandidates
+$sameIdentityRepairPlan = Get-LineupPollutionRepairPlan -Films $sameIdentityRepairFilms -Selections $sameIdentitySelections -Events @()
+Assert-Equal 1 @($sameIdentityRepairPlan.resolved).Count "treats duplicate pages with one stable identity as one recovery target"
+Assert-Equal "same-identity-b-page" $sameIdentityRepairPlan.resolved[0].target.notion_page_id "prefers the stable-identity page with an existing selection relation"
 
 $duplicateA = New-FilmRecord -Title "Duplicate Film" -Director "A Director" -Festival "Cannes" -Region "France" -SourceUrl "https://example.test/cannes" -Year 2025
 $duplicateA.tmdb_id = 12345

@@ -5001,6 +5001,16 @@ function Get-CanonicalFilmMetadataScore {
     return $score
 }
 
+function Get-CanonicalFilmStableKey {
+    param([Parameter(Mandatory = $true)][object]$Film)
+
+    $tmdbId = ConvertTo-OptionalInt (Get-ObjectProperty $Film "tmdb_id" $null)
+    if ($null -ne $tmdbId -and $tmdbId -gt 0) { return "tmdb:$tmdbId" }
+    $imdbId = [string](Get-ObjectProperty $Film "imdb_id" "")
+    if (-not [string]::IsNullOrWhiteSpace($imdbId)) { return "imdb:$($imdbId.Trim().ToLowerInvariant())" }
+    return ""
+}
+
 function Get-LineupPollutionRepairPlan {
     param(
         [object[]]$Films = @(),
@@ -5020,6 +5030,13 @@ function Get-LineupPollutionRepairPlan {
         $pollutedPageIds[[string](Get-ObjectProperty $film "notion_page_id" "")] = $true
     }
     $healthyFilms = @($Films | Where-Object { -not $pollutedPageIds.ContainsKey([string](Get-ObjectProperty $_ "notion_page_id" "")) })
+    $selectionRelationCounts = @{}
+    foreach ($selection in $Selections) {
+        foreach ($relationId in @((Get-ObjectProperty $selection "film_relation_ids" @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })) {
+            if (-not $selectionRelationCounts.ContainsKey($relationId)) { $selectionRelationCounts[$relationId] = 0 }
+            $selectionRelationCounts[$relationId]++
+        }
+    }
 
     $resolved = New-Object System.Collections.Generic.List[object]
     $unresolved = New-Object System.Collections.Generic.List[object]
@@ -5028,9 +5045,11 @@ function Get-LineupPollutionRepairPlan {
         $sourceId = [string](Get-ObjectProperty $source "id" "")
         $sourceKey = [string](Get-ObjectProperty $source "canonical_key" "")
         $relatedSelections = @($Selections | Where-Object { @((Get-ObjectProperty $_ "film_relation_ids" @()) | ForEach-Object { [string]$_ }) -contains $sourcePageId })
+        $relatedSelectionIds = @($relatedSelections | ForEach-Object { [string](Get-ObjectProperty $_ "id" "") } | Where-Object { $_ })
         $relatedEvents = @($Events | Where-Object {
             @((Get-ObjectProperty $_ "film_relation_ids" @()) | ForEach-Object { [string]$_ }) -contains $sourcePageId -or
                 (-not [string]::IsNullOrWhiteSpace($sourceId) -and [string](Get-ObjectProperty $_ "film_id" "") -eq $sourceId) -or
+                ($relatedSelectionIds -contains [string](Get-ObjectProperty $_ "film_id" "")) -or
                 (-not [string]::IsNullOrWhiteSpace($sourceKey) -and [string](Get-ObjectProperty $_ "canonical_key" "") -eq $sourceKey)
         })
 
@@ -5066,16 +5085,35 @@ function Get-LineupPollutionRepairPlan {
             if ($yearMatches.Count -gt 0) { $candidates = $yearMatches }
         }
 
-        $stableCandidates = @($candidates | Where-Object {
-            (ConvertTo-OptionalInt (Get-ObjectProperty $_ "tmdb_id" $null)) -gt 0 -or
-                -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "imdb_id" ""))
-        })
+        $stableCandidateGroups = @($candidates |
+            ForEach-Object {
+                $stableKey = Get-CanonicalFilmStableKey -Film $_
+                if (-not [string]::IsNullOrWhiteSpace($stableKey)) {
+                    [pscustomobject]@{ stable_key = $stableKey; film = $_ }
+                }
+            } |
+            Group-Object stable_key)
         $target = $null
         $reason = "no_unique_candidate"
-        if ($stableCandidates.Count -eq 1) {
-            $target = $stableCandidates[0]
+        if ($stableCandidateGroups.Count -eq 1) {
+            $rankedCandidates = @($stableCandidateGroups[0].Group |
+                ForEach-Object {
+                    $candidate = $_.film
+                    $candidatePageId = [string](Get-ObjectProperty $candidate "notion_page_id" "")
+                    $createdAt = [datetimeoffset]::MaxValue
+                    [datetimeoffset]::TryParse([string](Get-ObjectProperty $candidate "created_at" ""), [ref]$createdAt) | Out-Null
+                    [pscustomobject]@{
+                        film = $candidate
+                        metadata_score = Get-CanonicalFilmMetadataScore -Film $candidate
+                        relation_count = if ($selectionRelationCounts.ContainsKey($candidatePageId)) { $selectionRelationCounts[$candidatePageId] } else { 0 }
+                        created_at = $createdAt
+                        page_id = $candidatePageId
+                    }
+                } |
+                Sort-Object @{ Expression = "relation_count"; Descending = $true }, @{ Expression = "metadata_score"; Descending = $true }, created_at, page_id)
+            $target = $rankedCandidates[0].film
         }
-        elseif ($stableCandidates.Count -gt 1) {
+        elseif ($stableCandidateGroups.Count -gt 1) {
             $reason = "ambiguous_stable_candidates"
         }
         elseif ($selectionDirectors.Count -gt 0 -and $candidates.Count -eq 1) {
@@ -5083,11 +5121,6 @@ function Get-LineupPollutionRepairPlan {
         }
         elseif ($candidates.Count -gt 1) {
             $reason = "ambiguous_title_candidates"
-        }
-
-        if ($null -ne $target -and (Get-CanonicalFilmMetadataScore -Film $target) -le (Get-CanonicalFilmMetadataScore -Film $source)) {
-            $target = $null
-            $reason = "candidate_not_richer"
         }
 
         if ($null -eq $target) {
