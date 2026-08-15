@@ -34,6 +34,11 @@ on:
           - DryRun
           - Apply
         default: None
+      deploy_pages:
+        description: "Deploy GitHub Pages after a successful tracker run"
+        required: true
+        type: boolean
+        default: true
   schedule:
     - cron: "30 23 * * *"
     - cron: "45 23 * * 1"
@@ -75,9 +80,6 @@ jobs:
     if: github.event_name != 'workflow_dispatch' || inputs.repair_lineup_pollution == 'None'
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
 
@@ -241,6 +243,15 @@ jobs:
         with:
           path: ./web
 
+  deploy:
+    needs: sync
+    if: needs.sync.result == 'success' && (github.event_name != 'workflow_dispatch' || inputs.deploy_pages)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
