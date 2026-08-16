@@ -25,6 +25,20 @@ on:
         required: false
         type: string
         default: "config/festivals.json"
+      repair_lineup_pollution:
+        description: "Repair canonical film relations damaged by the 2026-08-04 empty Lineups run"
+        required: true
+        type: choice
+        options:
+          - None
+          - DryRun
+          - Apply
+        default: None
+      deploy_pages:
+        description: "Deploy GitHub Pages after a successful tracker run"
+        required: true
+        type: boolean
+        default: true
   schedule:
     - cron: "30 23 * * *"
     - cron: "45 23 * * 1"
@@ -40,12 +54,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  repair-lineup-pollution:
+    if: github.event_name == 'workflow_dispatch' && inputs.repair_lineup_pollution != 'None'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Repair empty-Lineups canonical pollution
+        shell: pwsh
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
+          NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
+          NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: |
+          $repairArgs = @{}
+          if ("${{ inputs.repair_lineup_pollution }}" -eq "Apply") {
+            $repairArgs["Apply"] = $true
+          }
+          & ./scripts/Repair-LineupCanonicalPollution.ps1 @repairArgs
+
   sync:
+    if: github.event_name != 'workflow_dispatch' || inputs.repair_lineup_pollution == 'None'
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
 
@@ -209,6 +243,15 @@ jobs:
         with:
           path: ./web
 
+  deploy:
+    needs: sync
+    if: needs.sync.result == 'success' && (github.event_name != 'workflow_dispatch' || inputs.deploy_pages)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
