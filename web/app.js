@@ -418,7 +418,122 @@ function render() {
   else renderFilmGrid();
 }
 
+const ytsCatalogConfig = {
+  apiBase: "https://movies-api.accel.li/api/v2/",
+  storagePrefix: "festival-tracker:yts:v1:",
+  refreshAfterMs: 24 * 60 * 60 * 1000,
+  timeoutMs: 8000,
+};
+const ytsCatalogResults = new Map();
+let activeYtsCatalog = null;
+
+function readYtsCatalogResult(imdbId) {
+  if (!imdbId) return null;
+  if (ytsCatalogResults.has(imdbId)) return ytsCatalogResults.get(imdbId);
+  try {
+    const result = JSON.parse(window.localStorage.getItem(`${ytsCatalogConfig.storagePrefix}${imdbId}`));
+    if (!["found", "not_found"].includes(result?.status) || typeof result.checkedAt !== "string" || !Number.isFinite(Date.parse(result.checkedAt))) return null;
+    const cached = { result, saved: true };
+    ytsCatalogResults.set(imdbId, cached);
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function saveYtsCatalogResult(imdbId, result) {
+  const cached = { result, saved: false };
+  try {
+    window.localStorage.setItem(`${ytsCatalogConfig.storagePrefix}${imdbId}`, JSON.stringify(result));
+    cached.saved = true;
+  } catch {
+    // Keep the result usable for this visit if browser storage is unavailable.
+  }
+  ytsCatalogResults.set(imdbId, cached);
+  return cached;
+}
+
+async function fetchYtsCatalogResult(imdbId, signal) {
+  const url = new URL("list_movies.json", ytsCatalogConfig.apiBase);
+  url.searchParams.set("query_term", imdbId);
+  url.searchParams.set("limit", "50");
+  const response = await fetch(url, { signal, cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer" });
+  if (!response.ok) throw new Error(`YTS request failed: ${response.status}`);
+  const payload = await response.json();
+  const count = payload?.data?.movie_count;
+  const movies = payload?.data?.movies ?? [];
+  if (payload?.status !== "ok" || !Number.isInteger(count) || count < 0 || !Array.isArray(movies) ||
+      (count === 0 && movies.length > 0) || (count > 0 && movies.length === 0)) {
+    throw new Error("Unexpected YTS response");
+  }
+  const found = movies.some((movie) => movie?.imdb_code === imdbId);
+  // A nonempty search without an exact match cannot reliably establish absence.
+  if (count > 0 && !found) throw new Error("YTS returned no exact IMDb match");
+  return { status: found ? "found" : "not_found", checkedAt: new Date().toISOString() };
+}
+
+function renderYtsCatalog() {
+  const lookup = activeYtsCatalog;
+  const card = els.detailContent.querySelector("[data-yts-catalog]");
+  if (!lookup || !card) return;
+  const { imdbId, result, saved, busy, error } = lookup;
+  const status = card.querySelector("[data-yts-status]");
+  const meta = card.querySelector("[data-yts-meta]");
+  const notice = card.querySelector("[data-yts-notice]");
+  const button = card.querySelector("[data-yts-check]");
+  status.textContent = result
+    ? (result.status === "found" ? "Listed on YTS" : "Not found on YTS")
+    : !imdbId ? "IMDb ID required to check" : busy ? "Checking…" : error ? "Could not check YTS" : "Not checked";
+  if (result) {
+    const checkedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(result.checkedAt));
+    const stale = Date.now() - Date.parse(result.checkedAt) >= ytsCatalogConfig.refreshAfterMs;
+    meta.textContent = [`Checked ${checkedAt}`, saved ? "Saved in this browser" : "Kept for this visit", stale ? "Refresh recommended" : ""].filter(Boolean).join(" · ");
+  } else {
+    meta.textContent = imdbId ? "Check this film's listing. Results are saved in this browser." : "This film has no IMDb ID yet.";
+  }
+  notice.textContent = [
+    error ? (result ? "Check failed. Your previous result is unchanged." : "Try again in a moment.") : "",
+    result && !saved ? "Could not save in this browser." : "",
+  ].filter(Boolean).join(" ");
+  notice.hidden = !notice.textContent;
+  card.setAttribute("aria-busy", String(busy));
+  button.hidden = !imdbId;
+  button.disabled = busy;
+  button.textContent = busy ? "Checking…" : error ? "Retry" : result ? "Recheck" : "Check YTS";
+}
+
+function cancelYtsCatalogCheck() {
+  activeYtsCatalog?.controller?.abort();
+  activeYtsCatalog = null;
+}
+
+async function checkYtsCatalog() {
+  const lookup = activeYtsCatalog;
+  if (!lookup?.imdbId || lookup.busy) return;
+  const controller = new AbortController();
+  lookup.controller = controller;
+  lookup.busy = true;
+  lookup.error = false;
+  renderYtsCatalog();
+  const timeout = setTimeout(() => controller.abort(), ytsCatalogConfig.timeoutMs);
+  try {
+    const result = await fetchYtsCatalogResult(lookup.imdbId, controller.signal);
+    if (activeYtsCatalog !== lookup || controller.signal.aborted) return;
+    Object.assign(lookup, saveYtsCatalogResult(lookup.imdbId, result));
+  } catch {
+    if (activeYtsCatalog === lookup) lookup.error = true;
+  } finally {
+    clearTimeout(timeout);
+    if (activeYtsCatalog === lookup) {
+      lookup.busy = false;
+      lookup.controller = null;
+      renderYtsCatalog();
+    }
+  }
+}
+
 function openDetail(film) {
+  cancelYtsCatalogCheck();
   const events = Array.isArray(film.availability) ? film.availability : [];
   const firstEvent = events[0] || null;
   const selections = filmSelections(film);
@@ -480,6 +595,15 @@ function openDetail(film) {
               <p>No legal online availability event recorded yet.</p>
             </div>`
       }
+      <h3 id="ytsCatalogHeading">YTS catalog</h3>
+      <div class="catalog-check" data-yts-catalog role="region" aria-labelledby="ytsCatalogHeading" aria-busy="false">
+        <div class="catalog-check-copy" aria-live="polite" aria-atomic="true">
+          <strong class="catalog-status" data-yts-status>Not checked</strong>
+          <p class="catalog-meta" data-yts-meta></p>
+          <p class="catalog-notice" data-yts-notice hidden></p>
+        </div>
+        <button class="catalog-check-button" type="button" data-yts-check>Check YTS</button>
+      </div>
       <h3>Overview</h3>
       <p>${escapeHtml(film.overview || "No overview yet.")}</p>
     </div>
@@ -487,10 +611,16 @@ function openDetail(film) {
   els.detailPanel.classList.add("open");
   els.detailPanel.setAttribute("aria-hidden", "false");
   els.overlay.classList.remove("hidden");
-  els.detailPanel.querySelector(".close-button")?.addEventListener("click", closeDetail);
+  els.detailContent.querySelector(".close-button")?.addEventListener("click", closeDetail);
+  const imdbId = String(film.imdbId || "").trim().toLowerCase();
+  const validImdbId = /^tt\d+$/.test(imdbId) ? imdbId : "";
+  activeYtsCatalog = { imdbId: validImdbId, result: null, saved: false, busy: false, error: false, ...readYtsCatalogResult(validImdbId) };
+  renderYtsCatalog();
+  els.detailContent.querySelector("[data-yts-check]")?.addEventListener("click", checkYtsCatalog);
 }
 
 function closeDetail() {
+  cancelYtsCatalogCheck();
   els.detailPanel.classList.remove("open");
   els.detailPanel.setAttribute("aria-hidden", "true");
   els.overlay.classList.add("hidden");
