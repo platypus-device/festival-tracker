@@ -260,6 +260,24 @@ $veniceOrizzonti = @(ConvertFrom-LineupHtml -Html $veniceOrizzontiHtml -Festival
 Assert-Equal 1 $veniceOrizzonti.Count "filters Venice Orizzonti short films"
 Assert-Equal "Feature Sample" $veniceOrizzonti[0].title "keeps Venice Orizzonti feature"
 
+$veniceNoCastHtml = @"
+<html><body>
+<p>Read more NAZA Director</p>
+<p>Yuval Abraham, Rachel Szor</p>
+<p>United Kingdom / 80'</p>
+<p>Read more Company Director Casey Affleck Main Cast Nick Nolte / Canada, USA / 92'</p>
+<p>Read more Short Documentary Director</p>
+<p>Short Maker</p>
+<p>Italy / 20'</p>
+</body></html>
+"@
+$veniceNoCast = @(ConvertFrom-LineupHtml -Html $veniceNoCastHtml -Festival "Venice" -Region "Italy" -SourceUrl "https://www.labiennale.org/en/cinema/2026/venezia-83-competition" -Parser "venice_selection" -Year 2026)
+Assert-Equal 2 $veniceNoCast.Count "parses Venice documentary without cast and the following feature separately"
+Assert-Equal "Yuval Abraham, Rachel Szor" $veniceNoCast[0].director "does not merge the next Venice film into documentary credits"
+Assert-Equal "Company" $veniceNoCast[1].title "keeps the Venice feature following a documentary"
+Assert-Equal "Casey Affleck" $veniceNoCast[1].director "keeps the following Venice feature director"
+Assert-Equal 2026 $veniceNoCast[0].festival_year "keeps the 2026 Venice edition"
+
 $oscarsHtml = @"
 <html>
 <body>
@@ -404,6 +422,21 @@ Assert-Equal "O ultimo azul" $berlinaleDetail[0].original_title "keeps Berlinale
 Assert-Equal "Gabriel Mascaro" $berlinaleDetail[0].director "extracts Berlinale director"
 Assert-Equal "Competition" $berlinaleDetail[0].section "extracts Berlinale section"
 
+$berlinaleCoDirectorsHtml = @"
+<html><body>
+<h1 class="ft__title">Yo (Love is a Rebellious Bird)</h1>
+<span class="section-tag"><span class="color-tag"></span>Competition 2026</span>
+<span class="film-meta staff">by Anna Fitch (Director), Banker White (Director), Sample Writer (Screenplay)<br />with Cast</span>
+<span class="film-meta country">USA 2026</span>
+</body></html>
+"@
+$berlinaleCoDirectors = @(ConvertFrom-BerlinaleDetailHtml -Html $berlinaleCoDirectorsHtml -Festival "Berlinale" -Region "Germany" -SourceUrl "https://www.berlinale.de/en/2026/programme/202610484.html" -Year 2026 -AllowedSections @("Competition"))
+Assert-Equal "Anna Fitch, Banker White" $berlinaleCoDirectors[0].director "keeps separately credited Berlinale co-directors without screenplay-only staff"
+$berlinalePerspectivesHtml = $berlinaleCoDirectorsHtml.Replace('Competition 2026', 'Perspectives 2026').Replace('Anna Fitch (Director), Banker White (Director)', 'Anna Fitch, Banker White (Co-Directors)')
+$berlinalePerspectives = @(ConvertFrom-BerlinaleDetailHtml -Html $berlinalePerspectivesHtml -Festival "Berlinale" -Region "Germany" -SourceUrl "https://www.berlinale.de/en/2026/programme/202610484.html" -Year 2026 -AllowedSections @("Perspectives"))
+Assert-Equal "Anna Fitch, Banker White" $berlinalePerspectives[0].director "keeps jointly credited Berlinale co-directors"
+Assert-Equal "Perspectives" $berlinalePerspectives[0].section "parses the current Berlinale debut competition section"
+
 $busanSelectionHtml = @"
 <html>
 <body>
@@ -465,6 +498,25 @@ $goldenHorseFestival = @($festivalConfig.festivals | Where-Object { $_.name -eq 
 Assert-Equal $false $taipeiFestival.enabled "disables Taipei Film Festival sync"
 Assert-Equal $false $goldenHorseFestival.enabled "disables Taipei Golden Horse Film Festival sync"
 
+$catchupScopes = @{
+    "Berlinale" = @{ parser = "berlinale_programme_index"; sections = @("Competition", "Perspectives") }
+    "Venice" = @{ parser = "venice_selection"; sections = @("Orizzonti Competition", "Venezia Competition") }
+    "NYFF" = @{ parser = "nyff_main_slate"; sections = @("Main Slate") }
+    "Busan" = @{ parser = "busan_selection_list"; sections = @("Competition") }
+}
+foreach ($festivalName in $catchupScopes.Keys) {
+    $festival = @($festivalConfig.festivals | Where-Object { $_.name -eq $festivalName })[0]
+    $activeSources = @($festival.sources | Where-Object { (Get-ObjectProperty $_ "enabled" $true) -ne $false })
+    Assert-Equal $true $festival.enabled "enables $festivalName lineup sync"
+    Assert-True ($activeSources.Count -gt 0) "configures active $festivalName sources"
+    Assert-Equal (($catchupScopes[$festivalName].sections | Sort-Object) -join ',') (($activeSources.sectionScope | Sort-Object -Unique) -join ',') "configures current $festivalName core sections"
+    foreach ($source in $activeSources) {
+        Assert-Equal 2026 $source.year "pins $festivalName source to the 2026 edition"
+        Assert-True ($source.url -match '2026') "uses a year-specific $festivalName source"
+        Assert-Equal $catchupScopes[$festivalName].parser $source.parser "uses the dedicated $festivalName parser"
+    }
+}
+
 $nyffHtml = @"
 <html>
 <body>
@@ -481,6 +533,21 @@ $nyffHtml = @"
 $nyff = @(ConvertFrom-LineupHtml -Html $nyffHtml -Festival "NYFF" -Region "United States" -SourceUrl "https://example.test/nyff" -Parser "nyff_main_slate" -Year 2025)
 Assert-Equal 2 $nyff.Count "parses NYFF main slate title and director pairs"
 Assert-Equal "Main Slate" $nyff[0].section "sets NYFF Main Slate section"
+
+$nyffCoDirectorsHtml = @"
+<html><body>
+<h2>64th New York Film Festival Main Slate Films and Descriptions</h2>
+<p>Clarissa</p>
+<p>Arie Esiri, Chuko Esiri, 2026, Nigeria/U.S., 135m</p>
+<p>Once Upon a Time in Harlem</p>
+<p>William Greaves, David Greaves, 2026, U.S., 100m</p>
+</body></html>
+"@
+$nyffCoDirectors = @(ConvertFrom-LineupHtml -Html $nyffCoDirectorsHtml -Festival "NYFF" -Region "United States" -SourceUrl "https://www.filmlinc.org/nyff2026/daily/64th-new-york-film-festival-main-slate-announced/" -Parser "nyff_main_slate" -Year 2026)
+Assert-Equal 2 $nyffCoDirectors.Count "parses NYFF entries with comma-separated co-directors"
+Assert-Equal "Arie Esiri, Chuko Esiri" $nyffCoDirectors[0].director "keeps all NYFF co-directors before the film year"
+Assert-Equal "William Greaves, David Greaves" $nyffCoDirectors[1].director "keeps documentary co-directors"
+Assert-Equal 2026 $nyffCoDirectors[0].festival_year "keeps the 2026 NYFF edition"
 
 $tidfHtml = @"
 <html>

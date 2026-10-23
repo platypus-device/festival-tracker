@@ -38,11 +38,19 @@
       "lineupWindow": { "startMonth": 12, "endMonth": 3 },
       "sources": [
         {
-          "url": "https://www.berlinale.de/en/programm/berlinale_programm/programmsuche.php",
-          "parser": "generic_title_by_director",
+          "url": "https://berlinale.de/en/programme/berlinale-programme.html?sort=1&section_id=60&day_id=0&y=2026",
+          "parser": "berlinale_programme_index",
+          "year": 2026,
           "sectionScope": [
-            "Competition",
-            "Encounters"
+            "Competition"
+          ]
+        },
+        {
+          "url": "https://berlinale.de/en/programme/berlinale-programme.html?sort=1&section_id=71&day_id=0&y=2026",
+          "parser": "berlinale_programme_index",
+          "year": 2026,
+          "sectionScope": [
+            "Perspectives"
           ]
         }
       ]
@@ -54,18 +62,20 @@
       "lineupWindow": { "startMonth": 7, "endMonth": 9 },
       "sources": [
         {
-          "url": "https://www.labiennale.org/en/cinema/2025/venezia-82-competition",
-          "enabled": false,
+          "url": "https://www.labiennale.org/en/cinema/2026/venezia-83-competition",
           "parser": "venice_selection",
-          "year": 2025,
-          "notes": "Historical 2025 source moved to config/backfills/2025.json."
+          "year": 2026,
+          "sectionScope": [
+            "Venezia Competition"
+          ]
         },
         {
-          "url": "https://www.labiennale.org/en/cinema/2025/orizzonti",
-          "enabled": false,
+          "url": "https://www.labiennale.org/en/cinema/2026/orizzonti",
           "parser": "venice_selection",
-          "year": 2025,
-          "notes": "Historical 2025 source moved to config/backfills/2025.json."
+          "year": 2026,
+          "sectionScope": [
+            "Orizzonti Competition"
+          ]
         }
       ]
     },
@@ -101,13 +111,12 @@
       "lineupWindow": { "startMonth": 7, "endMonth": 10 },
       "sources": [
         {
-          "url": "https://www.filmlinc.org/nyff2025/daily/63rd-new-york-film-festival-main-slate-announced/",
-          "enabled": false,
+          "url": "https://www.filmlinc.org/nyff2026/daily/64th-new-york-film-festival-main-slate-announced/",
           "parser": "nyff_main_slate",
+          "year": 2026,
           "sectionScope": [
             "Main Slate"
-          ],
-          "notes": "Historical 2025 source moved to config/backfills/2025.json."
+          ]
         }
       ]
     },
@@ -142,10 +151,11 @@
       "lineupWindow": { "startMonth": 8, "endMonth": 10 },
       "sources": [
         {
-          "url": "https://www.biff.kr/eng/",
-          "parser": "generic_title_by_director",
+          "url": "https://www.biff.kr/eng/html/program/prog_all_list.asp?allYear=2026",
+          "parser": "busan_selection_list",
+          "year": 2026,
           "sectionScope": [
-            "New Currents"
+            "Competition"
           ]
         }
       ]

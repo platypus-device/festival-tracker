@@ -825,11 +825,20 @@ function ConvertFrom-VeniceText {
         $scanText = $Matches.features
     }
 
-    $pattern = 'Read more\s+(?<title>.+?)\s+Director\s+(?<director>.+?)\s+Main Cast\s+(?<meta>.+?)(?=\s+Read more\s+|$)'
+    $pattern = 'Read more\s+(?<title>.+?)\s+Director\s+(?<credits>.+?)(?=\s+Read more\s+|$)'
     foreach ($match in [regex]::Matches($scanText, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
         $title = Repair-MojibakeText (($match.Groups["title"].Value -replace '\s+', ' ').Trim())
-        $director = Repair-MojibakeText (($match.Groups["director"].Value -replace '\s+', ' ').Trim())
-        $meta = ($match.Groups["meta"].Value -replace '\s+', ' ').Trim()
+        $credits = $match.Groups["credits"].Value.Trim()
+        $creditMatch = [regex]::Match($credits, '^(?<director>.+?)\s+Main Cast\s+(?<meta>.+)$', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        if (-not $creditMatch.Success) {
+            # Documentaries omit Main Cast; their director and country/runtime occupy separate lines.
+            $creditMatch = [regex]::Match($credits, '^(?<director>[^\r\n]+)[\r\n]+\s*(?<meta>.+)$', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        }
+        if (-not $creditMatch.Success) {
+            continue
+        }
+        $director = Repair-MojibakeText (($creditMatch.Groups["director"].Value -replace '\s+', ' ').Trim())
+        $meta = ($creditMatch.Groups["meta"].Value -replace '\s+', ' ').Trim()
         if ([string]::IsNullOrWhiteSpace($title) -or [string]::IsNullOrWhiteSpace($director)) {
             continue
         }
@@ -1264,7 +1273,7 @@ function ConvertFrom-NyffMainSlateText {
         if ($title -match '(?i)\b(courtesy|secure your tickets|festival passes|film at lincoln center|read more|premiere|release)\b') {
             continue
         }
-        if ($meta -notmatch '^(?<director>[^,]{2,120}),\s*(?<year>(19|20)\d{2}),\s*(?<details>.+?)(?<duration>\d{2,3})m\b') {
+        if ($meta -notmatch '^(?<director>.{2,160}?),\s*(?<year>(19|20)\d{2}),\s*(?<details>.+?)(?<duration>\d{2,3})m\b') {
             continue
         }
 
@@ -1383,12 +1392,15 @@ function ConvertFrom-BerlinaleDetailHtml {
     $staffMatch = [regex]::Match($Html, '<span[^>]*class="[^"]*\bfilm-meta\b[^"]*\bstaff\b[^"]*"[^>]*>(?<staff>.*?)</span>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
     if ($staffMatch.Success) {
         $staff = ConvertTo-CleanHtmlText $staffMatch.Groups["staff"].Value
-        if ($staff -match '(?i)\bby\s+(?<director>.+?)\s*\((?:Co-)?Directors?[,)]') {
-            $director = $Matches.director.Trim()
-        }
-        elseif ($staff -match '(?i)\bby\s+(?<director>.+?)\s*\(Director') {
-            $director = $Matches.director.Trim()
-        }
+        $directors = @(
+            foreach ($credit in [regex]::Matches($staff, '(?i)(?:^by\s+|,\s*)(?<name>[^()]+?)\s*\((?<roles>[^)]+)\)')) {
+                $roles = @($credit.Groups["roles"].Value -split ',' | ForEach-Object { $_.Trim() })
+                if (@($roles | Where-Object { $_ -match '(?i)^(?:Co-)?Directors?$' }).Count -gt 0) {
+                    $credit.Groups["name"].Value.Trim()
+                }
+            }
+        )
+        $director = ($directors -join ', ')
     }
 
     $filmYear = $Year
