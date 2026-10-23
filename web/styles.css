@@ -198,6 +198,7 @@ main:focus-visible {
   position: absolute;
   inset: 0 calc(50% - 50vw);
   z-index: -1;
+  pointer-events: none;
   background: var(--color-chrome);
   border-bottom: 1px solid var(--color-chrome-line);
   backdrop-filter: blur(18px);
@@ -996,8 +997,15 @@ select:focus-visible {
     padding-top: var(--space-3);
   }
 
+  .topbar::before,
+  .controls::before {
+    inset: 0 calc(-1 * var(--shell-gutter));
+  }
+
+  /* Keep the backgrounds anchored when sticky positioning is disabled. */
   .topbar {
-    position: static;
+    position: relative;
+    top: auto;
     grid-template-columns: 1fr;
   }
 
@@ -1013,11 +1021,12 @@ select:focus-visible {
 
   .tabs {
     grid-auto-flow: row;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .controls {
-    position: static;
+    position: relative;
+    top: auto;
     grid-template-columns: 1fr;
     align-items: end;
     padding-top: var(--space-2);
@@ -1108,10 +1117,6 @@ select:focus-visible {
 @media (max-width: 420px) {
   :root {
     --shell-gutter: 9px;
-  }
-
-  .summary-line {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .film-grid {
