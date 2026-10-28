@@ -7,7 +7,7 @@
   --color-paper: #e9dfc9;
   --color-text: #f3ead8;
   --color-muted: #b9ad98;
-  --color-faint: #847b6d;
+  --color-faint: #928879;
   --color-line: rgba(233, 223, 201, 0.13);
   --color-line-strong: rgba(233, 223, 201, 0.22);
   --color-available: #8fd5a6;
@@ -74,7 +74,7 @@
     --color-paper: #2e2a22;
     --color-text: #27241e;
     --color-muted: #686252;
-    --color-faint: #8c8574;
+    --color-faint: #6e6758;
     --color-line: rgba(46, 42, 34, 0.14);
     --color-line-strong: rgba(46, 42, 34, 0.24);
     --color-available: #2f7d4c;
@@ -119,6 +119,10 @@
 
 * {
   box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 html {
@@ -391,10 +395,83 @@ select:focus-visible {
   line-height: 1.05;
 }
 
-.view-header span {
+.view-heading {
+  min-width: 0;
+}
+
+.view-actions {
+  display: flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.view-meta {
   color: var(--color-faint);
   font-size: 13px;
+  line-height: 1.4;
+}
+
+.yts-batch-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 144px;
+  min-height: 36px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-soft-fill);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.yts-batch-button:hover:not(:disabled) {
+  border-color: var(--color-focus-border);
+  background: var(--color-hover-fill);
+}
+
+.yts-batch-button:disabled {
+  color: var(--color-muted);
+  border-color: var(--color-line);
+  cursor: default;
+}
+
+.yts-batch-count {
+  border-left: 1px solid var(--color-line-strong);
+  padding-left: var(--space-2);
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.yts-batch-status {
+  margin: 0 0 var(--space-4);
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.yts-batch-meter {
+  height: 2px;
+  margin-top: var(--space-2);
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--color-line);
+}
+
+.yts-batch-fill {
+  width: 0;
+  height: 100%;
+  background: var(--color-available);
+  transition: width 180ms ease;
 }
 
 .film-grid {
@@ -1087,7 +1164,9 @@ select:focus-visible {
   }
 
   .view-header {
+    flex-direction: column;
     align-items: start;
+    gap: var(--space-3);
     margin-top: var(--space-4);
   }
 
@@ -1095,9 +1174,22 @@ select:focus-visible {
     font-size: 24px;
   }
 
-  .view-header span {
-    max-width: 120px;
-    text-align: right;
+  .view-heading {
+    width: 100%;
+  }
+
+  .view-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .view-meta {
+    min-width: 0;
+  }
+
+  .yts-batch-button {
+    min-height: 44px;
   }
 
   .film-grid {

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Festival Tracker</title>
-    <link rel="stylesheet" href="./styles.css?v=20261028-yts-badge" />
+    <link rel="stylesheet" href="./styles.css?v=20261028-yts-batch-v1" />
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to Content</a>
@@ -66,11 +66,23 @@
 
       <main id="content" tabindex="-1">
         <section class="view-header" aria-live="polite">
-          <div>
+          <div class="view-heading">
             <p id="viewKicker">Available</p>
             <h2 id="viewTitle">First legal availability</h2>
           </div>
-          <span id="viewMeta">0 films</span>
+          <div class="view-actions">
+            <span id="viewMeta" class="view-meta">0 films</span>
+            <button type="button" id="ytsBatchCheck" class="yts-batch-button" hidden disabled>
+              <span id="ytsBatchLabel">Check YTS</span>
+              <span id="ytsBatchCount" class="yts-batch-count">0</span>
+            </button>
+          </div>
+        </section>
+        <section id="ytsBatchStatus" class="yts-batch-status" role="status" aria-live="polite" aria-atomic="true" hidden>
+          <span id="ytsBatchText"></span>
+          <div id="ytsBatchMeter" class="yts-batch-meter" role="progressbar" aria-label="YTS check progress" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+            <div id="ytsBatchFill" class="yts-batch-fill"></div>
+          </div>
         </section>
         <section id="filmGrid" class="film-grid" aria-live="polite"></section>
         <section id="eventList" class="event-list hidden" aria-live="polite"></section>
@@ -84,6 +96,6 @@
     <div id="overlay" class="overlay hidden"></div>
 
     <script src="./build-meta.js?v=20260520-cache"></script>
-    <script src="./app.js?v=20261028-yts-badge"></script>
+    <script src="./app.js?v=20261028-yts-batch-v1"></script>
   </body>
 </html>

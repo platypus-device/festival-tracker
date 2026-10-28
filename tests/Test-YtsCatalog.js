@@ -10,16 +10,17 @@ const prefix = "festival-tracker:yts:v1:";
 const film = { id: "film-a", title: "Film A", imdbId: "tt0111161" };
 const otherFilm = { id: "film-b", title: "Film B", imdbId: "tt0068646" };
 const found = (imdbId = film.imdbId) => ({ status: "ok", data: { movie_count: 1, movies: [{ imdb_code: imdbId }] } });
-const response = (payload, status = 200) => ({ ok: status === 200, status, json: async () => payload });
+const response = (payload, status = 200, headers = {}) => ({ ok: status === 200, status, headers: { get: (name) => headers[name] ?? null }, json: async () => payload });
 const priorResult = () => ({ status: "found", checkedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString() });
 
-function createApp({ store = new Map(), storageBlocked = false, handler = async () => response(found()) } = {}) {
+function createApp({ store = new Map(), storageBlocked = false, handler = async () => response(found()), config = {} } = {}) {
   const elements = new Map();
   const cardSlots = new Map();
   function element(selector) {
     if (!elements.has(selector)) {
       elements.set(selector, {
         textContent: "", innerHTML: "", hidden: false, disabled: false,
+        style: {},
         classList: { add() {}, remove() {}, toggle() {} },
         addEventListener() {}, setAttribute() {},
         querySelector: element, querySelectorAll: () => [],
@@ -46,9 +47,16 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
     },
   });
   vm.runInContext(source, context);
-  const api = vm.runInContext("({ openDetail, closeDetail, checkYtsCatalog })", context);
+  context.testConfig = { minIntervalMs: 0, retryDelayMs: 1, hideProgressAfterMs: 10, ...config };
+  vm.runInContext("Object.assign(ytsCatalogConfig, testConfig)", context);
+  const api = vm.runInContext("({ openDetail, closeDetail, checkYtsCatalog, startYtsBatch, stopYtsBatch })", context);
   return {
     ...api, store, requests, context,
+    ready: () => new Promise((resolve) => setImmediate(resolve)),
+    setFilters(filters) {
+      context.testFilters = filters;
+      vm.runInContext("Object.assign(state, testFilters); render();", context);
+    },
     gridMarkup(films) {
       context.gridFilms = films;
       vm.runInContext('state.data = { films: gridFilms, events: [] }; state.view = "all"; renderFilmGrid();', context);
@@ -63,6 +71,11 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
     meta: () => element("[data-yts-meta]").textContent,
     notice: () => element("[data-yts-notice]").textContent,
     button: () => element("[data-yts-check]"),
+    batchButton: () => element("#ytsBatchCheck"),
+    batchCount: () => element("#ytsBatchCount").textContent,
+    batchStatus: () => element("#ytsBatchStatus"),
+    batchText: () => element("#ytsBatchText").textContent,
+    batchFill: () => element("#ytsBatchFill").style.width,
   };
 }
 
@@ -265,4 +278,180 @@ test("corrupt or blocked storage leaves cards usable and a new result remains vi
   assert.match(slot.innerHTML, />YTS<\/span>/);
   assert.match(blocked.gridMarkup([film]), />YTS<\/span>/);
   assert.equal(blocked.requests.length, 1);
+});
+
+const batchFilm = (number, overrides = {}) => ({ id: `batch-${number}`, title: `Match ${number}`, imdbId: `tt${1000000 + number}`, ...overrides });
+const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
+async function until(predicate) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 2));
+  }
+  assert.fail("Expected asynchronous condition did not become true");
+}
+
+test("batch candidates use the current filters, normalize and deduplicate IDs, and skip confirmed listings and missing IDs", async () => {
+  const listed = batchFilm(1);
+  const retry = batchFilm(2);
+  const unchecked = batchFilm(3);
+  const outside = batchFilm(4, { title: "Outside" });
+  const saved = JSON.stringify(priorResult());
+  const app = createApp({
+    store: new Map([
+      [prefix + listed.imdbId, saved],
+      [prefix + retry.imdbId, JSON.stringify({ status: "not_found", checkedAt: new Date().toISOString() })],
+    ]),
+    handler: async (url) => response(found(new URL(url).searchParams.get("query_term"))),
+  });
+  await app.ready();
+  app.gridMarkup([listed, retry, unchecked, { ...retry, id: "duplicate", imdbId: ` ${retry.imdbId.toUpperCase()} ` }, outside, batchFilm(5, { imdbId: "" })]);
+  app.setFilters({ search: "Match" });
+  assert.equal(app.batchCount(), "2");
+  await app.startYtsBatch();
+  assert.deepEqual(app.requests.map(({ url }) => url.searchParams.get("query_term")).sort(), [retry.imdbId, unchecked.imdbId].sort());
+  assert.equal(app.store.get(prefix + listed.imdbId), saved);
+  assert.equal(app.batchCount(), "0");
+  assert.equal(app.batchButton().disabled, true);
+});
+
+test("a batch keeps its starting selection after filters change and continues when details close", async () => {
+  const films = [batchFilm(1), batchFilm(2), batchFilm(3)];
+  const outside = batchFilm(4, { title: "Outside" });
+  const finishes = new Map();
+  const app = createApp({ handler: (url) => new Promise((resolve) => finishes.set(new URL(url).searchParams.get("query_term"), resolve)) });
+  await app.ready();
+  app.gridMarkup([...films, outside]);
+  app.setFilters({ search: "Match" });
+  const pending = app.startYtsBatch();
+  assert.equal(app.requests.length, 2);
+  app.openDetail(films[0]);
+  assert.equal(app.button().disabled, true);
+  await app.checkYtsCatalog();
+  assert.equal(app.requests.length, 2);
+  app.closeDetail();
+  assert.ok(app.requests.every(({ options }) => !options.signal.aborted));
+  app.setFilters({ search: "Outside" });
+  finishes.get(films[0].imdbId)(response(found(films[0].imdbId)));
+  await until(() => finishes.has(films[2].imdbId));
+  for (const film of films.slice(1)) finishes.get(film.imdbId)(response(found(film.imdbId)));
+  await pending;
+  assert.equal(app.requests.length, 3);
+  assert.equal(app.store.has(prefix + outside.imdbId), false);
+  assert.equal(app.batchCount(), "1");
+  assert.match(app.batchText(), /3\/3/);
+});
+
+test("batch and single-film checks share a global limit of two active requests", async () => {
+  const films = [batchFilm(1), batchFilm(2), batchFilm(3), batchFilm(4)];
+  const outside = batchFilm(5, { title: "Outside" });
+  let active = 0;
+  let maximum = 0;
+  const finishes = [];
+  const app = createApp({ handler: (url) => {
+    active++;
+    maximum = Math.max(maximum, active);
+    return new Promise((resolve) => finishes.push(() => {
+      active--;
+      resolve(response(found(new URL(url).searchParams.get("query_term"))));
+    }));
+  } });
+  await app.ready();
+  app.gridMarkup([...films, outside]);
+  app.setFilters({ search: "Match" });
+  const batch = app.startYtsBatch();
+  app.openDetail(outside);
+  const single = app.checkYtsCatalog();
+  assert.equal(app.requests.length, 2);
+  let completed = 0;
+  while (completed < 5) {
+    await until(() => finishes.length > 0);
+    finishes.shift()();
+    completed++;
+    await nextTurn();
+  }
+  await Promise.all([batch, single]);
+  assert.equal(maximum, 2);
+  assert.equal(app.requests.length, 5);
+  assert.equal(app.status(), "Listed on YTS");
+});
+
+test("stopping aborts active requests and drops queued work while keeping completed results", async () => {
+  const films = [batchFilm(1), batchFilm(2), batchFilm(3), batchFilm(4)];
+  const app = createApp({ handler: (url, { signal }) => {
+    const imdbId = new URL(url).searchParams.get("query_term");
+    if (imdbId === films[0].imdbId) return response(found(imdbId));
+    return new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new Error("Aborted")), { once: true }));
+  } });
+  await app.ready();
+  app.gridMarkup(films);
+  const pending = app.startYtsBatch();
+  await until(() => app.store.has(prefix + films[0].imdbId));
+  app.stopYtsBatch();
+  const requestCount = app.requests.length;
+  await pending;
+  await nextTurn();
+  assert.equal(app.requests.length, requestCount);
+  assert.ok(requestCount < films.length);
+  assert.equal(app.store.size, 1);
+  assert.equal(app.batchCount(), "3");
+  assert.equal(app.batchStatus().hidden, true);
+  assert.equal(app.batchText(), "");
+});
+
+test("completion removes all progress text and occupied space after the brief completion delay", async () => {
+  const films = [batchFilm(1), batchFilm(2)];
+  const app = createApp({ handler: async (url) => response(found(new URL(url).searchParams.get("query_term"))) });
+  await app.ready();
+  app.gridMarkup(films);
+  await app.startYtsBatch();
+  assert.equal(app.batchStatus().hidden, false);
+  assert.equal(app.batchText(), "YTS · 2/2");
+  assert.equal(app.batchCount(), "0");
+  await until(() => app.batchStatus().hidden);
+  assert.equal(app.batchText(), "");
+  assert.equal(app.batchFill(), "0%");
+});
+
+test("rate-limited checks honor Retry-After and request pacing before a bounded retry", async () => {
+  const starts = [];
+  const app = createApp({
+    config: { minIntervalMs: 15 },
+    handler: async (url) => {
+      starts.push(Date.now());
+      return starts.length === 1 ? response(null, 429, { "Retry-After": "0.03" }) : response(found(new URL(url).searchParams.get("query_term")));
+    },
+  });
+  await app.ready();
+  app.gridMarkup([batchFilm(1)]);
+  await app.startYtsBatch();
+  assert.equal(starts.length, 2);
+  assert.ok(starts[1] - starts[0] >= 30);
+  assert.equal(app.batchCount(), "0");
+});
+
+test("repeated service failures are bounded and never become a not-found result", async () => {
+  const film = batchFilm(1);
+  const previous = JSON.stringify({ status: "not_found", checkedAt: new Date(0).toISOString() });
+  const app = createApp({ store: new Map([[prefix + film.imdbId, previous]]), handler: async () => response(null, 503) });
+  await app.ready();
+  app.gridMarkup([film]);
+  await app.startYtsBatch();
+  assert.equal(app.requests.length, 2);
+  assert.equal(app.store.get(prefix + film.imdbId), previous);
+  assert.equal(app.batchCount(), "1");
+});
+
+test("Finds has no idle bulk action but a running batch remains stoppable there", async () => {
+  const app = createApp({ handler: (_url, { signal }) => new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new Error("Aborted")), { once: true })) });
+  await app.ready();
+  app.gridMarkup([batchFilm(1)]);
+  app.setFilters({ view: "events" });
+  assert.equal(app.batchButton().hidden, true);
+  app.setFilters({ view: "all" });
+  const pending = app.startYtsBatch();
+  app.setFilters({ view: "events" });
+  assert.equal(app.batchButton().hidden, false);
+  app.stopYtsBatch();
+  await pending;
+  assert.equal(app.batchButton().hidden, true);
 });

@@ -114,6 +114,7 @@ http://127.0.0.1:4317/
 ```
 
 ## Frontend Notes
+- Follow `DESIGN.md` for visual hierarchy, spacing, status labels, responsive layout, and transient feedback behavior.
 - `web/index.html` contains the static shell and versioned JS/CSS links.
 - `web/app.js` loads `web/data/tracker-data.json`, manages URL state, filters, sorting, grid rendering, event rendering, and the detail panel.
 - `web/styles.css` contains all layout and responsive styling.

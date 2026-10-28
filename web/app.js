@@ -26,6 +26,13 @@ const els = {
   viewKicker: document.querySelector("#viewKicker"),
   viewTitle: document.querySelector("#viewTitle"),
   viewMeta: document.querySelector("#viewMeta"),
+  ytsBatchCheck: document.querySelector("#ytsBatchCheck"),
+  ytsBatchLabel: document.querySelector("#ytsBatchLabel"),
+  ytsBatchCount: document.querySelector("#ytsBatchCount"),
+  ytsBatchStatus: document.querySelector("#ytsBatchStatus"),
+  ytsBatchText: document.querySelector("#ytsBatchText"),
+  ytsBatchMeter: document.querySelector("#ytsBatchMeter"),
+  ytsBatchFill: document.querySelector("#ytsBatchFill"),
   filmGrid: document.querySelector("#filmGrid"),
   eventList: document.querySelector("#eventList"),
   detailPanel: document.querySelector("#detailPanel"),
@@ -305,6 +312,7 @@ function renderViewHeader(count) {
   els.viewKicker.textContent = copy.kicker;
   els.viewTitle.textContent = copy.title;
   els.viewMeta.textContent = `${count} ${copy.meta}`;
+  renderYtsBatchControls();
 }
 
 function setMode(mode) {
@@ -424,9 +432,171 @@ const ytsCatalogConfig = {
   storagePrefix: "festival-tracker:yts:v1:",
   refreshAfterMs: 24 * 60 * 60 * 1000,
   timeoutMs: 8000,
+  concurrency: 2,
+  minIntervalMs: 500,
+  retryDelayMs: 2000,
+  maxAttempts: 2,
+  hideProgressAfterMs: 2000,
 };
 const ytsCatalogResults = new Map();
 let activeYtsCatalog = null;
+let activeYtsBatch = null;
+const ytsCatalogPool = { queue: [], active: 0, nextStartAt: 0, blockedUntil: 0, failures: 0, timer: null };
+
+function ytsBatchCandidates() {
+  if (!state.data || state.view === "events") return [];
+  return [...new Set(filteredFilms().map(ytsCatalogImdbId).filter(Boolean))]
+    .filter((imdbId) => readYtsCatalogResult(imdbId)?.result.status !== "found");
+}
+
+function renderYtsBatchControls() {
+  const batch = activeYtsBatch;
+  const running = Boolean(batch?.running);
+  const count = running ? 0 : ytsBatchCandidates().length;
+  els.ytsBatchCheck.hidden = state.view === "events" && !running;
+  els.ytsBatchCheck.disabled = !running && count === 0;
+  els.ytsBatchLabel.textContent = running ? "Stop" : "Check YTS";
+  els.ytsBatchCount.hidden = running;
+  els.ytsBatchCount.textContent = String(count);
+  els.ytsBatchCheck.setAttribute("aria-label", running ? "Stop checking YTS" : `Check YTS for ${count} films in the current filtered results`);
+  els.ytsBatchStatus.hidden = !batch;
+  els.ytsBatchText.textContent = batch
+    ? `${running ? (Date.now() < ytsCatalogPool.blockedUntil ? "Waiting to retry" : "Checking YTS") : "YTS"} · ${batch.checked}/${batch.total}`
+    : "";
+  els.ytsBatchMeter.setAttribute("aria-valuemax", String(batch?.total || 0));
+  els.ytsBatchMeter.setAttribute("aria-valuenow", String(batch?.checked || 0));
+  els.ytsBatchFill.style.width = batch ? `${batch.checked / batch.total * 100}%` : "0%";
+}
+
+async function startYtsBatch() {
+  if (activeYtsBatch?.running) return;
+  const imdbIds = ytsBatchCandidates();
+  if (imdbIds.length === 0) return;
+  clearTimeout(activeYtsBatch?.hideTimer);
+  const batch = { running: true, total: imdbIds.length, checked: 0, pending: new Set(imdbIds), controller: new AbortController() };
+  activeYtsBatch = batch;
+  renderYtsBatchControls();
+  renderYtsCatalog();
+  let next = 0;
+  async function worker() {
+    while (batch.running && next < imdbIds.length) {
+      const imdbId = imdbIds[next++];
+      try {
+        if (readYtsCatalogResult(imdbId)?.result.status !== "found") {
+          const result = await requestYtsCatalogResult(imdbId, batch.controller.signal);
+          if (batch.controller.signal.aborted) break;
+          saveYtsCatalogResult(imdbId, result);
+        }
+      } catch {
+        if (batch.controller.signal.aborted) break;
+        if (activeYtsCatalog?.imdbId === imdbId) activeYtsCatalog.error = true;
+      } finally {
+        batch.pending.delete(imdbId);
+        if (!batch.controller.signal.aborted) batch.checked++;
+        if (activeYtsBatch === batch) {
+          renderYtsBatchControls();
+          renderYtsCatalog();
+        }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: ytsCatalogConfig.concurrency }, worker));
+  if (activeYtsBatch !== batch || batch.controller.signal.aborted) return;
+  batch.running = false;
+  renderYtsBatchControls();
+  renderYtsCatalog();
+  batch.hideTimer = setTimeout(() => {
+    if (activeYtsBatch !== batch) return;
+    activeYtsBatch = null;
+    renderYtsBatchControls();
+  }, ytsCatalogConfig.hideProgressAfterMs);
+}
+
+function stopYtsBatch() {
+  const batch = activeYtsBatch;
+  if (!batch) return;
+  batch.running = false;
+  clearTimeout(batch.hideTimer);
+  batch.controller.abort();
+  activeYtsBatch = null;
+  renderYtsBatchControls();
+  renderYtsCatalog();
+}
+
+function ytsAbortError() {
+  const error = new Error("YTS check cancelled");
+  error.name = "AbortError";
+  return error;
+}
+
+function requestYtsCatalogResult(imdbId, signal) {
+  return new Promise((resolve, reject) => {
+    const job = { imdbId, signal, resolve, reject, attempts: 0 };
+    job.onAbort = () => {
+      const index = ytsCatalogPool.queue.indexOf(job);
+      if (index < 0) return;
+      ytsCatalogPool.queue.splice(index, 1);
+      reject(ytsAbortError());
+      drainYtsCatalogQueue();
+    };
+    if (signal.aborted) return reject(ytsAbortError());
+    signal.addEventListener("abort", job.onAbort, { once: true });
+    ytsCatalogPool.queue.push(job);
+    drainYtsCatalogQueue();
+  });
+}
+
+function drainYtsCatalogQueue() {
+  clearTimeout(ytsCatalogPool.timer);
+  ytsCatalogPool.timer = null;
+  const concurrency = ytsCatalogPool.failures >= 2 ? 1 : ytsCatalogConfig.concurrency;
+  if (ytsCatalogPool.active >= concurrency || ytsCatalogPool.queue.length === 0) return;
+  const delay = Math.max(ytsCatalogPool.nextStartAt, ytsCatalogPool.blockedUntil) - Date.now();
+  if (delay > 0) {
+    ytsCatalogPool.timer = setTimeout(drainYtsCatalogQueue, delay);
+    return;
+  }
+  const job = ytsCatalogPool.queue.shift();
+  job.signal.removeEventListener("abort", job.onAbort);
+  if (job.signal.aborted) {
+    job.reject(ytsAbortError());
+    drainYtsCatalogQueue();
+    return;
+  }
+  ytsCatalogPool.active++;
+  job.attempts++;
+  ytsCatalogPool.nextStartAt = Date.now() + ytsCatalogConfig.minIntervalMs;
+  renderYtsBatchControls();
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  job.signal.addEventListener("abort", onAbort, { once: true });
+  const timeout = setTimeout(() => controller.abort(), ytsCatalogConfig.timeoutMs);
+  fetchYtsCatalogResult(job.imdbId, controller.signal).then((result) => {
+    if (controller.signal.aborted) throw ytsAbortError();
+    ytsCatalogPool.failures = 0;
+    job.resolve(result);
+  }).catch((error) => {
+    if (!job.signal.aborted) {
+      ytsCatalogPool.failures++;
+      if (error.status === 429 || error.status === 503) {
+        ytsCatalogPool.blockedUntil = Math.max(ytsCatalogPool.blockedUntil, Date.now() + Math.max(ytsCatalogConfig.retryDelayMs, error.retryAfterMs || 0));
+        renderYtsBatchControls();
+        if (job.attempts < ytsCatalogConfig.maxAttempts) {
+          job.signal.addEventListener("abort", job.onAbort, { once: true });
+          ytsCatalogPool.queue.push(job);
+          return;
+        }
+      }
+    }
+    job.reject(error);
+  }).finally(() => {
+    clearTimeout(timeout);
+    job.signal.removeEventListener("abort", onAbort);
+    ytsCatalogPool.active--;
+    drainYtsCatalogQueue();
+  });
+  drainYtsCatalogQueue();
+}
 
 function ytsCatalogImdbId(film) {
   const imdbId = String(film.imdbId || "").trim().toLowerCase();
@@ -470,6 +640,11 @@ function saveYtsCatalogResult(imdbId, result) {
   document.querySelectorAll(`[data-yts-imdb="${imdbId}"]`).forEach((slot) => {
     slot.innerHTML = ytsCatalogBadgeMarkup(imdbId);
   });
+  if (activeYtsCatalog?.imdbId === imdbId) {
+    Object.assign(activeYtsCatalog, cached, { error: false });
+    renderYtsCatalog();
+  }
+  renderYtsBatchControls();
   return cached;
 }
 
@@ -478,7 +653,13 @@ async function fetchYtsCatalogResult(imdbId, signal) {
   url.searchParams.set("query_term", imdbId);
   url.searchParams.set("limit", "50");
   const response = await fetch(url, { signal, cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer" });
-  if (!response.ok) throw new Error(`YTS request failed: ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(`YTS request failed: ${response.status}`);
+    error.status = response.status;
+    const retryAfter = response.headers?.get("Retry-After");
+    error.retryAfterMs = retryAfter ? (Number.isFinite(Number(retryAfter)) ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now())) : 0;
+    throw error;
+  }
   const payload = await response.json();
   const count = payload?.data?.movie_count;
   const movies = payload?.data?.movies ?? [];
@@ -496,7 +677,8 @@ function renderYtsCatalog() {
   const lookup = activeYtsCatalog;
   const card = els.detailContent.querySelector("[data-yts-catalog]");
   if (!lookup || !card) return;
-  const { imdbId, result, saved, busy, error } = lookup;
+  const { imdbId, result, saved, error } = lookup;
+  const busy = lookup.busy || Boolean(activeYtsBatch?.running && activeYtsBatch.pending.has(imdbId));
   const status = card.querySelector("[data-yts-status]");
   const meta = card.querySelector("[data-yts-meta]");
   const notice = card.querySelector("[data-yts-notice]");
@@ -529,21 +711,19 @@ function cancelYtsCatalogCheck() {
 
 async function checkYtsCatalog() {
   const lookup = activeYtsCatalog;
-  if (!lookup?.imdbId || lookup.busy) return;
+  if (!lookup?.imdbId || lookup.busy || (activeYtsBatch?.running && activeYtsBatch.pending.has(lookup.imdbId))) return;
   const controller = new AbortController();
   lookup.controller = controller;
   lookup.busy = true;
   lookup.error = false;
   renderYtsCatalog();
-  const timeout = setTimeout(() => controller.abort(), ytsCatalogConfig.timeoutMs);
   try {
-    const result = await fetchYtsCatalogResult(lookup.imdbId, controller.signal);
+    const result = await requestYtsCatalogResult(lookup.imdbId, controller.signal);
     if (activeYtsCatalog !== lookup || controller.signal.aborted) return;
     Object.assign(lookup, saveYtsCatalogResult(lookup.imdbId, result));
   } catch {
     if (activeYtsCatalog === lookup) lookup.error = true;
   } finally {
-    clearTimeout(timeout);
     if (activeYtsCatalog === lookup) {
       lookup.busy = false;
       lookup.controller = null;
@@ -671,6 +851,11 @@ els.statusFilter.addEventListener("change", (event) => {
 els.sortSelect.addEventListener("change", (event) => {
   state.sort = event.target.value;
   render();
+});
+
+els.ytsBatchCheck.addEventListener("click", () => {
+  if (activeYtsBatch?.running) stopYtsBatch();
+  else startYtsBatch();
 });
 els.closeDetail.addEventListener("click", closeDetail);
 els.overlay.addEventListener("click", closeDetail);
