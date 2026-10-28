@@ -15,6 +15,7 @@ const priorResult = () => ({ status: "found", checkedAt: new Date(Date.now() - 4
 
 function createApp({ store = new Map(), storageBlocked = false, handler = async () => response(found()) } = {}) {
   const elements = new Map();
+  const cardSlots = new Map();
   function element(selector) {
     if (!elements.has(selector)) {
       elements.set(selector, {
@@ -29,7 +30,7 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
   const requests = [];
   const context = vm.createContext({
     URL, URLSearchParams, AbortController, Intl, Date, setTimeout, clearTimeout,
-    document: { querySelector: element, querySelectorAll: () => [], scripts: [] },
+    document: { querySelector: element, querySelectorAll: (selector) => cardSlots.get(selector) || [], scripts: [] },
     window: {
       location: { search: "", pathname: "/", href: "http://localhost/" },
       history: { replaceState() {} }, matchMedia: () => ({ matches: false }), addEventListener() {},
@@ -48,6 +49,16 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
   const api = vm.runInContext("({ openDetail, closeDetail, checkYtsCatalog })", context);
   return {
     ...api, store, requests, context,
+    gridMarkup(films) {
+      context.gridFilms = films;
+      vm.runInContext('state.data = { films: gridFilms, events: [] }; state.view = "all"; renderFilmGrid();', context);
+      return element("#filmGrid").innerHTML;
+    },
+    mountCardSlots(imdbId, count = 1) {
+      const slots = Array.from({ length: count }, () => ({ innerHTML: "" }));
+      cardSlots.set(`[data-yts-imdb="${imdbId}"]`, slots);
+      return slots;
+    },
     status: () => element("[data-yts-status]").textContent,
     meta: () => element("[data-yts-meta]").textContent,
     notice: () => element("[data-yts-notice]").textContent,
@@ -190,4 +201,68 @@ test("missing or invalid IMDb IDs do not send requests", async () => {
     assert.equal(app.button().hidden, true);
   }
   assert.equal(app.requests.length, 0);
+});
+
+test("film grids restore only confirmed YTS badges from the existing browser cache without a request", () => {
+  const store = new Map([
+    [prefix + film.imdbId, JSON.stringify(priorResult())],
+    [prefix + otherFilm.imdbId, JSON.stringify({ status: "not_found", checkedAt: new Date().toISOString() })],
+  ]);
+  const app = createApp({ store });
+  const markup = app.gridMarkup([
+    { ...film, imdbId: ` ${film.imdbId.toUpperCase()} ` }, otherFilm,
+    { id: "unchecked", title: "Unchecked", imdbId: "tt1234567" },
+    { id: "invalid", title: "Invalid", imdbId: "not-an-id" },
+    { id: "missing", title: "No IMDb ID" },
+  ]);
+  assert.equal((markup.match(/title="Listed on YTS"/g) || []).length, 1);
+  assert.match(markup, /data-yts-imdb="tt0111161"><span[^>]*>YTS<\/span>/);
+  assert.doesNotMatch(markup, /✓|Not found on YTS|Not checked/);
+  assert.equal(app.requests.length, 0);
+  const reloaded = createApp({ store });
+  assert.match(reloaded.gridMarkup([film]), />YTS<\/span>/);
+  assert.equal(reloaded.requests.length, 0);
+});
+
+test("a successful lookup immediately updates every matching card without touching another film", async () => {
+  const app = createApp();
+  const slots = app.mountCardSlots(film.imdbId, 2);
+  const [otherSlot] = app.mountCardSlots(otherFilm.imdbId);
+  app.openDetail(film);
+  await app.checkYtsCatalog();
+  for (const slot of slots) assert.match(slot.innerHTML, />YTS<\/span>/);
+  assert.equal(otherSlot.innerHTML, "");
+});
+
+test("an unsuccessful request preserves a card badge, while a confirmed empty result removes it", async () => {
+  let empty = false;
+  const app = createApp({
+    store: new Map([[prefix + film.imdbId, JSON.stringify(priorResult())]]),
+    handler: async () => {
+      if (empty) return response({ status: "ok", data: { movie_count: 0 } });
+      throw new Error("Offline");
+    },
+  });
+  const slots = app.mountCardSlots(film.imdbId, 2);
+  for (const slot of slots) slot.innerHTML = "existing badge";
+  app.openDetail(film);
+  await app.checkYtsCatalog();
+  for (const slot of slots) assert.equal(slot.innerHTML, "existing badge");
+  empty = true;
+  await app.checkYtsCatalog();
+  for (const slot of slots) assert.equal(slot.innerHTML, "");
+  assert.doesNotMatch(app.gridMarkup([film]), /Listed on YTS/);
+});
+
+test("corrupt or blocked storage leaves cards usable and a new result remains visible for this visit", async () => {
+  const corrupt = createApp({ store: new Map([[prefix + film.imdbId, "{"]]) });
+  assert.doesNotMatch(corrupt.gridMarkup([film]), /Listed on YTS/);
+  const blocked = createApp({ storageBlocked: true });
+  assert.doesNotMatch(blocked.gridMarkup([film]), /Listed on YTS/);
+  const [slot] = blocked.mountCardSlots(film.imdbId);
+  blocked.openDetail(film);
+  await blocked.checkYtsCatalog();
+  assert.match(slot.innerHTML, />YTS<\/span>/);
+  assert.match(blocked.gridMarkup([film]), />YTS<\/span>/);
+  assert.equal(blocked.requests.length, 1);
 });

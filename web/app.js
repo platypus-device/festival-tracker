@@ -328,6 +328,7 @@ function renderFilmGrid() {
           <div class="poster">
             ${posterMarkup(film)}
             <span class="status-pill ${escapeHtml(statusClass(film.trackingStatus))}">${escapeHtml(statusLabel(film.trackingStatus))}</span>
+            ${ytsCatalogCardMarkup(film)}
           </div>
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
@@ -427,6 +428,22 @@ const ytsCatalogConfig = {
 const ytsCatalogResults = new Map();
 let activeYtsCatalog = null;
 
+function ytsCatalogImdbId(film) {
+  const imdbId = String(film.imdbId || "").trim().toLowerCase();
+  return /^tt\d+$/.test(imdbId) ? imdbId : "";
+}
+
+function ytsCatalogBadgeMarkup(imdbId) {
+  return readYtsCatalogResult(imdbId)?.result.status === "found"
+    ? `<span class="status-pill is-yts" title="Listed on YTS">YTS</span>`
+    : "";
+}
+
+function ytsCatalogCardMarkup(film) {
+  const imdbId = ytsCatalogImdbId(film);
+  return imdbId ? `<span data-yts-imdb="${imdbId}">${ytsCatalogBadgeMarkup(imdbId)}</span>` : "";
+}
+
 function readYtsCatalogResult(imdbId) {
   if (!imdbId) return null;
   if (ytsCatalogResults.has(imdbId)) return ytsCatalogResults.get(imdbId);
@@ -450,6 +467,9 @@ function saveYtsCatalogResult(imdbId, result) {
     // Keep the result usable for this visit if browser storage is unavailable.
   }
   ytsCatalogResults.set(imdbId, cached);
+  document.querySelectorAll(`[data-yts-imdb="${imdbId}"]`).forEach((slot) => {
+    slot.innerHTML = ytsCatalogBadgeMarkup(imdbId);
+  });
   return cached;
 }
 
@@ -612,8 +632,7 @@ function openDetail(film) {
   els.detailPanel.setAttribute("aria-hidden", "false");
   els.overlay.classList.remove("hidden");
   els.detailContent.querySelector(".close-button")?.addEventListener("click", closeDetail);
-  const imdbId = String(film.imdbId || "").trim().toLowerCase();
-  const validImdbId = /^tt\d+$/.test(imdbId) ? imdbId : "";
+  const validImdbId = ytsCatalogImdbId(film);
   activeYtsCatalog = { imdbId: validImdbId, result: null, saved: false, busy: false, error: false, ...readYtsCatalogResult(validImdbId) };
   renderYtsCatalog();
   els.detailContent.querySelector("[data-yts-check]")?.addEventListener("click", checkYtsCatalog);

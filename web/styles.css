@@ -28,6 +28,9 @@
   --color-pill-line: rgba(233, 223, 201, 0.2);
   --color-available-bg: rgba(143, 213, 166, 0.92);
   --color-available-border: rgba(143, 213, 166, 0.28);
+  --color-yts-bg: rgba(9, 24, 16, 0.88);
+  --color-yts-text: #ace1bc;
+  --color-yts-border: rgba(164, 212, 174, 0.3);
   --color-review-bg: rgba(217, 184, 108, 0.92);
   --color-review-border: rgba(217, 184, 108, 0.32);
   --color-review-ink: #201604;
@@ -92,6 +95,9 @@
     --color-pill-line: rgba(46, 42, 34, 0.18);
     --color-available-bg: rgba(47, 125, 76, 0.92);
     --color-available-border: rgba(47, 125, 76, 0.32);
+    --color-yts-bg: rgba(14, 29, 22, 0.91);
+    --color-yts-text: #c4ebce;
+    --color-yts-border: rgba(164, 212, 174, 0.45);
     --color-review-bg: rgba(176, 133, 43, 0.88);
     --color-review-border: rgba(138, 101, 27, 0.28);
     --color-review-ink: #fff8e4;
@@ -486,14 +492,15 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   max-width: calc(100% - 16px);
+  height: 20px;
   min-height: 20px;
   overflow: hidden;
   border: 1px solid var(--color-pill-line);
   border-radius: var(--radius-xs);
   padding: 0 7px;
   color: var(--color-text);
-  font-size: 10px;
-  font-weight: 750;
+  font-size: 11px;
+  font-weight: 500;
   letter-spacing: 0;
   line-height: 1;
   text-overflow: ellipsis;
@@ -516,6 +523,14 @@ select:focus-visible {
 .status-pill.is-pending {
   background: var(--color-pending-bg);
   color: var(--color-muted);
+}
+
+.status-pill.is-yts {
+  top: auto;
+  bottom: 8px;
+  background: var(--color-yts-bg);
+  border-color: var(--color-yts-border);
+  color: var(--color-yts-text);
 }
 
 .film-meta {
@@ -1121,14 +1136,6 @@ select:focus-visible {
 
   .film-grid {
     gap: 22px 10px;
-  }
-
-  .status-pill {
-    top: 6px;
-    right: 6px;
-    min-height: 18px;
-    padding: 0 6px;
-    font-size: 9px;
   }
 
   .film-facts span {
