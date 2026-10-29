@@ -993,9 +993,8 @@ select:focus-visible {
 }
 
 .catalog-check {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-sm);
@@ -1008,6 +1007,14 @@ select:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.catalog-check-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 36px;
+}
+
 .catalog-status {
   display: block;
   color: var(--color-paper);
@@ -1018,14 +1025,14 @@ select:focus-visible {
 
 .catalog-check .catalog-meta,
 .catalog-check .catalog-notice {
-  margin: var(--space-2) 0 0;
+  margin: 0;
   color: var(--color-muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
 .catalog-check .catalog-spec {
-  margin: var(--space-3) 0 0;
+  margin: 0;
   color: var(--color-paper);
   font-size: 13px;
   line-height: 1.7;
@@ -1037,6 +1044,7 @@ select:focus-visible {
 }
 
 .catalog-check-button {
+  flex: 0 0 auto;
   min-height: 36px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
@@ -1060,19 +1068,24 @@ select:focus-visible {
   cursor: wait;
 }
 
+.catalog-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
 .catalog-download {
-  grid-column: 1 / -1;
-  justify-self: start;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
+  min-height: 40px;
   max-width: 100%;
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   background: var(--color-panel-raised);
   color: var(--color-text);
-  padding: 7px var(--space-3);
+  padding: var(--space-2) var(--space-3);
   font-size: 13px;
   line-height: 1.4;
   text-decoration: none;
@@ -1083,6 +1096,25 @@ select:focus-visible {
 .catalog-download:hover {
   border-color: var(--color-muted);
   background: var(--color-hover-fill);
+}
+
+.catalog-subtitles {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  color: var(--color-paper);
+  font-size: 13px;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-decoration-color: var(--color-line-strong);
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+
+.catalog-subtitles:hover {
+  color: var(--color-text);
+  text-decoration-color: currentColor;
 }
 
 .link-row {
@@ -1329,8 +1361,10 @@ select:focus-visible {
 
   .detail-support .link-row a,
   .selection-source,
+  .catalog-check-header,
   .catalog-check-button,
-  .catalog-download {
+  .catalog-download,
+  .catalog-subtitles {
     min-height: 44px;
   }
 
@@ -1381,7 +1415,12 @@ select:focus-visible {
     align-self: center;
   }
 
-  .catalog-check {
-    column-gap: var(--space-2);
+  .catalog-check-header {
+    gap: var(--space-2);
+  }
+
+  .catalog-actions {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

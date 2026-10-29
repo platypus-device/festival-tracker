@@ -76,6 +76,8 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
     notice: () => element("[data-yts-notice]").textContent,
     button: () => element("[data-yts-check]"),
     download: () => element("[data-yts-download]"),
+    subtitles: () => element("[data-yts-subtitles]"),
+    actions: () => element("[data-yts-actions]"),
     torrentSpec: () => element("[data-yts-spec]"),
     detailMarkup: () => element("#detailContent").innerHTML,
     batchButton: () => element("#ytsBatchCheck"),
@@ -100,7 +102,8 @@ test("manual lookup saves an exact IMDb match and restores it after a reload wit
   const reloaded = createApp({ store: app.store });
   reloaded.openDetail(film);
   assert.equal(reloaded.status(), "Listed on YTS");
-  assert.match(reloaded.meta(), /Saved in this browser/);
+  assert.match(reloaded.meta(), /^Checked /);
+  assert.doesNotMatch(reloaded.meta(), /Saved in this browser|Refresh recommended/);
   assert.equal(reloaded.requests.length, 0);
 });
 
@@ -175,7 +178,7 @@ test("stale results remain visible while their version information refreshes and
   const stale = createApp({ store: new Map([[prefix + film.imdbId, JSON.stringify({ ...priorResult(), checkedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString() })]]) });
   stale.openDetail(film);
   assert.equal(stale.status(), "Listed on YTS");
-  assert.match(stale.meta(), /Refresh recommended/);
+  assert.match(stale.meta(), /^Checked /);
   assert.equal(stale.requests.length, 1);
   for (const corrupt of ["{", JSON.stringify({ status: "found", checkedAt: "invalid" }), JSON.stringify({ status: "error", checkedAt: new Date().toISOString() })]) {
     const app = createApp({ store: new Map([[prefix + film.imdbId, corrupt]]) });
@@ -219,8 +222,45 @@ test("missing or invalid IMDb IDs do not send requests", async () => {
     await app.checkYtsCatalog();
     assert.equal(app.status(), "IMDb ID required to check");
     assert.equal(app.button().hidden, true);
+    assert.equal(app.subtitles().hidden, true);
+    assert.equal(app.subtitles().getAttribute("href"), null);
   }
   assert.equal(app.requests.length, 0);
+});
+
+test("only confirmed listings expose an IMDb-based SubHD search, even without a download, without querying subtitles", async () => {
+  const app = createApp();
+  app.openDetail(film);
+  assert.equal(app.subtitles().hidden, true);
+  assert.equal(app.actions().hidden, true);
+  assert.equal(app.requests.length, 0);
+  await app.checkYtsCatalog();
+  assert.equal(app.download().hidden, true);
+  assert.equal(app.subtitles().hidden, false);
+  assert.equal(app.actions().hidden, false);
+  assert.equal(app.subtitles().getAttribute("href"), `https://subhd.me/search/${film.imdbId}`);
+  assert.match(app.subtitles().getAttribute("aria-label"), new RegExp(`${film.imdbId}.*new tab`));
+  assert.equal(app.requests.length, 1);
+  assert.equal(app.requests[0].url.hostname, "movies-api.accel.li");
+  app.openDetail(otherFilm);
+  assert.equal(app.subtitles().hidden, true);
+  assert.equal(app.subtitles().getAttribute("href"), null);
+  assert.equal(app.actions().hidden, true);
+});
+
+test("a failed recheck preserves SubHD search and the compact date for the previous confirmed listing", async () => {
+  const previous = priorResult();
+  const app = createApp({
+    store: new Map([[prefix + film.imdbId, JSON.stringify(previous)]]),
+    handler: async () => { throw new Error("Offline"); },
+  });
+  app.openDetail(film);
+  const date = app.meta();
+  await app.checkYtsCatalog();
+  assert.equal(app.subtitles().hidden, false);
+  assert.equal(app.subtitles().getAttribute("href"), `https://subhd.me/search/${film.imdbId}`);
+  assert.equal(app.meta(), date);
+  assert.match(app.notice(), /Check failed/);
 });
 
 test("film grids restore only confirmed YTS badges from the existing browser cache without a request", () => {
@@ -573,6 +613,9 @@ test("a confirmed not-found response removes a previously valid download and its
   assert.equal(app.download().hidden, true);
   assert.equal(app.download().getAttribute("href"), null);
   assert.equal(app.torrentSpec().hidden, true);
+  assert.equal(app.subtitles().hidden, true);
+  assert.equal(app.subtitles().getAttribute("href"), null);
+  assert.equal(app.actions().hidden, true);
 });
 
 test("batch checks retain download metadata for later details without rechecking or initiating downloads", async () => {

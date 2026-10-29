@@ -740,8 +740,11 @@ function renderYtsCatalog() {
   const notice = card.querySelector("[data-yts-notice]");
   const button = card.querySelector("[data-yts-check]");
   const spec = card.querySelector("[data-yts-spec]");
+  const actions = card.querySelector("[data-yts-actions]");
   const download = card.querySelector("[data-yts-download]");
+  const subtitles = card.querySelector("[data-yts-subtitles]");
   const torrent = preferredYtsTorrent(result);
+  const canSearchSubtitles = result?.status === "found" && /^tt\d+$/.test(imdbId);
   spec.hidden = !torrent;
   spec.innerHTML = torrent ? ytsTorrentSpec(torrent).map((text) => `<span>${escapeHtml(text)}</span>`).join(" · ") : "";
   download.hidden = !torrent;
@@ -752,16 +755,25 @@ function renderYtsCatalog() {
     download.removeAttribute("href");
     download.textContent = "";
   }
+  subtitles.hidden = !canSearchSubtitles;
+  if (canSearchSubtitles) {
+    subtitles.setAttribute("href", `https://subhd.me/search/${encodeURIComponent(imdbId)}`);
+    subtitles.setAttribute("aria-label", `Search SubHD subtitles using IMDb ${imdbId} (opens in a new tab)`);
+  } else {
+    subtitles.removeAttribute("href");
+    subtitles.removeAttribute("aria-label");
+  }
+  actions.hidden = !torrent && !canSearchSubtitles;
   status.textContent = result
     ? (result.status === "found" ? "Listed on YTS" : "Not found on YTS")
-    : !imdbId ? "IMDb ID required to check" : busy ? "Checking…" : error ? "Could not check YTS" : "Not checked";
+    : !imdbId ? "IMDb ID required to check" : busy ? "Checking YTS…" : error ? "Could not check YTS" : "Not checked";
   if (result) {
-    const checkedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(result.checkedAt));
-    const stale = Date.now() - Date.parse(result.checkedAt) >= ytsCatalogConfig.refreshAfterMs;
-    meta.textContent = [`Checked ${checkedAt}`, saved ? "Saved in this browser" : "Kept for this visit", stale ? "Refresh recommended" : ""].filter(Boolean).join(" · ");
+    const checkedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(result.checkedAt));
+    meta.textContent = `Checked ${checkedAt}`;
   } else {
-    meta.textContent = imdbId ? "Check this film's listing. Results are saved in this browser." : "This film has no IMDb ID yet.";
+    meta.textContent = imdbId && !busy ? "Check this film's listing. Results are saved in this browser." : "";
   }
+  meta.hidden = !meta.textContent;
   notice.textContent = [
     error ? (result ? "Check failed. Your previous result is unchanged." : "Try again in a moment.") : "",
     result && !saved ? "Could not save in this browser." : "",
@@ -771,7 +783,7 @@ function renderYtsCatalog() {
   card.setAttribute("aria-busy", String(busy));
   button.hidden = !imdbId;
   button.disabled = busy;
-  button.textContent = busy ? "Checking…" : error ? "Retry" : result ? "Recheck" : "Check YTS";
+  button.textContent = busy ? (result ? "Checking…" : "Check YTS") : error ? "Retry" : result ? "Recheck" : "Check YTS";
 }
 
 function cancelYtsCatalogCheck() {
@@ -865,14 +877,19 @@ function openDetail(film) {
       }
       <h3 id="ytsCatalogHeading">YTS catalog</h3>
       <div class="catalog-check" data-yts-catalog role="region" aria-labelledby="ytsCatalogHeading" aria-busy="false">
-        <div class="catalog-check-copy" aria-live="polite" aria-atomic="true">
-          <strong class="catalog-status" data-yts-status>Not checked</strong>
+        <div class="catalog-check-copy">
+          <div class="catalog-check-header">
+            <strong class="catalog-status" data-yts-status aria-live="polite" aria-atomic="true">Not checked</strong>
+            <button class="catalog-check-button" type="button" data-yts-check>Check YTS</button>
+          </div>
           <p class="catalog-meta" data-yts-meta></p>
-          <p class="catalog-spec" data-yts-spec hidden></p>
-          <p class="catalog-notice" data-yts-notice hidden></p>
         </div>
-        <button class="catalog-check-button" type="button" data-yts-check>Check YTS</button>
-        <a class="catalog-download" data-yts-download target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" type="application/x-bittorrent" hidden></a>
+        <p class="catalog-spec" data-yts-spec hidden></p>
+        <div class="catalog-actions" data-yts-actions hidden>
+          <a class="catalog-download" data-yts-download target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" type="application/x-bittorrent" hidden></a>
+          <a class="catalog-subtitles" data-yts-subtitles target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>Search SubHD subtitles <span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="catalog-notice" data-yts-notice role="status" aria-live="polite" hidden></p>
       </div>
     </div>
   `;
