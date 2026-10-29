@@ -9,9 +9,9 @@ const source = fs.readFileSync(path.join(__dirname, "../web/app.js"), "utf8");
 const prefix = "festival-tracker:yts:v1:";
 const film = { id: "film-a", title: "Film A", imdbId: "tt0111161" };
 const otherFilm = { id: "film-b", title: "Film B", imdbId: "tt0068646" };
-const found = (imdbId = film.imdbId) => ({ status: "ok", data: { movie_count: 1, movies: [{ imdb_code: imdbId }] } });
+const found = (imdbId = film.imdbId, torrents = []) => ({ status: "ok", data: { movie_count: 1, movies: [{ imdb_code: imdbId, torrents }] } });
 const response = (payload, status = 200, headers = {}) => ({ ok: status === 200, status, headers: { get: (name) => headers[name] ?? null }, json: async () => payload });
-const priorResult = () => ({ status: "found", checkedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString() });
+const priorResult = () => ({ status: "found", checkedAt: new Date().toISOString(), torrents: [] });
 
 function createApp({ store = new Map(), storageBlocked = false, handler = async () => response(found()), config = {} } = {}) {
   const elements = new Map();
@@ -22,7 +22,11 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
         textContent: "", innerHTML: "", hidden: false, disabled: false,
         style: {},
         classList: { add() {}, remove() {}, toggle() {} },
-        addEventListener() {}, setAttribute() {},
+        attributes: {},
+        addEventListener() {},
+        setAttribute(name, value) { this.attributes[name] = value; },
+        getAttribute(name) { return this.attributes[name] ?? null; },
+        removeAttribute(name) { delete this.attributes[name]; },
         querySelector: element, querySelectorAll: () => [],
       });
     }
@@ -49,7 +53,7 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
   vm.runInContext(source, context);
   context.testConfig = { minIntervalMs: 0, retryDelayMs: 1, hideProgressAfterMs: 10, ...config };
   vm.runInContext("Object.assign(ytsCatalogConfig, testConfig)", context);
-  const api = vm.runInContext("({ openDetail, closeDetail, checkYtsCatalog, startYtsBatch, stopYtsBatch })", context);
+  const api = vm.runInContext("({ openDetail, closeDetail, checkYtsCatalog, startYtsBatch, stopYtsBatch, preferredYtsTorrent })", context);
   return {
     ...api, store, requests, context,
     ready: () => new Promise((resolve) => setImmediate(resolve)),
@@ -71,6 +75,9 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
     meta: () => element("[data-yts-meta]").textContent,
     notice: () => element("[data-yts-notice]").textContent,
     button: () => element("[data-yts-check]"),
+    download: () => element("[data-yts-download]"),
+    torrentSpec: () => element("[data-yts-spec]"),
+    detailMarkup: () => element("#detailContent").innerHTML,
     batchButton: () => element("#ytsBatchCheck"),
     batchCount: () => element("#ytsBatchCount").textContent,
     batchStatus: () => element("#ytsBatchStatus"),
@@ -164,12 +171,12 @@ test("repeated clicks share one pending lookup and keep the previous result visi
   assert.equal(app.button().textContent, "Recheck");
 });
 
-test("stale results remain visible and corrupt browser records do not break details", () => {
-  const stale = createApp({ store: new Map([[prefix + film.imdbId, JSON.stringify(priorResult())]]) });
+test("stale results remain visible while their version information refreshes and corrupt browser records do not break details", () => {
+  const stale = createApp({ store: new Map([[prefix + film.imdbId, JSON.stringify({ ...priorResult(), checkedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString() })]]) });
   stale.openDetail(film);
   assert.equal(stale.status(), "Listed on YTS");
   assert.match(stale.meta(), /Refresh recommended/);
-  assert.equal(stale.requests.length, 0);
+  assert.equal(stale.requests.length, 1);
   for (const corrupt of ["{", JSON.stringify({ status: "found", checkedAt: "invalid" }), JSON.stringify({ status: "error", checkedAt: new Date().toISOString() })]) {
     const app = createApp({ store: new Map([[prefix + film.imdbId, corrupt]]) });
     app.openDetail(film);
@@ -454,4 +461,144 @@ test("Finds has no idle bulk action but a running batch remains stoppable there"
   app.stopYtsBatch();
   await pending;
   assert.equal(app.batchButton().hidden, true);
+});
+
+const torrent = (number, overrides = {}) => ({
+  url: `https://yts.gg/torrent/download/${number.toString(16).padStart(40, "0")}`,
+  quality: "2160p", video_codec: "x265", type: "web", bit_depth: "10", audio_channels: "5.1", size_bytes: 4 * 1024 ** 3,
+  ...overrides,
+});
+
+test("lookup persists version data and exposes the highest resolution with x265 ahead of source preference", async () => {
+  const versions = [
+    torrent(1, { video_codec: "x264", type: "bluray", size_bytes: 8 * 1024 ** 3 }),
+    torrent(2),
+    torrent(3, { quality: "1080p", type: "bluray" }),
+  ];
+  const app = createApp({ handler: async () => response(found(film.imdbId, versions)) });
+  app.openDetail(film);
+  assert.equal(app.download().hidden, true);
+  await app.checkYtsCatalog();
+  assert.equal(app.download().hidden, false);
+  assert.equal(app.download().getAttribute("href"), versions[1].url);
+  assert.equal(app.download().textContent, "Download Torrent · 2160p");
+  assert.match(app.torrentSpec().innerHTML, /WEB/);
+  assert.match(app.torrentSpec().innerHTML, /x265/);
+  assert.equal(JSON.parse(app.store.get(prefix + film.imdbId)).torrents.length, 3);
+  const reloaded = createApp({ store: app.store });
+  reloaded.openDetail(film);
+  assert.equal(reloaded.download().getAttribute("href"), versions[1].url);
+  assert.equal(reloaded.requests.length, 0);
+});
+
+test("codec aliases, resolution precedence, and x264 fallback follow the agreed selection rules", () => {
+  const app = createApp();
+  for (const codec of ["H.265", "HEVC", "h-265", "X265"]) {
+    const versions = [torrent(1, { quality: "1080p", video_codec: "x264", type: "bluray" }), torrent(2, { quality: "1080p", video_codec: codec })];
+    const best = app.preferredYtsTorrent({ status: "found", torrents: versions });
+    assert.equal(best.url, versions[1].url);
+    assert.equal(best.video_codec, "x265");
+  }
+  const highResolution = torrent(1, { video_codec: "x264" });
+  assert.equal(app.preferredYtsTorrent({ status: "found", torrents: [torrent(2, { quality: "1080p" }), highResolution] }).url, highResolution.url);
+  const fallback = torrent(3, { quality: "1080p", video_codec: "x264", type: "bluray" });
+  assert.equal(app.preferredYtsTorrent({ status: "found", torrents: [torrent(1, { quality: "720p", video_codec: "x264" }), torrent(2, { quality: "1080p", video_codec: "x264" }), fallback] }).url, fallback.url);
+});
+
+test("same-resolution and same-codec ties use source, bit depth, channels, then size", () => {
+  const app = createApp();
+  const choices = [
+    [torrent(1, { type: "web", bit_depth: "12" }), torrent(2, { type: "bluray", bit_depth: "8" })],
+    [torrent(1, { bit_depth: "8" }), torrent(2, { bit_depth: "10" })],
+    [torrent(1, { audio_channels: "2.0" }), torrent(2, { audio_channels: "5.1" })],
+    [torrent(1, { size_bytes: 1024 ** 3 }), torrent(2, { size_bytes: 2 * 1024 ** 3 })],
+  ];
+  for (const versions of choices) {
+    assert.equal(app.preferredYtsTorrent({ status: "found", torrents: versions }).url, versions[1].url);
+    assert.equal(app.preferredYtsTorrent({ status: "found", torrents: [...versions].reverse() }).url, versions[1].url);
+  }
+});
+
+test("invalid links and unsupported resource shapes cannot create a download action", async () => {
+  const invalid = [null, "not a resource", torrent(1, { url: "javascript:alert(1)" }), torrent(1, { url: "http://yts.gg/torrent/download/" + "a".repeat(40) }), torrent(1, { url: "https://yts.gg.example.com/torrent/download/" + "a".repeat(40) }), torrent(1, { url: "https://user:secret@yts.gg/torrent/download/" + "a".repeat(40) }), torrent(1, { url: "https://yts.gg/movies/example" }), torrent(1, { quality: "3D" }), torrent(1, { quality: "unknown" })];
+  const app = createApp({ handler: async () => response(found(film.imdbId, invalid)) });
+  app.openDetail(film);
+  await app.checkYtsCatalog();
+  assert.equal(app.status(), "Listed on YTS");
+  assert.equal(app.download().hidden, true);
+  assert.equal(app.download().getAttribute("href"), null);
+  assert.match(app.notice(), /No usable Torrent link/);
+  app.closeDetail();
+  app.openDetail(film);
+  assert.equal(app.requests.length, 1);
+});
+
+test("legacy found-only caches upgrade on demand once while retaining the original card badge", async () => {
+  const previous = { status: "found", checkedAt: new Date().toISOString() };
+  let finish;
+  const app = createApp({ store: new Map([[prefix + film.imdbId, JSON.stringify(previous)]]), handler: () => new Promise(resolve => { finish = resolve; }) });
+  await app.ready();
+  app.gridMarkup([film]);
+  assert.equal(app.batchCount(), "0");
+  assert.equal(app.requests.length, 0);
+  app.openDetail(film);
+  assert.equal(app.status(), "Listed on YTS");
+  assert.equal(app.button().disabled, true);
+  assert.equal(app.download().hidden, true);
+  finish(response(found(film.imdbId, [torrent(1)])));
+  await until(() => !app.button().disabled);
+  assert.equal(app.download().getAttribute("href"), torrent(1).url);
+  app.closeDetail();
+  app.openDetail(film);
+  assert.equal(app.requests.length, 1);
+});
+
+test("expired version data refreshes on opening details without losing an existing download on failure", async () => {
+  const previous = JSON.stringify({ ...priorResult(), checkedAt: new Date(0).toISOString(), torrents: [torrent(1, { quality: "1080p" })] });
+  const app = createApp({ store: new Map([[prefix + film.imdbId, previous]]), handler: async () => { throw new Error("Offline"); } });
+  app.openDetail(film);
+  assert.equal(app.download().getAttribute("href"), torrent(1).url);
+  await until(() => app.button().textContent === "Retry");
+  assert.equal(app.download().getAttribute("href"), torrent(1).url);
+  assert.equal(app.store.get(prefix + film.imdbId), previous);
+  assert.match(app.notice(), /Check failed/);
+});
+
+test("a confirmed not-found response removes a previously valid download and its specification", async () => {
+  const app = createApp({ store: new Map([[prefix + film.imdbId, JSON.stringify({ ...priorResult(), torrents: [torrent(1)] })]]), handler: async () => response({ status: "ok", data: { movie_count: 0 } }) });
+  app.openDetail(film);
+  assert.equal(app.download().hidden, false);
+  await app.checkYtsCatalog();
+  assert.equal(app.status(), "Not found on YTS");
+  assert.equal(app.download().hidden, true);
+  assert.equal(app.download().getAttribute("href"), null);
+  assert.equal(app.torrentSpec().hidden, true);
+});
+
+test("batch checks retain download metadata for later details without rechecking or initiating downloads", async () => {
+  const movie = batchFilm(1);
+  const app = createApp({ handler: async url => response(found(new URL(url).searchParams.get("query_term"), [torrent(1)])) });
+  await app.ready();
+  app.gridMarkup([movie]);
+  await app.startYtsBatch();
+  assert.equal(app.requests.length, 1);
+  assert.equal(JSON.parse(app.store.get(prefix + movie.imdbId)).torrents[0].url, torrent(1).url);
+  app.openDetail(movie);
+  assert.equal(app.download().getAttribute("href"), torrent(1).url);
+  assert.equal(app.requests.length, 1);
+});
+
+test("details keep distinct year meanings, put overview before tools, and attach sources to their selections", () => {
+  const app = createApp();
+  app.openDetail({
+    ...film, premiereYear: 2025, releaseYear: 2026, director: "A Director", overview: "Story summary", tmdbUrl: "https://www.themoviedb.org/movie/1", imdbUrl: "https://www.imdb.com/title/tt0111161/",
+    selections: [{ festival: "Cannes", festivalYear: 2025, section: "Competition", sourceUrl: "https://example.org/cannes" }, { festival: "Venice", festivalYear: 2026, section: "Main", sourceUrl: "https://example.org/venice" }],
+  });
+  const markup = app.detailMarkup();
+  assert.match(markup, /Premiere 2025 · Release 2026/);
+  assert.doesNotMatch(markup, /<h3>Years<\/h3>|Source 1|Source 2/);
+  assert.ok(markup.indexOf("<h3>Overview") < markup.indexOf("<h3>Availability"));
+  assert.ok(markup.indexOf("<h3>Availability") < markup.indexOf('id="ytsCatalogHeading"'));
+  assert.match(markup, /href="https:\/\/example.org\/cannes"[^>]*aria-label="Source for Cannes - 2025 - Competition"/);
+  assert.match(markup, /href="https:\/\/example.org\/venice"[^>]*aria-label="Source for Venice - 2026 - Main"/);
 });

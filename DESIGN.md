@@ -69,3 +69,13 @@
 - [Carbon：Spacing](https://www.carbondesignsystem.com/building-blocks/foundations/spacing/overview)
 - [Ant Design：Design Values](https://ant.design/docs/spec/values/)
 - [W3C：Contrast Minimum](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+
+## 详情页布局与下载（2026-10-29 确认）
+
+- 保留最大 620px 的详情抽屉。桌面主信息区使用 150px 宽的 2:3 海报、16px 列间距与片名资料区；片名保持 42px。手机改为 112px 海报与右侧片名、导演、年份并排，片名保持 28px 并允许自然换行；评分、状态及 TMDb／IMDb 外链在下方跨两列排列。不再使用 190px 海报独占一行的手机布局。
+- 导演与年份分行，首映年和发行年明确标注。影展年份跟随对应选片记录，不再设置重复的独立 Years 胶囊区。正文顺序为 Festival selections、Overview、Availability、YTS catalog，使影片内容先于查询与下载操作。
+- 每条选片来源链接归入对应的选片行，使用轻量文字链接；主信息区只保留 TMDb／IMDb 外链。手机来源链接及外链至少有 44px 的操作高度；关闭按钮提供 44px 命中区域，图标保持原尺寸，常驻工具条高度保持约 60px。
+- 保留影展行分隔与 Availability 的语义状态容器。YTS 最多使用一层柔和边框容器，内边距 12–16px、组内间距 8–12px，不增加嵌套的推荐版本卡。
+- YTS 区显示一个推荐版本的规格与一枚 Download Torrent 按钮。下载是组内主要操作，使用中性底色与细边框；Recheck 为较轻的文字式操作。手机二者至少有 44px 的操作高度，规格允许在完整项目之间换行，不裁切单项。
+- 推荐版本先按分辨率排序；同分辨率优先 x265，H.265／HEVC 视为同类；没有 x265 时回退到 x264。再比较来源（BluRay 优先于 WEB）、位深与声道。只在用户点击下载按钮后请求下载，不自动或批量下载；未检查、未收录或没有有效下载版本时不显示下载入口。
+- 详情页验收覆盖 320px、390px 与桌面宽度、长片名、多条选片、深浅主题，以及未检查、检查中、已收录、有推荐版本和复查失败状态。除无溢出外，还要检查首屏比例、信息分组与下载／复查的主次。

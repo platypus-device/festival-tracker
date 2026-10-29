@@ -603,6 +603,58 @@ function ytsCatalogImdbId(film) {
   return /^tt\d+$/.test(imdbId) ? imdbId : "";
 }
 
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function normalizeYtsTorrent(torrent) {
+  if (!torrent || typeof torrent !== "object") return null;
+  const href = safeExternalUrl(torrent.url);
+  if (!href) return null;
+  const url = new URL(href);
+  if (url.protocol !== "https:" || url.port || !["yts.gg", "yts.bz", "yts.mx"].includes(url.hostname) || !/^\/torrent\/download\/[a-f0-9]{40}$/i.test(url.pathname)) return null;
+  const resolution = Number(/^(\d{3,4})p(?:\b|$)/i.exec(String(torrent.quality || ""))?.[1]);
+  if (!resolution) return null;
+  const codec = String(torrent.video_codec || "").trim().toLowerCase().replace(/[.\s-]/g, "");
+  const source = String(torrent.type || "").trim().toLowerCase().replace(/[\s-]/g, "");
+  const depth = Number(torrent.bit_depth);
+  const audio = String(torrent.audio_channels || "").trim();
+  const bytes = Number(torrent.size_bytes);
+  const sizeBytes = Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0;
+  const size = String(torrent.size || "").trim();
+  return {
+    url: href,
+    quality: `${resolution}p`,
+    video_codec: ["x265", "h265", "hevc"].includes(codec) ? "x265" : ["x264", "h264", "avc"].includes(codec) ? "x264" : "",
+    type: source === "bluray" ? "BluRay" : ["web", "webrip", "webdl"].includes(source) ? "WEB" : "",
+    bit_depth: Number.isInteger(depth) && depth > 0 && depth <= 32 ? depth : 0,
+    audio_channels: /^\d{1,2}(?:\.\d{1,2}){0,2}$/.test(audio) ? audio : "",
+    size_bytes: sizeBytes,
+    size: sizeBytes ? `${(sizeBytes / (sizeBytes >= 1024 ** 3 ? 1024 ** 3 : 1024 ** 2)).toFixed(2)} ${sizeBytes >= 1024 ** 3 ? "GB" : "MB"}` : /^\d+(?:\.\d+)?\s*(?:KB|MB|GB|TB)$/i.test(size) ? size : "",
+  };
+}
+
+function preferredYtsTorrent(result) {
+  if (result?.status !== "found" || !Array.isArray(result.torrents)) return null;
+  const codecRank = (torrent) => torrent.video_codec === "x265" ? 2 : torrent.video_codec === "x264" ? 1 : 0;
+  const sourceRank = (torrent) => torrent.type === "BluRay" ? 2 : torrent.type === "WEB" ? 1 : 0;
+  const audioRank = (torrent) => torrent.audio_channels.split(".").reduce((sum, channels) => sum + Number(channels), 0);
+  return result.torrents.map(normalizeYtsTorrent).filter(Boolean).sort((a, b) =>
+    Number.parseInt(b.quality, 10) - Number.parseInt(a.quality, 10) ||
+    codecRank(b) - codecRank(a) || sourceRank(b) - sourceRank(a) ||
+    b.bit_depth - a.bit_depth || audioRank(b) - audioRank(a) || b.size_bytes - a.size_bytes || a.url.localeCompare(b.url)
+  )[0] || null;
+}
+
+function ytsTorrentSpec(torrent) {
+  return [torrent.quality, torrent.type, torrent.video_codec, torrent.bit_depth ? `${torrent.bit_depth}bit` : "", torrent.audio_channels ? `${torrent.audio_channels} ch` : "", torrent.size].filter(Boolean);
+}
+
 function ytsCatalogBadgeMarkup(imdbId) {
   return readYtsCatalogResult(imdbId)?.result.status === "found"
     ? `<span class="status-pill is-yts" title="Listed on YTS">YTS</span>`
@@ -667,10 +719,14 @@ async function fetchYtsCatalogResult(imdbId, signal) {
       (count === 0 && movies.length > 0) || (count > 0 && movies.length === 0)) {
     throw new Error("Unexpected YTS response");
   }
-  const found = movies.some((movie) => movie?.imdb_code === imdbId);
+  const movie = movies.find((movie) => movie?.imdb_code === imdbId);
   // A nonempty search without an exact match cannot reliably establish absence.
-  if (count > 0 && !found) throw new Error("YTS returned no exact IMDb match");
-  return { status: found ? "found" : "not_found", checkedAt: new Date().toISOString() };
+  if (count > 0 && !movie) throw new Error("YTS returned no exact IMDb match");
+  return {
+    status: movie ? "found" : "not_found",
+    checkedAt: new Date().toISOString(),
+    torrents: Array.isArray(movie?.torrents) ? movie.torrents.map(normalizeYtsTorrent).filter(Boolean) : [],
+  };
 }
 
 function renderYtsCatalog() {
@@ -683,6 +739,19 @@ function renderYtsCatalog() {
   const meta = card.querySelector("[data-yts-meta]");
   const notice = card.querySelector("[data-yts-notice]");
   const button = card.querySelector("[data-yts-check]");
+  const spec = card.querySelector("[data-yts-spec]");
+  const download = card.querySelector("[data-yts-download]");
+  const torrent = preferredYtsTorrent(result);
+  spec.hidden = !torrent;
+  spec.innerHTML = torrent ? ytsTorrentSpec(torrent).map((text) => `<span>${escapeHtml(text)}</span>`).join(" · ") : "";
+  download.hidden = !torrent;
+  if (torrent) {
+    download.setAttribute("href", torrent.url);
+    download.textContent = `Download Torrent · ${torrent.quality}`;
+  } else {
+    download.removeAttribute("href");
+    download.textContent = "";
+  }
   status.textContent = result
     ? (result.status === "found" ? "Listed on YTS" : "Not found on YTS")
     : !imdbId ? "IMDb ID required to check" : busy ? "Checking…" : error ? "Could not check YTS" : "Not checked";
@@ -696,6 +765,7 @@ function renderYtsCatalog() {
   notice.textContent = [
     error ? (result ? "Check failed. Your previous result is unchanged." : "Try again in a moment.") : "",
     result && !saved ? "Could not save in this browser." : "",
+    result?.status === "found" && Array.isArray(result.torrents) && !torrent && !busy ? "No usable Torrent link in this result." : "",
   ].filter(Boolean).join(" ");
   notice.hidden = !notice.textContent;
   card.setAttribute("aria-busy", String(busy));
@@ -737,13 +807,9 @@ function openDetail(film) {
   const events = Array.isArray(film.availability) ? film.availability : [];
   const firstEvent = events[0] || null;
   const selections = filmSelections(film);
-  const sourceLinks = selections
-    .filter((selection) => selection.sourceUrl)
-    .map((selection, index) => `<a href="${escapeHtml(selection.sourceUrl)}" target="_blank" rel="noreferrer">Source ${index + 1}</a>`);
   const links = [
-    film.tmdbUrl ? `<a href="${escapeHtml(film.tmdbUrl)}" target="_blank" rel="noreferrer">TMDb</a>` : "",
-    film.imdbUrl ? `<a href="${escapeHtml(film.imdbUrl)}" target="_blank" rel="noreferrer">IMDb</a>` : "",
-    ...sourceLinks,
+    safeExternalUrl(film.tmdbUrl) ? `<a href="${escapeHtml(safeExternalUrl(film.tmdbUrl))}" target="_blank" rel="noopener noreferrer">TMDb</a>` : "",
+    safeExternalUrl(film.imdbUrl) ? `<a href="${escapeHtml(safeExternalUrl(film.imdbUrl))}" target="_blank" rel="noopener noreferrer">IMDb</a>` : "",
   ].filter(Boolean);
 
   els.detailContent.innerHTML = `
@@ -755,7 +821,10 @@ function openDetail(film) {
       <div class="poster">${posterMarkup(film)}</div>
       <div class="detail-copy">
         <h2>${escapeHtml(film.title || "Untitled")}</h2>
-        <p>${escapeHtml([film.director, film.premiereYear ? `Premiere ${film.premiereYear}` : "", `${selections.length} selection${selections.length === 1 ? "" : "s"}`].filter(Boolean).join(" - "))}</p>
+        <p class="detail-director">${escapeHtml(film.director || "Unknown director")}</p>
+        <p class="detail-years">${escapeHtml([film.premiereYear ? `Premiere ${film.premiereYear}` : "Premiere year unknown", film.releaseYear ? `Release ${film.releaseYear}` : "Release year unknown"].join(" · "))}</p>
+      </div>
+      <div class="detail-support">
         <div class="film-facts">
           <span>${escapeHtml(statusLabel(film.trackingStatus))}</span>
           <span>${escapeHtml(primaryRatingLabel(film))}</span>
@@ -771,18 +840,17 @@ function openDetail(film) {
             (selection) => `
               <div class="selection-row">
                 <strong>${escapeHtml(shortFestivalLabel(selection.festival) || "Festival")}</strong>
-                <span>${escapeHtml([selection.festivalYear, selection.section].filter(Boolean).join(" - ") || "Official selection")}</span>
+                <div class="selection-copy">
+                  <span>${escapeHtml([selection.festivalYear, selection.section].filter(Boolean).join(" - ") || "Official selection")}</span>
+                  ${safeExternalUrl(selection.sourceUrl) ? `<a class="selection-source" href="${escapeHtml(safeExternalUrl(selection.sourceUrl))}" target="_blank" rel="noopener noreferrer" aria-label="Source for ${escapeHtml(selectionLabel(selection))}">Source</a>` : ""}
+                </div>
               </div>
             `
           )
           .join("")}
       </div>
-      <h3>Years</h3>
-      <div class="metadata-row">
-        <span>Festival years <strong>${escapeHtml([...new Set(selections.map((selection) => selection.festivalYear).filter(Boolean))].join(", ") || "Unknown")}</strong></span>
-        <span>Premiere year <strong>${escapeHtml(film.premiereYear || "Unknown")}</strong></span>
-        <span>Release year <strong>${escapeHtml(film.releaseYear || "Unknown")}</strong></span>
-      </div>
+      <h3>Overview</h3>
+      <p>${escapeHtml(film.overview || "No overview yet.")}</p>
       <h3>Availability</h3>
       ${
         firstEvent
@@ -800,12 +868,12 @@ function openDetail(film) {
         <div class="catalog-check-copy" aria-live="polite" aria-atomic="true">
           <strong class="catalog-status" data-yts-status>Not checked</strong>
           <p class="catalog-meta" data-yts-meta></p>
+          <p class="catalog-spec" data-yts-spec hidden></p>
           <p class="catalog-notice" data-yts-notice hidden></p>
         </div>
         <button class="catalog-check-button" type="button" data-yts-check>Check YTS</button>
+        <a class="catalog-download" data-yts-download target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" type="application/x-bittorrent" hidden></a>
       </div>
-      <h3>Overview</h3>
-      <p>${escapeHtml(film.overview || "No overview yet.")}</p>
     </div>
   `;
   els.detailPanel.classList.add("open");
@@ -816,6 +884,8 @@ function openDetail(film) {
   activeYtsCatalog = { imdbId: validImdbId, result: null, saved: false, busy: false, error: false, ...readYtsCatalogResult(validImdbId) };
   renderYtsCatalog();
   els.detailContent.querySelector("[data-yts-check]")?.addEventListener("click", checkYtsCatalog);
+  const result = activeYtsCatalog.result;
+  if (result?.status === "found" && (!Array.isArray(result.torrents) || Date.now() - Date.parse(result.checkedAt) >= ytsCatalogConfig.refreshAfterMs)) checkYtsCatalog();
 }
 
 function closeDetail() {
