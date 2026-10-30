@@ -93,14 +93,14 @@
     --color-detail-wash: rgba(69, 92, 72, 0.06);
     --color-poster-overlay: rgba(0, 0, 0, 0.3);
     --color-pill-line: rgba(46, 42, 34, 0.18);
-    --color-available-bg: rgba(47, 125, 76, 0.92);
+    --color-available-bg: #2f7d4c;
     --color-available-border: rgba(47, 125, 76, 0.32);
     --color-yts-bg: rgba(14, 29, 22, 0.91);
     --color-yts-text: #c4ebce;
     --color-yts-border: rgba(164, 212, 174, 0.45);
-    --color-review-bg: rgba(176, 133, 43, 0.88);
+    --color-review-bg: #b0852b;
     --color-review-border: rgba(138, 101, 27, 0.28);
-    --color-review-ink: #fff8e4;
+    --color-review-ink: #201604;
     --color-pending-bg: rgba(238, 235, 226, 0.92);
     --color-focus-shadow: rgba(47, 125, 76, 0.14);
     --color-focus-border: rgba(47, 125, 76, 0.58);
@@ -337,8 +337,8 @@ label {
   display: grid;
   gap: 6px;
   color: var(--color-faint);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -352,6 +352,9 @@ select {
   background: var(--color-bg-soft);
   color: var(--color-text);
   padding: 0 11px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 
 select {
@@ -619,7 +622,7 @@ select:focus-visible {
 
 .film-title {
   display: -webkit-box;
-  min-height: 38px;
+  min-height: 2.4em;
   margin: 0;
   overflow: hidden;
   color: var(--color-paper);
@@ -627,7 +630,7 @@ select:focus-visible {
   font-size: 17px;
   font-weight: 700;
   letter-spacing: 0;
-  line-height: 1.12;
+  line-height: 1.2;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -679,12 +682,14 @@ select:focus-visible {
 
 .event-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
 }
 
 .event-row {
   display: grid;
-  grid-template-columns: 128px 1fr auto;
+  grid-template-columns: 128px minmax(0, 1fr) auto;
+  min-width: 0;
   gap: var(--space-4);
   align-items: center;
   border: 1px solid var(--color-line);
@@ -728,6 +733,12 @@ select:focus-visible {
   margin: 5px 0 0;
   color: var(--color-muted);
   font-size: 13px;
+}
+
+.event-row .chip {
+  justify-self: start;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .detail-panel {
@@ -1234,6 +1245,11 @@ select:focus-visible {
     padding-top: var(--space-2);
   }
 
+  input,
+  select {
+    font-size: 16px;
+  }
+
   .filter-drawer {
     position: relative;
   }
@@ -1308,7 +1324,6 @@ select:focus-visible {
   }
 
   .film-title {
-    min-height: 36px;
     font-size: 16px;
   }
 
