@@ -824,22 +824,33 @@ input:focus-visible, select:focus-visible {
 }
 
 .detail-links a {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+.external-link {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 32px;
-  font-size: 12px;
-  text-decoration: underline;
+  text-decoration: none;
+}
+
+.external-link-label {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
   text-decoration-color: var(--color-line-strong);
   text-underline-offset: 4px;
 }
 
-.detail-links a:hover {
+.external-link:hover .external-link-label,
+.external-link:focus-visible .external-link-label {
   text-decoration-color: currentColor;
 }
 
-.detail-links a > span {
-  font-size: 12px;
+.external-link-icon {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
 }
 
 .detail-section {
@@ -884,18 +895,12 @@ input:focus-visible, select:focus-visible {
 }
 
 .selection-source {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   color: var(--color-muted);
   font-size: 11px;
-  text-underline-offset: 4px;
-  text-decoration-color: var(--color-line-strong);
 }
 
 .selection-source:hover {
   color: var(--color-paper);
-  text-decoration-color: currentColor;
 }
 
 .detail-overview {
@@ -1009,20 +1014,11 @@ input:focus-visible, select:focus-visible {
 }
 
 .catalog-subtitles {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   min-height: 40px;
   color: var(--color-paper);
   font-size: 13px;
   line-height: 1.4;
-  text-decoration-color: var(--color-line-strong);
-  text-underline-offset: 4px;
   white-space: nowrap;
-}
-
-.catalog-subtitles:hover {
-  text-decoration-color: currentColor;
 }
 
 .overlay {

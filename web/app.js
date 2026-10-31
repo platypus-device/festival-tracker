@@ -46,6 +46,8 @@ const escapeHtml = (value) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 
+const externalLinkContent = (label) => `<span class="external-link-label">${escapeHtml(label)}</span><svg class="external-link-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7M7 7h10v10"></path></svg>`;
+
 const formatDateTime = (value) => {
   if (!value) return "No export time";
   const date = new Date(value);
@@ -543,8 +545,8 @@ function openDetail(film) {
   const firstEvent = events[0] || null;
   const selections = filmSelections(film);
   const links = [
-    safeExternalUrl(film.tmdbUrl) ? `<a href="${escapeHtml(safeExternalUrl(film.tmdbUrl))}" target="_blank" rel="noopener noreferrer">TMDb <span aria-hidden="true">↗</span></a>` : "",
-    safeExternalUrl(film.imdbUrl) ? `<a href="${escapeHtml(safeExternalUrl(film.imdbUrl))}" target="_blank" rel="noopener noreferrer">IMDb <span aria-hidden="true">↗</span></a>` : "",
+    safeExternalUrl(film.tmdbUrl) ? `<a class="external-link" href="${escapeHtml(safeExternalUrl(film.tmdbUrl))}" target="_blank" rel="noopener noreferrer">${externalLinkContent("TMDb")}</a>` : "",
+    safeExternalUrl(film.imdbUrl) ? `<a class="external-link" href="${escapeHtml(safeExternalUrl(film.imdbUrl))}" target="_blank" rel="noopener noreferrer">${externalLinkContent("IMDb")}</a>` : "",
   ].filter(Boolean);
 
   els.detailContent.innerHTML = `
@@ -576,7 +578,7 @@ function openDetail(film) {
               <div class="selection-row">
                 <strong>${escapeHtml(shortFestivalLabel(selection.festival) || "Festival")}</strong>
                 <span class="selection-description">${escapeHtml([selection.festivalYear, selection.section].filter(Boolean).join(" · ") || "Official selection")}</span>
-                ${safeExternalUrl(selection.sourceUrl) ? `<a class="selection-source" href="${escapeHtml(safeExternalUrl(selection.sourceUrl))}" target="_blank" rel="noopener noreferrer" aria-label="Source for ${escapeHtml(selectionLabel(selection))}">Source <span aria-hidden="true">↗</span></a>` : ""}
+                ${safeExternalUrl(selection.sourceUrl) ? `<a class="selection-source external-link" href="${escapeHtml(safeExternalUrl(selection.sourceUrl))}" target="_blank" rel="noopener noreferrer" aria-label="Source for ${escapeHtml(selectionLabel(selection))}">${externalLinkContent("Source")}</a>` : ""}
               </div>
             `
           )
@@ -613,7 +615,7 @@ function openDetail(film) {
         <p class="catalog-spec" data-yts-spec hidden></p>
         <div class="catalog-actions" data-yts-actions hidden>
           <a class="catalog-download" data-yts-download target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" type="application/x-bittorrent" hidden></a>
-          <a class="catalog-subtitles" data-yts-subtitles target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>Search SubHD subtitles <span aria-hidden="true">↗</span></a>
+          <a class="catalog-subtitles external-link" data-yts-subtitles target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>${externalLinkContent("Search SubHD subtitles")}</a>
         </div>
         <p class="catalog-notice" data-yts-notice role="status" aria-live="polite" hidden></p>
       </div>
