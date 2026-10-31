@@ -30,13 +30,6 @@ const els = {
   sortSelect: document.querySelector("#sortSelect"),
   sortControl: document.querySelector(".sort-control"),
   viewTitle: document.querySelector("#viewTitle"),
-  ytsBatchCheck: document.querySelector("#ytsBatchCheck"),
-  ytsBatchLabel: document.querySelector("#ytsBatchLabel"),
-  ytsBatchCount: document.querySelector("#ytsBatchCount"),
-  ytsBatchStatus: document.querySelector("#ytsBatchStatus"),
-  ytsBatchText: document.querySelector("#ytsBatchText"),
-  ytsBatchMeter: document.querySelector("#ytsBatchMeter"),
-  ytsBatchFill: document.querySelector("#ytsBatchFill"),
   filmGrid: document.querySelector("#filmGrid"),
   eventList: document.querySelector("#eventList"),
   detailPanel: document.querySelector("#detailPanel"),
@@ -305,7 +298,6 @@ function renderViewHeader(count) {
   els.viewTitle.textContent = viewCopy[state.view] || viewCopy.available;
   els.viewTitle.classList.toggle("sr-only", state.view !== "events");
   els.resultsCount.textContent = `${count} ${count === 1 ? "film" : "films"}`;
-  renderYtsBatchControls();
 }
 
 function setMode(mode) {
@@ -416,186 +408,15 @@ function render() {
   els.statusFilterField.hidden = state.view !== "all";
   els.filterFields.classList.toggle("has-status", state.view === "all");
   els.browseControls.hidden = state.view === "events";
+  els.resultsToolbar.hidden = state.view === "events";
+  els.resultsCount.hidden = state.view === "events";
+  els.sortControl.hidden = state.view === "events";
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === state.view);
     tab.setAttribute("aria-pressed", String(tab.dataset.view === state.view));
   });
   if (state.view === "events") renderEvents();
   else renderFilmGrid();
-}
-
-const ytsCatalogConfig = {
-  apiBase: "https://movies-api.accel.li/api/v2/",
-  storagePrefix: "festival-tracker:yts:v1:",
-  refreshAfterMs: 24 * 60 * 60 * 1000,
-  timeoutMs: 8000,
-  concurrency: 2,
-  minIntervalMs: 500,
-  retryDelayMs: 2000,
-  maxAttempts: 2,
-  hideProgressAfterMs: 2000,
-};
-const ytsCatalogResults = new Map();
-let activeYtsCatalog = null;
-let activeYtsBatch = null;
-const ytsCatalogPool = { queue: [], active: 0, nextStartAt: 0, blockedUntil: 0, failures: 0, timer: null };
-
-function ytsBatchCandidates() {
-  if (!state.data || state.view === "events") return [];
-  return [...new Set(filteredFilms().map(ytsCatalogImdbId).filter(Boolean))]
-    .filter((imdbId) => readYtsCatalogResult(imdbId)?.result.status !== "found");
-}
-
-function renderYtsBatchControls() {
-  const batch = activeYtsBatch;
-  const running = Boolean(batch?.running);
-  const count = running ? 0 : ytsBatchCandidates().length;
-  els.resultsToolbar.hidden = state.view === "events" && !running;
-  els.resultsCount.hidden = state.view === "events";
-  els.sortControl.hidden = state.view === "events";
-  els.ytsBatchCheck.hidden = state.view === "events" && !running;
-  els.ytsBatchCheck.disabled = !running && count === 0;
-  els.ytsBatchLabel.textContent = running ? "Stop" : "Check YTS";
-  els.ytsBatchCount.hidden = running;
-  els.ytsBatchCount.textContent = String(count);
-  els.ytsBatchCheck.setAttribute("aria-label", running ? "Stop checking YTS" : `Check YTS for ${count} films in the current filtered results`);
-  els.ytsBatchStatus.hidden = !batch;
-  els.ytsBatchText.textContent = batch
-    ? `${running ? (Date.now() < ytsCatalogPool.blockedUntil ? "Waiting to retry" : "Checking YTS") : "YTS"} · ${batch.checked}/${batch.total}`
-    : "";
-  els.ytsBatchMeter.setAttribute("aria-valuemax", String(batch?.total || 0));
-  els.ytsBatchMeter.setAttribute("aria-valuenow", String(batch?.checked || 0));
-  els.ytsBatchFill.style.width = batch ? `${batch.checked / batch.total * 100}%` : "0%";
-}
-
-async function startYtsBatch() {
-  if (activeYtsBatch?.running) return;
-  const imdbIds = ytsBatchCandidates();
-  if (imdbIds.length === 0) return;
-  clearTimeout(activeYtsBatch?.hideTimer);
-  const batch = { running: true, total: imdbIds.length, checked: 0, pending: new Set(imdbIds), controller: new AbortController() };
-  activeYtsBatch = batch;
-  renderYtsBatchControls();
-  renderYtsCatalog();
-  let next = 0;
-  async function worker() {
-    while (batch.running && next < imdbIds.length) {
-      const imdbId = imdbIds[next++];
-      try {
-        if (readYtsCatalogResult(imdbId)?.result.status !== "found") {
-          const result = await requestYtsCatalogResult(imdbId, batch.controller.signal);
-          if (batch.controller.signal.aborted) break;
-          saveYtsCatalogResult(imdbId, result);
-        }
-      } catch {
-        if (batch.controller.signal.aborted) break;
-        if (activeYtsCatalog?.imdbId === imdbId) activeYtsCatalog.error = true;
-      } finally {
-        batch.pending.delete(imdbId);
-        if (!batch.controller.signal.aborted) batch.checked++;
-        if (activeYtsBatch === batch) {
-          renderYtsBatchControls();
-          renderYtsCatalog();
-        }
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: ytsCatalogConfig.concurrency }, worker));
-  if (activeYtsBatch !== batch || batch.controller.signal.aborted) return;
-  batch.running = false;
-  renderYtsBatchControls();
-  renderYtsCatalog();
-  batch.hideTimer = setTimeout(() => {
-    if (activeYtsBatch !== batch) return;
-    activeYtsBatch = null;
-    renderYtsBatchControls();
-  }, ytsCatalogConfig.hideProgressAfterMs);
-}
-
-function stopYtsBatch() {
-  const batch = activeYtsBatch;
-  if (!batch) return;
-  batch.running = false;
-  clearTimeout(batch.hideTimer);
-  batch.controller.abort();
-  activeYtsBatch = null;
-  renderYtsBatchControls();
-  renderYtsCatalog();
-}
-
-function ytsAbortError() {
-  const error = new Error("YTS check cancelled");
-  error.name = "AbortError";
-  return error;
-}
-
-function requestYtsCatalogResult(imdbId, signal) {
-  return new Promise((resolve, reject) => {
-    const job = { imdbId, signal, resolve, reject, attempts: 0 };
-    job.onAbort = () => {
-      const index = ytsCatalogPool.queue.indexOf(job);
-      if (index < 0) return;
-      ytsCatalogPool.queue.splice(index, 1);
-      reject(ytsAbortError());
-      drainYtsCatalogQueue();
-    };
-    if (signal.aborted) return reject(ytsAbortError());
-    signal.addEventListener("abort", job.onAbort, { once: true });
-    ytsCatalogPool.queue.push(job);
-    drainYtsCatalogQueue();
-  });
-}
-
-function drainYtsCatalogQueue() {
-  clearTimeout(ytsCatalogPool.timer);
-  ytsCatalogPool.timer = null;
-  const concurrency = ytsCatalogPool.failures >= 2 ? 1 : ytsCatalogConfig.concurrency;
-  if (ytsCatalogPool.active >= concurrency || ytsCatalogPool.queue.length === 0) return;
-  const delay = Math.max(ytsCatalogPool.nextStartAt, ytsCatalogPool.blockedUntil) - Date.now();
-  if (delay > 0) {
-    ytsCatalogPool.timer = setTimeout(drainYtsCatalogQueue, delay);
-    return;
-  }
-  const job = ytsCatalogPool.queue.shift();
-  job.signal.removeEventListener("abort", job.onAbort);
-  if (job.signal.aborted) {
-    job.reject(ytsAbortError());
-    drainYtsCatalogQueue();
-    return;
-  }
-  ytsCatalogPool.active++;
-  job.attempts++;
-  ytsCatalogPool.nextStartAt = Date.now() + ytsCatalogConfig.minIntervalMs;
-  renderYtsBatchControls();
-  const controller = new AbortController();
-  const onAbort = () => controller.abort();
-  job.signal.addEventListener("abort", onAbort, { once: true });
-  const timeout = setTimeout(() => controller.abort(), ytsCatalogConfig.timeoutMs);
-  fetchYtsCatalogResult(job.imdbId, controller.signal).then((result) => {
-    if (controller.signal.aborted) throw ytsAbortError();
-    ytsCatalogPool.failures = 0;
-    job.resolve(result);
-  }).catch((error) => {
-    if (!job.signal.aborted) {
-      ytsCatalogPool.failures++;
-      if (error.status === 429 || error.status === 503) {
-        ytsCatalogPool.blockedUntil = Math.max(ytsCatalogPool.blockedUntil, Date.now() + Math.max(ytsCatalogConfig.retryDelayMs, error.retryAfterMs || 0));
-        renderYtsBatchControls();
-        if (job.attempts < ytsCatalogConfig.maxAttempts) {
-          job.signal.addEventListener("abort", job.onAbort, { once: true });
-          ytsCatalogPool.queue.push(job);
-          return;
-        }
-      }
-    }
-    job.reject(error);
-  }).finally(() => {
-    clearTimeout(timeout);
-    job.signal.removeEventListener("abort", onAbort);
-    ytsCatalogPool.active--;
-    drainYtsCatalogQueue();
-  });
-  drainYtsCatalogQueue();
 }
 
 function ytsCatalogImdbId(film) {
@@ -655,96 +476,35 @@ function ytsTorrentSpec(torrent) {
   return [torrent.quality, torrent.type, torrent.video_codec, torrent.bit_depth ? `${torrent.bit_depth}bit` : "", torrent.audio_channels ? `${torrent.audio_channels} ch` : "", torrent.size].filter(Boolean);
 }
 
-function ytsCatalogBadgeMarkup(imdbId) {
-  return readYtsCatalogResult(imdbId)?.result.status === "found"
+function readYtsCatalogResult(film) {
+  const imdbId = ytsCatalogImdbId(film);
+  const result = film.ytsCatalog;
+  if (film.trackingStatus !== "available_found" || !imdbId || result?.imdbId !== imdbId ||
+      !["found", "not_found"].includes(result.status) || typeof result.checkedAt !== "string" ||
+      !Number.isFinite(Date.parse(result.checkedAt))) return null;
+  return result;
+}
+
+function ytsCatalogCardMarkup(film) {
+  return readYtsCatalogResult(film)?.status === "found"
     ? `<span class="status-pill is-yts" title="Listed on YTS">YTS</span>`
     : "";
 }
 
-function ytsCatalogCardMarkup(film) {
-  const imdbId = ytsCatalogImdbId(film);
-  return imdbId ? `<span data-yts-imdb="${imdbId}">${ytsCatalogBadgeMarkup(imdbId)}</span>` : "";
-}
-
-function readYtsCatalogResult(imdbId) {
-  if (!imdbId) return null;
-  if (ytsCatalogResults.has(imdbId)) return ytsCatalogResults.get(imdbId);
-  try {
-    const result = JSON.parse(window.localStorage.getItem(`${ytsCatalogConfig.storagePrefix}${imdbId}`));
-    if (!["found", "not_found"].includes(result?.status) || typeof result.checkedAt !== "string" || !Number.isFinite(Date.parse(result.checkedAt))) return null;
-    const cached = { result, saved: true };
-    ytsCatalogResults.set(imdbId, cached);
-    return cached;
-  } catch {
-    return null;
-  }
-}
-
-function saveYtsCatalogResult(imdbId, result) {
-  const cached = { result, saved: false };
-  try {
-    window.localStorage.setItem(`${ytsCatalogConfig.storagePrefix}${imdbId}`, JSON.stringify(result));
-    cached.saved = true;
-  } catch {
-    // Keep the result usable for this visit if browser storage is unavailable.
-  }
-  ytsCatalogResults.set(imdbId, cached);
-  document.querySelectorAll(`[data-yts-imdb="${imdbId}"]`).forEach((slot) => {
-    slot.innerHTML = ytsCatalogBadgeMarkup(imdbId);
-  });
-  if (activeYtsCatalog?.imdbId === imdbId) {
-    Object.assign(activeYtsCatalog, cached, { error: false });
-    renderYtsCatalog();
-  }
-  renderYtsBatchControls();
-  return cached;
-}
-
-async function fetchYtsCatalogResult(imdbId, signal) {
-  const url = new URL("list_movies.json", ytsCatalogConfig.apiBase);
-  url.searchParams.set("query_term", imdbId);
-  url.searchParams.set("limit", "50");
-  const response = await fetch(url, { signal, cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer" });
-  if (!response.ok) {
-    const error = new Error(`YTS request failed: ${response.status}`);
-    error.status = response.status;
-    const retryAfter = response.headers?.get("Retry-After");
-    error.retryAfterMs = retryAfter ? (Number.isFinite(Number(retryAfter)) ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now())) : 0;
-    throw error;
-  }
-  const payload = await response.json();
-  const count = payload?.data?.movie_count;
-  const movies = payload?.data?.movies ?? [];
-  if (payload?.status !== "ok" || !Number.isInteger(count) || count < 0 || !Array.isArray(movies) ||
-      (count === 0 && movies.length > 0) || (count > 0 && movies.length === 0)) {
-    throw new Error("Unexpected YTS response");
-  }
-  const movie = movies.find((movie) => movie?.imdb_code === imdbId);
-  // A nonempty search without an exact match cannot reliably establish absence.
-  if (count > 0 && !movie) throw new Error("YTS returned no exact IMDb match");
-  return {
-    status: movie ? "found" : "not_found",
-    checkedAt: new Date().toISOString(),
-    torrents: Array.isArray(movie?.torrents) ? movie.torrents.map(normalizeYtsTorrent).filter(Boolean) : [],
-  };
-}
-
-function renderYtsCatalog() {
-  const lookup = activeYtsCatalog;
+function renderYtsCatalog(film) {
   const card = els.detailContent.querySelector("[data-yts-catalog]");
-  if (!lookup || !card) return;
-  const { imdbId, result, saved, error } = lookup;
-  const busy = lookup.busy || Boolean(activeYtsBatch?.running && activeYtsBatch.pending.has(imdbId));
+  if (!card) return;
+  const imdbId = ytsCatalogImdbId(film);
+  const result = readYtsCatalogResult(film);
   const status = card.querySelector("[data-yts-status]");
   const meta = card.querySelector("[data-yts-meta]");
   const notice = card.querySelector("[data-yts-notice]");
-  const button = card.querySelector("[data-yts-check]");
   const spec = card.querySelector("[data-yts-spec]");
   const actions = card.querySelector("[data-yts-actions]");
   const download = card.querySelector("[data-yts-download]");
   const subtitles = card.querySelector("[data-yts-subtitles]");
   const torrent = preferredYtsTorrent(result);
-  const canSearchSubtitles = result?.status === "found" && /^tt\d+$/.test(imdbId);
+  const canSearchSubtitles = result?.status === "found";
   spec.hidden = !torrent;
   spec.innerHTML = torrent ? ytsTorrentSpec(torrent).map((text) => `<span>${escapeHtml(text)}</span>`).join(" · ") : "";
   download.hidden = !torrent;
@@ -766,59 +526,19 @@ function renderYtsCatalog() {
   actions.hidden = !torrent && !canSearchSubtitles;
   status.textContent = result
     ? (result.status === "found" ? "Listed on YTS" : "Not found on YTS")
-    : !imdbId ? "IMDb ID required to check" : busy ? "Checking YTS…" : error ? "Could not check YTS" : "Not checked";
-  if (result) {
-    const checkedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(result.checkedAt));
-    meta.textContent = `Checked ${checkedAt}`;
-  } else {
-    meta.textContent = imdbId && !busy ? "Check this film's listing. Results are saved in this browser." : "";
-  }
+    : !imdbId ? "IMDb ID unavailable" : "Not checked yet";
+  meta.textContent = result
+    ? `Checked ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(result.checkedAt))}`
+    : film.trackingStatus !== "available_found" ? "Checks start once available to watch." : imdbId ? "Checks run daily." : "";
   meta.hidden = !meta.textContent;
-  notice.textContent = [
-    error ? (result ? "Check failed. Your previous result is unchanged." : "Try again in a moment.") : "",
-    result && !saved ? "Could not save in this browser." : "",
-    result?.status === "found" && Array.isArray(result.torrents) && !torrent && !busy ? "No usable Torrent link in this result." : "",
-  ].filter(Boolean).join(" ");
+  notice.textContent = result?.status === "found" && !torrent ? "No usable Torrent link in this result." : "";
   notice.hidden = !notice.textContent;
-  card.setAttribute("aria-busy", String(busy));
-  button.hidden = !imdbId;
-  button.disabled = busy;
-  button.textContent = busy ? (result ? "Checking…" : "Check YTS") : error ? "Retry" : result ? "Recheck" : "Check YTS";
-}
-
-function cancelYtsCatalogCheck() {
-  activeYtsCatalog?.controller?.abort();
-  activeYtsCatalog = null;
-}
-
-async function checkYtsCatalog() {
-  const lookup = activeYtsCatalog;
-  if (!lookup?.imdbId || lookup.busy || (activeYtsBatch?.running && activeYtsBatch.pending.has(lookup.imdbId))) return;
-  const controller = new AbortController();
-  lookup.controller = controller;
-  lookup.busy = true;
-  lookup.error = false;
-  renderYtsCatalog();
-  try {
-    const result = await requestYtsCatalogResult(lookup.imdbId, controller.signal);
-    if (activeYtsCatalog !== lookup || controller.signal.aborted) return;
-    Object.assign(lookup, saveYtsCatalogResult(lookup.imdbId, result));
-  } catch {
-    if (activeYtsCatalog === lookup) lookup.error = true;
-  } finally {
-    if (activeYtsCatalog === lookup) {
-      lookup.busy = false;
-      lookup.controller = null;
-      renderYtsCatalog();
-    }
-  }
 }
 
 let detailReturnFocus = null;
 
 function openDetail(film) {
   if (els.detailPanel.getAttribute("aria-hidden") !== "false") detailReturnFocus = document.activeElement;
-  cancelYtsCatalogCheck();
   const events = Array.isArray(film.availability) ? film.availability : [];
   const firstEvent = events[0] || null;
   const selections = filmSelections(film);
@@ -883,11 +603,10 @@ function openDetail(film) {
       </section>
       <section class="detail-section">
       <h3 id="ytsCatalogHeading">YTS catalog</h3>
-      <div class="catalog-check" data-yts-catalog role="region" aria-labelledby="ytsCatalogHeading" aria-busy="false">
+      <div class="catalog-check" data-yts-catalog role="region" aria-labelledby="ytsCatalogHeading">
         <div class="catalog-check-copy">
           <div class="catalog-check-header">
             <strong class="catalog-status" data-yts-status aria-live="polite" aria-atomic="true">Not checked</strong>
-            <button class="catalog-check-button" type="button" data-yts-check>Check YTS</button>
           </div>
           <p class="catalog-meta" data-yts-meta></p>
         </div>
@@ -911,16 +630,10 @@ function openDetail(film) {
   els.overlay.classList.remove("hidden");
   els.detailContent.querySelector(".close-button")?.addEventListener("click", closeDetail);
   els.detailContent.querySelector(".close-button")?.focus?.({ preventScroll: true });
-  const validImdbId = ytsCatalogImdbId(film);
-  activeYtsCatalog = { imdbId: validImdbId, result: null, saved: false, busy: false, error: false, ...readYtsCatalogResult(validImdbId) };
-  renderYtsCatalog();
-  els.detailContent.querySelector("[data-yts-check]")?.addEventListener("click", checkYtsCatalog);
-  const result = activeYtsCatalog.result;
-  if (result?.status === "found" && (!Array.isArray(result.torrents) || Date.now() - Date.parse(result.checkedAt) >= ytsCatalogConfig.refreshAfterMs)) checkYtsCatalog();
+  renderYtsCatalog(film);
 }
 
 function closeDetail() {
-  cancelYtsCatalogCheck();
   els.detailPanel.classList.remove("open");
   els.detailPanel.setAttribute("aria-hidden", "true");
   els.detailPanel.inert = true;
@@ -963,10 +676,6 @@ els.sortSelect.addEventListener("change", (event) => {
   render();
 });
 
-els.ytsBatchCheck.addEventListener("click", () => {
-  if (activeYtsBatch?.running) stopYtsBatch();
-  else startYtsBatch();
-});
 els.closeDetail.addEventListener("click", closeDetail);
 els.overlay.addEventListener("click", closeDetail);
 window.addEventListener("resize", handleResize);

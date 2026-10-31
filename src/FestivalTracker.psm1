@@ -3318,6 +3318,11 @@ function ConvertFrom-NotionCanonicalFilmPage {
         imdb_votes = ConvertTo-OptionalInt (Get-NotionTextProperty -Page $Page -Name "IMDb Votes")
         imdb_rating_checked_at = Get-NotionTextProperty -Page $Page -Name "IMDb Rating Checked At"
         rating_source = Get-NotionTextProperty -Page $Page -Name "Rating Source"
+        yts_status = Get-NotionTextProperty -Page $Page -Name "YTS Status"
+        yts_imdb_id = Get-NotionTextProperty -Page $Page -Name "YTS IMDb ID"
+        yts_checked_at = Get-NotionTextProperty -Page $Page -Name "YTS Checked At"
+        yts_first_found_at = Get-NotionTextProperty -Page $Page -Name "YTS First Found At"
+        yts_torrents_json = Get-NotionTextProperty -Page $Page -Name "YTS Torrents"
         authorized_source_urls = @((Get-NotionTextProperty -Page $Page -Name "Authorized Source URLs") -split '[,\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
         tracking_status = Get-NotionTextProperty -Page $Page -Name "Tracking Status"
         first_available_date = Get-NotionTextProperty -Page $Page -Name "First Available Date"
@@ -5309,5 +5314,7 @@ function Invoke-FestivalTracker {
         state_dir = $StateDir
     }
 }
+
+. (Join-Path $PSScriptRoot "YtsCatalog.ps1")
 
 Export-ModuleMember -Function *-*

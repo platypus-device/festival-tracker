@@ -79,7 +79,7 @@ jobs:
   sync:
     if: github.event_name != 'workflow_dispatch' || inputs.repair_lineup_pollution == 'None'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
 
@@ -87,6 +87,10 @@ jobs:
         run: |
           node --check ./web/app.js
           node --test ./tests/Test-YtsCatalog.js
+
+      - name: Validate tracker module
+        shell: pwsh
+        run: ./tests/Run-Tests.ps1
 
       - name: Restore availability records archived by policy cleanup
         if: github.event_name == 'push' && contains(github.event.head_commit.message, '[restore-availability]')
@@ -203,6 +207,16 @@ jobs:
           NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
           & ./scripts/Repair-YearMetadata.ps1 -UseNotion -Apply
+
+      - name: Sync YTS catalog for available films
+        timeout-minutes: 30
+        shell: pwsh
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
+          NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
+          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
+        run: ./scripts/Sync-YtsCatalog.ps1
 
       - name: Export tracker data
         timeout-minutes: 10

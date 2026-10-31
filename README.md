@@ -15,7 +15,11 @@ Legal availability types:
 - `authorized_download`
 - `authorized_torrent`
 
-The tracker does not monitor piracy indexes, store magnet links, or count theatrical screenings, festival online tickets, TV broadcasts, or physical media.
+Legal availability does not count theatrical screenings, festival online tickets, TV broadcasts, or physical media. YTS catalog listings are stored separately and never create legal-availability events.
+
+YTS checks cover only films in the website's Available view with a valid IMDb ID and an active festival selection. Unchecked and not-found films are checked once per Asia/Shanghai calendar day; confirmed listings are retained without routine rechecks. Results, observation dates, and resource metadata live in Canonical Films in Notion. The website displays the exported snapshot and makes no YTS API requests.
+
+Checks use one request at a time with at least three seconds between request starts, deduplicate IMDb IDs, and save each successful result immediately. HTTP 403/429 or three consecutive failures stop the remaining checks without replacing earlier results. A 25-minute run budget defers any unfinished work to a later run; there is no fixed 100-film cap.
 
 ## Sources
 
@@ -33,6 +37,7 @@ GitHub Actions powers the tracker:
 - Manual runs can use `Availability`, `Lineups`, or `All`.
 
 Scheduled and manual syncs write to Notion, export `web/data/tracker-data.json`, run quality checks, and deploy GitHub Pages only after the checks pass.
+Push deployments also run the due YTS checks before exporting, so a deployment and the daily schedule share the same persisted check dates.
 
 ## Local Commands
 
@@ -45,6 +50,10 @@ Scheduled and manual syncs write to Notion, export `web/data/tracker-data.json`,
 
 # Export web data
 .\scripts\Export-TrackerData.ps1 -UseNotion
+
+# Preview or run the Notion-backed YTS catalog sync
+.\scripts\Sync-YtsCatalog.ps1 -DryRun
+.\scripts\Sync-YtsCatalog.ps1
 
 # Run quality checks
 .\scripts\Test-TrackerDataQuality.ps1 -UseNotion -DataPath .\web\data\tracker-data.json

@@ -1048,6 +1048,15 @@ $duplicateEvents = @(
         needs_review = $false
     }
 )
+# Keep catalog metadata when another festival selection becomes the merged card.
+Set-RecordProperty -Record $duplicateFestivalFilms[0] -Name "yts_status" -Value "not_found"
+Set-RecordProperty -Record $duplicateFestivalFilms[0] -Name "yts_imdb_id" -Value "tt1001"
+Set-RecordProperty -Record $duplicateFestivalFilms[0] -Name "yts_checked_at" -Value "2026-10-31T01:00:00Z"
+Set-RecordProperty -Record $duplicateFestivalFilms[1] -Name "yts_status" -Value "found"
+Set-RecordProperty -Record $duplicateFestivalFilms[1] -Name "yts_imdb_id" -Value "tt1001"
+Set-RecordProperty -Record $duplicateFestivalFilms[1] -Name "yts_checked_at" -Value "2026-10-30T01:00:00Z"
+Set-RecordProperty -Record $duplicateFestivalFilms[1] -Name "yts_first_found_at" -Value "2026-10-30T01:00:00Z"
+Set-RecordProperty -Record $duplicateFestivalFilms[1] -Name "yts_torrents_json" -Value '[{"url":"https://yts.gg/torrent/download/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","quality":"1080p"}]'
 ConvertTo-Json -InputObject $duplicateFestivalFilms -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "films.json") -Encoding UTF8
 ConvertTo-Json -InputObject $duplicateEvents -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "events.json") -Encoding UTF8
 & (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir | Out-Null
@@ -1077,6 +1086,9 @@ Assert-Equal "event-title-only" $titleOnlyEventFilm.availability[0].id "attaches
 Assert-Equal 1 $exportedWebData.diagnostics.lowConfidence "exports low confidence as diagnostics"
 $duplicateExportFilm = @($exportedWebData.films | Where-Object { $_.title -eq "Duplicate Export" })[0]
 Assert-Equal 2 $duplicateExportFilm.selections.Count "keeps duplicate selections on merged web card"
+Assert-Equal "found" $duplicateExportFilm.ytsCatalog.status "exports a confirmed shared YTS result across duplicate selections"
+Assert-Equal "tt1001" $duplicateExportFilm.ytsCatalog.imdbId "binds exported YTS results to their checked IMDb identity"
+Assert-Equal 1 $duplicateExportFilm.ytsCatalog.torrents.Count "exports YTS resource metadata without truncation"
 Assert-Equal 2024 $duplicateExportFilm.filmYear "keeps film year separate from festival year"
 Assert-Equal 2024 $duplicateExportFilm.premiereYear "exports premiere year from legacy film year when it predates festival year"
 Assert-Equal 7.8 $duplicateExportFilm.imdbRating "exports IMDb rating"
@@ -1503,6 +1515,8 @@ Assert-Equal 8.1 $ratedFilms[1].imdb_rating "updates changed IMDb dataset rating
 Assert-Equal 2000 $ratedFilms[1].imdb_votes "updates changed IMDb dataset votes"
 Assert-Equal (Get-Date).ToString("yyyy-MM-dd") $ratedFilms[1].imdb_rating_checked_at "updates IMDb checked date when dataset values change"
 Remove-Item -LiteralPath $imdbStateDir -Recurse -Force
+
+& (Join-Path $PSScriptRoot "Test-YtsSync.ps1")
 
 if ($Script:Failures -gt 0) {
     throw "$Script:Failures test(s) failed."

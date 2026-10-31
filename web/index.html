@@ -8,7 +8,7 @@
     <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./fonts/source-serif-4-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./fonts/fonts.css?v=20261031-details-v2" />
-    <link rel="stylesheet" href="./styles.css?v=20261031-navigation-v3" />
+    <link rel="stylesheet" href="./styles.css?v=20261031-yts-notion-v1" />
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to content</a>
@@ -66,18 +66,8 @@
                 <option value="title">Title</option>
               </select>
             </label>
-            <button type="button" id="ytsBatchCheck" class="yts-batch-button" hidden disabled>
-              <span id="ytsBatchLabel">Check YTS</span>
-              <span id="ytsBatchCount" class="sr-only" aria-hidden="true">0</span>
-            </button>
           </div>
         </div>
-        <section id="ytsBatchStatus" class="yts-batch-status" role="status" aria-live="polite" aria-atomic="true" hidden>
-          <span id="ytsBatchText"></span>
-          <div id="ytsBatchMeter" class="yts-batch-meter" role="progressbar" aria-label="YTS check progress" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
-            <div id="ytsBatchFill" class="yts-batch-fill"></div>
-          </div>
-        </section>
         <section id="filmGrid" class="film-grid" aria-live="polite"></section>
         <section id="eventList" class="event-list hidden" aria-live="polite"></section>
       </main>
@@ -90,7 +80,7 @@
     </aside>
     <div id="overlay" class="overlay hidden"></div>
 
-    <script src="./build-meta.js?v=20261031-details-v2"></script>
-    <script src="./app.js?v=20261031-navigation-v3"></script>
+    <script src="./build-meta.js?v=20261031-yts-notion-v1"></script>
+    <script src="./app.js?v=20261031-yts-notion-v1"></script>
   </body>
 </html>

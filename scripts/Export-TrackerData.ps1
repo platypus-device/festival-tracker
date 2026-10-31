@@ -265,6 +265,7 @@ function ConvertTo-WebFilm {
         imdbRatingCheckedAt = [string](Get-ObjectProperty $Film "imdb_rating_checked_at" "")
         ratingSource = [string](Get-ObjectProperty $Film "rating_source" "")
         metadataSource = [string](Get-ObjectProperty $Film "metadata_source" "")
+        ytsCatalog = Get-FilmYtsCatalogResult -Film $Film
         trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
         firstAvailableDate = [string](Get-ObjectProperty $Film "first_available_date" "")
         lastChecked = [string](Get-ObjectProperty $Film "last_checked" "")
@@ -323,6 +324,7 @@ function ConvertTo-WebCanonicalFilm {
         imdbRatingCheckedAt = [string](Get-ObjectProperty $Film "imdb_rating_checked_at" "")
         ratingSource = [string](Get-ObjectProperty $Film "rating_source" "")
         metadataSource = [string](Get-ObjectProperty $Film "metadata_source" "")
+        ytsCatalog = Get-FilmYtsCatalogResult -Film $Film
         trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
         firstAvailableDate = [string](Get-ObjectProperty $Film "first_available_date" "")
         lastChecked = [string](Get-ObjectProperty $Film "last_checked" "")
@@ -450,6 +452,13 @@ function Merge-WebFilms {
 
         $film.PSObject.Properties.Remove("_mergeKey")
         $existing = $byKey[$key]
+        $incomingYts = Get-ObjectProperty $film "ytsCatalog"
+        $existingYts = Get-ObjectProperty $existing "ytsCatalog"
+        if ($null -ne $incomingYts -and ($null -eq $existingYts -or
+            ($incomingYts.status -eq "found" -and $existingYts.status -ne "found") -or
+            ($incomingYts.status -eq $existingYts.status -and [datetimeoffset]$incomingYts.checkedAt -gt [datetimeoffset]$existingYts.checkedAt))) {
+            Set-RecordProperty -Record $existing -Name "ytsCatalog" -Value $incomingYts
+        }
         $existing.selections = @(
             @($existing.selections) + @($film.selections) |
                 Sort-Object festivalYear, festival, section, sourceUrl -Unique
