@@ -1524,3 +1524,5 @@ if ($Script:Failures -gt 0) {
 }
 
 Write-Host "All tests passed." -ForegroundColor Green
+# Negative quality-check fixtures intentionally leave a nonzero native exit code.
+exit 0
