@@ -1,5 +1,6 @@
 ﻿$ErrorActionPreference = "Stop"
 $modulePath = Join-Path $PSScriptRoot "..\src\FestivalTracker.psm1"
+$testPowerShell = (Get-Process -Id $PID).Path
 Import-Module $modulePath -Force
 
 $Script:Failures = 0
@@ -1136,7 +1137,7 @@ ConvertTo-Json -InputObject @(
 ) -Depth 10 | Set-Content -Path (Join-Path $qualityStateDir "events.json") -Encoding UTF8
 & (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $qualityOutput -StateDir $qualityStateDir | Out-Null
 $qualityScript = Join-Path $PSScriptRoot "..\scripts\Test-TrackerDataQuality.ps1"
-$qualityCheckOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $qualityOutput 2>&1
+$qualityCheckOutput = & $testPowerShell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $qualityOutput 2>&1
 $qualityExitCode = $LASTEXITCODE
 Assert-True ($qualityExitCode -ne 0) "quality check fails orphaned availability events"
 Assert-True (([string]($qualityCheckOutput -join "`n")).Contains("orphaned_availability_event")) "quality check reports orphaned availability event code"
@@ -1174,7 +1175,7 @@ New-Item -ItemType Directory -Path $sourcePolicyQualityDir -Force | Out-Null
     )
     events = @()
 } | ConvertTo-Json -Depth 10 | Set-Content -Path $sourcePolicyQualityOutput -Encoding UTF8
-$sourcePolicyQualityCheckOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $sourcePolicyQualityOutput 2>&1
+$sourcePolicyQualityCheckOutput = & $testPowerShell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $sourcePolicyQualityOutput 2>&1
 $sourcePolicyQualityExitCode = $LASTEXITCODE
 Assert-True ($sourcePolicyQualityExitCode -ne 0) "quality check fails selections from both disabled Taipei festivals"
 Assert-True (([string]($sourcePolicyQualityCheckOutput -join "`n")).Contains("disabled_taipei_festival_selection")) "quality check reports disabled Taipei selection code"
@@ -1253,7 +1254,7 @@ ConvertTo-Json -InputObject @(
 $ambiguousWebData = Get-Content $ambiguousOutput -Raw | ConvertFrom-Json
 $ambiguousAttachedCount = @($ambiguousWebData.films | ForEach-Object { @($_.availability) }).Count
 Assert-Equal 0 $ambiguousAttachedCount "does not attach ambiguous title-only orphan event"
-$ambiguousQualityOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $ambiguousOutput 2>&1
+$ambiguousQualityOutput = & $testPowerShell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $ambiguousOutput 2>&1
 $ambiguousQualityExitCode = $LASTEXITCODE
 Assert-True ($ambiguousQualityExitCode -ne 0) "quality check still fails ambiguous orphaned event"
 Remove-Item -LiteralPath $ambiguousStateDir -Recurse -Force
