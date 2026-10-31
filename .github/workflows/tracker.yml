@@ -83,6 +83,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Validate web application
+        run: |
+          node --check ./web/app.js
+          node --test ./tests/Test-YtsCatalog.js
+
       - name: Restore availability records archived by policy cleanup
         if: github.event_name == 'push' && contains(github.event.head_commit.message, '[restore-availability]')
         shell: pwsh

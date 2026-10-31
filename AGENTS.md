@@ -98,6 +98,12 @@ Run regression tests:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\Run-Tests.ps1
 ```
 
+Run frontend filter and YTS regression tests:
+```powershell
+node --check .\web\app.js
+node --test .\tests\Test-YtsCatalog.js
+```
+
 Start local frontend with Node:
 ```powershell
 node .\web\server.js
@@ -118,6 +124,7 @@ http://127.0.0.1:4317/
 - `web/index.html` contains the static shell and versioned JS/CSS links.
 - `web/app.js` loads `web/data/tracker-data.json`, manages URL state, filters, sorting, grid rendering, event rendering, and the detail panel.
 - `web/styles.css` contains all layout and responsive styling.
+- `web/fonts/` hosts the website's licensed Source Serif 4 and DM Sans fonts.
 - `selectionSummaryLabel()` controls card festival/award summary text.
 - `primaryRatingLabel()` controls IMDb/TMDb rating label text.
 - `filmSelections()` handles current canonical selections plus legacy single-selection records.

@@ -1,74 +1,38 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Festival films and their first legal online availability, in one independent cinema index." />
     <title>Festival Tracker</title>
-    <link rel="stylesheet" href="./styles.css?v=20261030-typography-v1" />
+    <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/source-serif-4-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="./fonts/fonts.css?v=20261031-editorial-v1" />
+    <link rel="stylesheet" href="./styles.css?v=20261031-editorial-v1" />
   </head>
   <body>
-    <a class="skip-link" href="#content">Skip to Content</a>
+    <a class="skip-link" href="#content">Skip to content</a>
     <div class="shell">
       <header class="topbar">
         <div class="brand">
-          <h1>Festival Tracker</h1>
-          <p id="generatedAt">Loading data...</p>
+          <h1>Festival Tracker<span class="brand-dot" aria-hidden="true">.</span></h1>
+          <p class="brand-tagline">An index of festival cinema</p>
         </div>
-        <div class="summary-line" aria-label="Summary">
-          <span class="metric-card"><strong id="metricAvailable">0</strong><small>Available</small></span>
-          <span class="metric-card"><strong id="metricFilms">0</strong><small>Films</small></span>
-          <span class="metric-card"><strong id="metricEvents">0</strong><small>Finds</small></span>
-        </div>
-        <nav class="tabs" aria-label="Views">
-          <button class="tab active" data-view="available">Available</button>
-          <button class="tab" data-view="all">All Films</button>
-          <button class="tab" data-view="events">Finds</button>
-        </nav>
+        <p id="generatedAt" class="edition-time">Loading data…</p>
       </header>
-
-      <section class="controls" aria-label="Filters">
-        <label>
-          Search
-          <input id="searchInput" name="search" type="search" autocomplete="off" placeholder="Title, director, section..." />
-        </label>
-        <details class="filter-drawer" open>
-          <summary>Filters</summary>
-          <div class="filter-fields">
-            <label>
-              Festival
-              <select id="festivalFilter" name="festival"></select>
-            </label>
-            <label>
-              Premiere year
-              <select id="yearFilter" name="year"></select>
-            </label>
-            <label>
-              Status
-              <select id="statusFilter" name="status">
-                <option value="">Any status</option>
-                <option value="pending">Pending</option>
-                <option value="available_found">Available found</option>
-                <option value="needs_review">Needs review</option>
-              </select>
-            </label>
-            <label>
-              Sort
-              <select id="sortSelect" name="sort">
-                <option value="rating">Rating</option>
-                <option value="available">Available date</option>
-                <option value="festival">Festival</option>
-                <option value="title">Title</option>
-              </select>
-            </label>
-          </div>
-        </details>
-      </section>
+      <nav class="tabs" aria-label="Views">
+        <button type="button" class="tab active" data-view="available" aria-pressed="true">Available <span id="metricAvailable" class="tab-count">0</span></button>
+        <button type="button" class="tab" data-view="all" aria-pressed="false">All films <span id="metricFilms" class="tab-count">0</span></button>
+        <button type="button" class="tab" data-view="events" aria-pressed="false">Finds <span id="metricEvents" class="tab-count">0</span></button>
+        <span class="nav-note">Selected. Tracked. Discovered.</span>
+      </nav>
 
       <main id="content" tabindex="-1">
         <section class="view-header" aria-live="polite">
           <div class="view-heading">
-            <p id="viewKicker">Available</p>
+            <p id="viewKicker" class="view-kicker">Available</p>
             <h2 id="viewTitle">First legal availability</h2>
+            <p id="viewDescription" class="view-description">Festival cinema, ready to watch.</p>
           </div>
           <div class="view-actions">
             <span id="viewMeta" class="view-meta">0 films</span>
@@ -78,6 +42,46 @@
             </button>
           </div>
         </section>
+
+        <section id="browseControls" class="controls" aria-label="Filters">
+          <label class="search-field">
+            Search the collection
+            <input id="searchInput" name="search" type="search" autocomplete="off" placeholder="Title, director, section…" />
+          </label>
+          <details class="filter-drawer" open>
+            <summary>Filters <span aria-hidden="true">⌄</span></summary>
+            <div id="filterFields" class="filter-fields">
+              <label>
+                Festival
+                <select id="festivalFilter" name="festival"></select>
+              </label>
+              <label>
+                Premiere year
+                <select id="yearFilter" name="year"></select>
+              </label>
+              <label id="statusFilterField" hidden>
+                Status
+                <select id="statusFilter" name="status">
+                  <option value="">Any status</option>
+                  <option value="available_found">Available</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </label>
+            </div>
+          </details>
+        </section>
+        <div id="resultsToolbar" class="results-toolbar">
+          <span id="resultsCount" class="results-count" aria-live="polite"></span>
+          <label class="sort-control">
+            Sort by
+            <select id="sortSelect" name="sort">
+              <option value="rating">Rating</option>
+              <option value="available">Available date</option>
+              <option value="festival">Festival</option>
+              <option value="title">Title</option>
+            </select>
+          </label>
+        </div>
         <section id="ytsBatchStatus" class="yts-batch-status" role="status" aria-live="polite" aria-atomic="true" hidden>
           <span id="ytsBatchText"></span>
           <div id="ytsBatchMeter" class="yts-batch-meter" role="progressbar" aria-label="YTS check progress" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
@@ -87,15 +91,16 @@
         <section id="filmGrid" class="film-grid" aria-live="polite"></section>
         <section id="eventList" class="event-list hidden" aria-live="polite"></section>
       </main>
+      <footer class="site-footer"><span>Festival selections. First online availability.</span><span>Good films find their way.</span></footer>
     </div>
 
-    <aside id="detailPanel" class="detail-panel" aria-hidden="true">
+    <aside id="detailPanel" class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true" inert>
       <button id="closeDetail" class="close-button" aria-label="Close detail"></button>
       <div id="detailContent"></div>
     </aside>
     <div id="overlay" class="overlay hidden"></div>
 
     <script src="./build-meta.js?v=20260520-cache"></script>
-    <script src="./app.js?v=20261030-typography-v1"></script>
+    <script src="./app.js?v=20261031-editorial-v1"></script>
   </body>
 </html>

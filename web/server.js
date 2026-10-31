@@ -9,6 +9,7 @@ const types = {
   ".css": "text/css; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".woff2": "font/woff2",
 };
 
 const server = http.createServer((req, res) => {

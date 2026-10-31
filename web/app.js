@@ -9,7 +9,7 @@ const state = {
 };
 
 const validViews = new Set(["available", "all", "events"]);
-const validStatuses = new Set(["", "pending", "available_found", "needs_review"]);
+const validStatuses = new Set(["", "pending", "available_found"]);
 const validSorts = new Set(["rating", "available", "festival", "title"]);
 let isCompactLayout = window.matchMedia("(max-width: 680px)").matches;
 
@@ -22,9 +22,15 @@ const els = {
   festivalFilter: document.querySelector("#festivalFilter"),
   yearFilter: document.querySelector("#yearFilter"),
   statusFilter: document.querySelector("#statusFilter"),
+  statusFilterField: document.querySelector("#statusFilterField"),
+  browseControls: document.querySelector("#browseControls"),
+  filterFields: document.querySelector("#filterFields"),
+  resultsToolbar: document.querySelector("#resultsToolbar"),
+  resultsCount: document.querySelector("#resultsCount"),
   sortSelect: document.querySelector("#sortSelect"),
   viewKicker: document.querySelector("#viewKicker"),
   viewTitle: document.querySelector("#viewTitle"),
+  viewDescription: document.querySelector("#viewDescription"),
   viewMeta: document.querySelector("#viewMeta"),
   ytsBatchCheck: document.querySelector("#ytsBatchCheck"),
   ytsBatchLabel: document.querySelector("#ytsBatchLabel"),
@@ -58,13 +64,11 @@ const formatDateTime = (value) => {
 
 const statusLabel = (status) => {
   if (status === "available_found") return "Available";
-  if (status === "needs_review") return "Needs review";
   return "Pending";
 };
 
 const statusClass = (status) => {
   if (status === "available_found") return "is-available";
-  if (status === "needs_review") return "is-review";
   return "is-pending";
 };
 
@@ -109,17 +113,23 @@ const viewCopy = {
   available: {
     kicker: "Available",
     title: "First legal availability",
+    description: "Festival cinema, ready to watch.",
     meta: "films ready to watch",
+    singularMeta: "film ready to watch",
   },
   all: {
     kicker: "Library",
-    title: "Festival selection",
+    title: "Festival selections",
+    description: "One film. Every festival selection.",
     meta: "tracked films",
+    singularMeta: "tracked film",
   },
   events: {
     kicker: "Events",
     title: "Recent finds",
+    description: "The first time a film becomes available online.",
     meta: "availability events",
+    singularMeta: "availability event",
   },
 };
 
@@ -208,7 +218,7 @@ function writeUrlState() {
   if (state.search) params.set("q", state.search);
   if (state.festival) params.set("festival", state.festival);
   if (state.year) params.set("year", state.year);
-  if (state.status) params.set("status", state.status);
+  if (state.view === "all" && state.status) params.set("status", state.status);
   if (state.sort !== "rating") params.set("sort", state.sort);
   const query = params.toString();
   const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
@@ -284,8 +294,10 @@ function filteredFilms() {
   if (state.year) {
     films = films.filter((film) => filmBrowseYear(film) === state.year);
   }
-  if (state.status) {
-    films = films.filter((film) => film.trackingStatus === state.status);
+  if (state.view === "all" && state.status) {
+    films = films.filter((film) => state.status === "available_found"
+      ? film.trackingStatus === "available_found"
+      : film.trackingStatus !== "available_found");
   }
   if (query) {
     films = films.filter((film) => {
@@ -311,7 +323,9 @@ function renderViewHeader(count) {
   const copy = viewCopy[state.view] || viewCopy.available;
   els.viewKicker.textContent = copy.kicker;
   els.viewTitle.textContent = copy.title;
-  els.viewMeta.textContent = `${count} ${copy.meta}`;
+  els.viewDescription.textContent = copy.description;
+  els.viewMeta.textContent = `${count} ${count === 1 ? copy.singularMeta : copy.meta}`;
+  els.resultsCount.textContent = `${count} ${count === 1 ? "film" : "films"}`;
   renderYtsBatchControls();
 }
 
@@ -342,8 +356,8 @@ function renderFilmGrid() {
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
             <p class="film-subtitle">${escapeHtml(film.director || "Unknown director")}</p>
             <div class="film-facts film-card-facts">
-              <span>${escapeHtml(selectionSummaryLabel(film))}</span>
-              <span>${escapeHtml(primaryRatingLabel(film))}</span>
+              <span class="film-selection">${escapeHtml(selectionSummaryLabel(film))}</span>
+              <span class="film-rating">${escapeHtml(primaryRatingLabel(film))}</span>
             </div>
           </div>
         </button>
@@ -420,8 +434,13 @@ function renderEvents() {
 
 function render() {
   writeUrlState();
+  els.statusFilterField.hidden = state.view !== "all";
+  els.filterFields.classList.toggle("has-status", state.view === "all");
+  els.browseControls.hidden = state.view === "events";
+  els.resultsToolbar.hidden = state.view === "events";
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === state.view);
+    tab.setAttribute("aria-pressed", String(tab.dataset.view === state.view));
   });
   if (state.view === "events") renderEvents();
   else renderFilmGrid();
@@ -814,7 +833,10 @@ async function checkYtsCatalog() {
   }
 }
 
+let detailReturnFocus = null;
+
 function openDetail(film) {
+  if (els.detailPanel.getAttribute("aria-hidden") !== "false") detailReturnFocus = document.activeElement;
   cancelYtsCatalogCheck();
   const events = Array.isArray(film.availability) ? film.availability : [];
   const firstEvent = events[0] || null;
@@ -832,7 +854,7 @@ function openDetail(film) {
     <div class="detail-hero">
       <div class="poster">${posterMarkup(film)}</div>
       <div class="detail-copy">
-        <h2>${escapeHtml(film.title || "Untitled")}</h2>
+        <h2 id="detailTitle">${escapeHtml(film.title || "Untitled")}</h2>
         <p class="detail-director">${escapeHtml(film.director || "Unknown director")}</p>
         <p class="detail-years">${escapeHtml([film.premiereYear ? `Premiere ${film.premiereYear}` : "Premiere year unknown", film.releaseYear ? `Release ${film.releaseYear}` : "Release year unknown"].join(" · "))}</p>
       </div>
@@ -895,8 +917,13 @@ function openDetail(film) {
   `;
   els.detailPanel.classList.add("open");
   els.detailPanel.setAttribute("aria-hidden", "false");
+  els.detailPanel.inert = false;
+  document.querySelector(".shell").inert = true;
+  document.body?.classList.add("detail-open");
+  els.detailPanel.scrollTop = 0;
   els.overlay.classList.remove("hidden");
   els.detailContent.querySelector(".close-button")?.addEventListener("click", closeDetail);
+  els.detailContent.querySelector(".close-button")?.focus?.({ preventScroll: true });
   const validImdbId = ytsCatalogImdbId(film);
   activeYtsCatalog = { imdbId: validImdbId, result: null, saved: false, busy: false, error: false, ...readYtsCatalogResult(validImdbId) };
   renderYtsCatalog();
@@ -909,7 +936,11 @@ function closeDetail() {
   cancelYtsCatalogCheck();
   els.detailPanel.classList.remove("open");
   els.detailPanel.setAttribute("aria-hidden", "true");
+  els.detailPanel.inert = true;
+  document.querySelector(".shell").inert = false;
+  document.body?.classList.remove("detail-open");
   els.overlay.classList.add("hidden");
+  detailReturnFocus?.focus?.({ preventScroll: true });
 }
 
 document.querySelectorAll(".tab").forEach((tab) => {
@@ -947,6 +978,21 @@ els.ytsBatchCheck.addEventListener("click", () => {
 els.closeDetail.addEventListener("click", closeDetail);
 els.overlay.addEventListener("click", closeDetail);
 window.addEventListener("resize", handleResize);
+window.addEventListener("keydown", (event) => {
+  if (els.detailPanel.getAttribute("aria-hidden") !== "false") return;
+  if (event.key === "Escape") closeDetail();
+  if (event.key !== "Tab") return;
+  const focusable = [...els.detailContent.querySelectorAll("button:not(:disabled), a[href]")];
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first?.focus();
+  }
+});
 
 loadData().catch((error) => {
   els.generatedAt.textContent = "Could not load data. Run scripts/Export-TrackerData.ps1 first.";

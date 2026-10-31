@@ -13,7 +13,75 @@ const found = (imdbId = film.imdbId, torrents = []) => ({ status: "ok", data: { 
 const response = (payload, status = 200, headers = {}) => ({ ok: status === 200, status, headers: { get: (name) => headers[name] ?? null }, json: async () => payload });
 const priorResult = () => ({ status: "found", checkedAt: new Date().toISOString(), torrents: [] });
 
-function createApp({ store = new Map(), storageBlocked = false, handler = async () => response(found()), config = {} } = {}) {
+const browseData = {
+  films: [
+    { ...film, trackingStatus: "available_found", lowConfidence: true },
+    { ...otherFilm, trackingStatus: "pending" },
+    { id: "legacy", title: "Legacy review", trackingStatus: "needs_review" },
+  ],
+  events: [{ id: "event-a", film_id: film.id, film_title: film.title, event_date: "2026-10-31" }],
+};
+
+test("obsolete review URLs do not produce a dead-end filter", async () => {
+  const app = createApp({ data: browseData, search: "?view=all&status=needs_review" });
+  await app.ready();
+  assert.equal(app.filteredFilms().length, 3);
+  assert.equal(app.element("#statusFilter").value, "");
+  assert.equal(app.urls.at(-1), "/?view=all");
+});
+
+test("availability filters stay independent of metadata quality", async () => {
+  const app = createApp({ data: browseData, search: "?view=all&status=available_found" });
+  await app.ready();
+  assert.deepEqual(Array.from(app.filteredFilms(), f => f.id), [film.id]);
+  assert.equal(app.element("#statusFilterField").hidden, false);
+  app.setFilters({ status: "pending" });
+  assert.deepEqual(Array.from(app.filteredFilms(), f => f.id).sort(), [otherFilm.id, "legacy"].sort());
+});
+
+test("hidden status filters cannot empty Available and are restored on returning to All films", async () => {
+  const app = createApp({ data: browseData, search: "?view=all&status=pending" });
+  await app.ready();
+  app.setFilters({ view: "available" });
+  assert.deepEqual(Array.from(app.filteredFilms(), f => f.id), [film.id]);
+  assert.equal(app.element("#statusFilterField").hidden, true);
+  assert.equal(app.urls.at(-1), "/");
+  app.setFilters({ view: "all" });
+  assert.equal(app.filteredFilms().length, 2);
+  assert.match(app.urls.at(-1), /status=pending/);
+});
+
+test("Available URLs with incompatible status parameters still show available films", async () => {
+  const app = createApp({ data: browseData, search: "?status=pending" });
+  await app.ready();
+  assert.deepEqual(Array.from(app.filteredFilms(), f => f.id), [film.id]);
+  assert.equal(app.urls.at(-1), "/");
+});
+
+test("Finds hides controls that do not filter events", async () => {
+  const app = createApp({ data: browseData, search: "?view=events" });
+  await app.ready();
+  assert.equal(app.element("#browseControls").hidden, true);
+  assert.equal(app.element("#resultsToolbar").hidden, true);
+  assert.equal(app.element("#statusFilterField").hidden, true);
+  assert.match(app.element("#eventList").innerHTML, /Film A/);
+  app.setFilters({ view: "all" });
+  assert.equal(app.element("#browseControls").hidden, false);
+  assert.equal(app.element("#resultsToolbar").hidden, false);
+});
+
+test("details make the background inert only while open", () => {
+  const app = createApp();
+  app.openDetail(film);
+  assert.equal(app.element(".shell").inert, true);
+  assert.equal(app.element("#detailPanel").inert, false);
+  assert.match(app.detailMarkup(), /id="detailTitle"/);
+  app.closeDetail();
+  assert.equal(app.element(".shell").inert, false);
+  assert.equal(app.element("#detailPanel").inert, true);
+});
+
+function createApp({ store = new Map(), storageBlocked = false, handler = async () => response(found()), config = {}, search = "", data = { films: [], events: [] } } = {}) {
   const elements = new Map();
   const cardSlots = new Map();
   function element(selector) {
@@ -33,19 +101,20 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
     return elements.get(selector);
   }
   const requests = [];
+  const urls = [];
   const context = vm.createContext({
     URL, URLSearchParams, AbortController, Intl, Date, setTimeout, clearTimeout,
     document: { querySelector: element, querySelectorAll: (selector) => cardSlots.get(selector) || [], scripts: [] },
     window: {
-      location: { search: "", pathname: "/", href: "http://localhost/" },
-      history: { replaceState() {} }, matchMedia: () => ({ matches: false }), addEventListener() {},
+      location: { search, pathname: "/", href: "http://localhost/" },
+      history: { replaceState(_state, _title, url) { urls.push(url); } }, matchMedia: () => ({ matches: false }), addEventListener() {},
       localStorage: {
         getItem(key) { if (storageBlocked) throw new Error("Storage blocked"); return store.get(key) ?? null; },
         setItem(key, value) { if (storageBlocked) throw new Error("Storage blocked"); store.set(key, value); },
       },
     },
     fetch: async (url, options) => {
-      if (String(url).startsWith("./data/")) return response({ films: [], events: [] });
+      if (String(url).startsWith("./data/")) return response(data);
       requests.push({ url: new URL(url), options });
       return handler(url, options);
     },
@@ -53,9 +122,9 @@ function createApp({ store = new Map(), storageBlocked = false, handler = async 
   vm.runInContext(source, context);
   context.testConfig = { minIntervalMs: 0, retryDelayMs: 1, hideProgressAfterMs: 10, ...config };
   vm.runInContext("Object.assign(ytsCatalogConfig, testConfig)", context);
-  const api = vm.runInContext("({ openDetail, closeDetail, checkYtsCatalog, startYtsBatch, stopYtsBatch, preferredYtsTorrent })", context);
+  const api = vm.runInContext("({ openDetail, closeDetail, checkYtsCatalog, startYtsBatch, stopYtsBatch, preferredYtsTorrent, filteredFilms })", context);
   return {
-    ...api, store, requests, context,
+    ...api, store, requests, context, element, urls,
     ready: () => new Promise((resolve) => setImmediate(resolve)),
     setFilters(filters) {
       context.testFilters = filters;
