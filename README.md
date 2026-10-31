@@ -17,7 +17,9 @@ Legal availability types:
 
 Legal availability does not count theatrical screenings, festival online tickets, TV broadcasts, or physical media. YTS catalog listings are stored separately and never create legal-availability events.
 
-YTS checks cover only films in the website's Available view with a valid IMDb ID and an active festival selection. Unchecked and not-found films are checked once per Asia/Shanghai calendar day; confirmed listings are retained without routine rechecks. Results, observation dates, and resource metadata live in Canonical Films in Notion. The website displays the exported snapshot and makes no YTS API requests.
+YTS checks cover only films in the website's Available view with a valid IMDb ID and an active festival selection. Every unchecked film receives an initial check regardless of its year. After a successful not-found result, films premiered in the current or previous year are rechecked daily; older films are rechecked every seven Asia/Shanghai calendar days. The recent-year window rolls automatically each January. Premiere year is used first, with legacy film year as a fallback; unknown or future years keep daily checks. Confirmed listings are retained without routine rechecks.
+
+Only successful queries update the last-check timestamp. A failed query leaves its film due for the next daily task, including a failed weekly check; the next successful query starts a new daily or weekly interval. Results, observation dates, and resource metadata live in Canonical Films in Notion. The website displays the exported snapshot and makes no YTS API requests.
 
 Checks use one request at a time with at least three seconds between request starts, deduplicate IMDb IDs, and save each successful result immediately. HTTP 403/429 or three consecutive failures stop the remaining checks without replacing earlier results. A 25-minute run budget defers any unfinished work to a later run; there is no fixed 100-film cap.
 

@@ -31,10 +31,11 @@ $unsafeResource = [pscustomobject]@{ url = "https://yts.gg.example.test/torrent/
 Assert-Yts (@(ConvertTo-YtsTorrentMetadata -Torrents @($unsafeResource)).Count -eq 0) "YTS metadata rejects untrusted resource domains"
 
 function New-YtsTestFilm {
-    param([string]$Id, [string]$Status = "available_found", [string]$YtsStatus = "", [string]$CheckedAt = "")
+    param([string]$Id, [string]$Status = "available_found", [string]$YtsStatus = "", [string]$CheckedAt = "", [object]$PremiereYear = 2026)
     [pscustomobject]@{
         id = $Id; title = $Id; original_title = $Id; canonical_key = "imdb:$Id"; imdb_id = $Id
         notion_page_id = "page-$Id"; tracking_status = $Status
+        premiere_year = $PremiereYear
         yts_status = $YtsStatus; yts_imdb_id = $Id; yts_checked_at = $CheckedAt
         yts_first_found_at = ""; yts_torrents_json = "[]"
     }
@@ -51,6 +52,28 @@ $candidates = @(Select-YtsCatalogCheckFilms -Films @($fresh, $pending, $missing,
 Assert-Yts ($candidates.Count -eq 3) "only available, valid, unchecked or previously missing films are due"
 Assert-Yts (@($candidates | Where-Object { $_.imdb_id -eq "tt1003" }).Count -eq 1) "missing films are due again on the next Shanghai calendar day"
 Assert-Yts (@($candidates | Where-Object { $_.imdb_id -eq "tt1006" }).Count -eq 1) "IMDb identity changes invalidate an old found result"
+
+foreach ($year in @(2025, 2026)) {
+    $recent = New-YtsTestFilm "tt1020" "available_found" "not_found" "2026-10-30T23:59:00+08:00" $year
+    Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($recent) -Now $now).Count -eq 1) "current and previous premiere years receive daily rechecks ($year)"
+}
+$weekly = New-YtsTestFilm "tt1021" "available_found" "not_found" "2026-10-24T23:59:00+08:00" 2023
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($weekly) -Now $now.AddDays(-1)).Count -eq 0) "older films wait until seven Shanghai calendar days have passed"
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($weekly) -Now $now).Count -eq 1) "older films are due exactly on the seventh Shanghai calendar day"
+$newOldFilm = New-YtsTestFilm "tt1022" -PremiereYear 2023
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($newOldFilm) -Now $now).Count -eq 1) "newly eligible old films receive an initial check without waiting a week"
+$yearBoundary = New-YtsTestFilm "tt1023" "available_found" "not_found" "2026-12-30T12:00:00+08:00" 2025
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($yearBoundary) -Now ([datetimeoffset]"2026-12-31T15:59:00Z")).Count -eq 1) "last year's films remain daily until Shanghai New Year"
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($yearBoundary) -Now ([datetimeoffset]"2026-12-31T16:00:00Z")).Count -eq 0) "the recent-year window rolls over at Shanghai midnight"
+$legacyYear = New-YtsTestFilm "tt1024" "available_found" "not_found" "2026-10-30T12:00:00+08:00" $null
+Set-RecordProperty -Record $legacyYear -Name "film_year" -Value 2023
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($legacyYear) -Now $now).Count -eq 0) "legacy film year supplies the premiere-year fallback"
+$legacyYear.premiere_year = 2026
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($legacyYear) -Now $now).Count -eq 1) "explicit premiere year takes precedence over legacy film year"
+foreach ($year in @($null, 2027)) {
+    $uncertainYear = New-YtsTestFilm "tt1025" "available_found" "not_found" "2026-10-30T12:00:00+08:00" $year
+    Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($uncertainYear) -Now $now).Count -eq 1) "unknown or future premiere years retain daily checks"
+}
 
 $eventFilm = New-YtsTestFilm "tt1010" "pending"
 $orphanFilm = New-YtsTestFilm "tt1011"
@@ -93,9 +116,9 @@ Assert-Yts ($roundTrip.torrents.Count -eq 25 -and $roundTrip.status -eq "found")
         function script:Invoke-YtsCatalogRequest {
             param($ImdbId)
             $script:YtsTestCalls.Add($ImdbId)
-            if ($script:YtsTestMode -eq "429") {
+            if ($script:YtsTestMode -in @("403", "429")) {
                 $exception = New-Object System.Exception("Too many requests")
-                $exception | Add-Member -NotePropertyName Response -NotePropertyValue ([pscustomobject]@{ StatusCode = 429 })
+                $exception | Add-Member -NotePropertyName Response -NotePropertyValue ([pscustomobject]@{ StatusCode = [int]$script:YtsTestMode })
                 throw $exception
             }
             if ($script:YtsTestMode -eq "failure") { throw "Network unavailable" }
@@ -123,11 +146,43 @@ Assert-Yts ($roundTrip.torrents.Count -eq 25 -and $roundTrip.status -eq "found")
         $script:YtsTestMode = "failure"
         $failed = Sync-NotionYtsCatalog -Films @($b) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now.AddDays(2)
         Assert-Yts ($failed.failed -eq 1 -and $b.yts_checked_at -eq $old -and $b.yts_status -eq "not_found") "failed checks leave previous Notion state and timestamps unchanged"
+
+        $script:YtsTestMode = "success"
+        $oldFilm = New-YtsTestFilm "tt1500" -PremiereYear 2023
+        $initialOld = Sync-NotionYtsCatalog -Films @($oldFilm) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
+        Assert-Yts ($initialOld.requests -eq 1 -and $oldFilm.yts_status -eq "not_found") "a new old film is checked immediately"
+        $earlyOld = Sync-NotionYtsCatalog -Films @($oldFilm) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now.AddDays(1)
+        Assert-Yts ($earlyOld.requests -eq 0) "an initially missing old film starts weekly checks immediately without a daily grace period"
+        $lastSuccess = $oldFilm.yts_checked_at
+        $script:YtsTestMode = "failure"
+        $weeklyFailure = Sync-NotionYtsCatalog -Films @($oldFilm) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now.AddDays(7)
+        Assert-Yts ($weeklyFailure.requests -eq 1 -and $weeklyFailure.updated -eq 0 -and $oldFilm.yts_checked_at -eq $lastSuccess) "a failed weekly check preserves its last-success date"
+        $script:YtsTestMode = "success"
+        $weeklyRetry = Sync-NotionYtsCatalog -Films @($oldFilm) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now.AddDays(8)
+        Assert-Yts ($weeklyRetry.requests -eq 1 -and $weeklyRetry.not_found -eq 1) "a failed weekly check is retried in the next daily task"
+        $beforeNextWeek = Sync-NotionYtsCatalog -Films @($oldFilm) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now.AddDays(14)
+        Assert-Yts ($beforeNextWeek.requests -eq 0) "weekly cadence resets from the successful retry rather than the failed attempt"
+        $nextWeek = Sync-NotionYtsCatalog -Films @($oldFilm) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now.AddDays(15)
+        Assert-Yts ($nextWeek.requests -eq 1) "the next weekly check follows seven days after the successful retry"
+
+        $staleDuplicate = New-YtsTestFilm "tt1600" "available_found" "not_found" $Now.AddDays(-10).ToString("o") 2023
+        $freshDuplicate = New-YtsTestFilm "tt1600" "available_found" "not_found" $Now.AddDays(-3).ToString("o") 2023
+        $freshDuplicate.notion_page_id = "fresh-duplicate-page"
+        $reuse = Sync-NotionYtsCatalog -Films @($staleDuplicate, $freshDuplicate) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
+        Assert-Yts ($reuse.requests -eq 0 -and $reuse.updated -eq 1 -and $staleDuplicate.yts_checked_at -eq $freshDuplicate.yts_checked_at) "weekly duplicate pages reuse the latest still-fresh shared result"
+        $recentDuplicate = New-YtsTestFilm "tt1600" "available_found" "not_found" $Now.AddDays(-10).ToString("o") 2026
+        $daily = Sync-NotionYtsCatalog -Films @($recentDuplicate, $freshDuplicate) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
+        Assert-Yts ($daily.requests -eq 1) "a weekly cached result cannot suppress a due daily check for the same IMDb identity"
+
+        $script:YtsTestMode = "failure"
         $duplicateFailure = Sync-NotionYtsCatalog -Films @((New-YtsTestFilm "tt1400"), (New-YtsTestFilm "tt1400")) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
         Assert-Yts ($duplicateFailure.requests -eq 1 -and $duplicateFailure.updated -eq 0) "failed duplicate identities are also checked only once per run"
         $script:YtsTestMode = "429"
         $paused = Sync-NotionYtsCatalog -Films @((New-YtsTestFilm "tt1100"), (New-YtsTestFilm "tt1101")) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
         Assert-Yts ($paused.requests -eq 1 -and $paused.stopped -eq "http_429" -and $paused.updated -eq 0) "a YTS rate limit stops all remaining requests in the run"
+        $script:YtsTestMode = "403"
+        $denied = Sync-NotionYtsCatalog -Films @((New-YtsTestFilm "tt1100"), (New-YtsTestFilm "tt1101")) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
+        Assert-Yts ($denied.requests -eq 1 -and $denied.stopped -eq "http_403") "an access rejection also stops all remaining requests in the run"
         $script:YtsTestMode = "failure"
         $paused = Sync-NotionYtsCatalog -Films @((1..5 | ForEach-Object { New-YtsTestFilm "tt120$_" })) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
         Assert-Yts ($paused.requests -eq 3 -and $paused.stopped -eq "consecutive_failures") "three consecutive YTS failures stop the run"

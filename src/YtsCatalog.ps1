@@ -81,18 +81,41 @@ function Get-FilmYtsCatalogResult {
     }
 }
 
+function Get-YtsCatalogRecheckIntervalDays {
+    param([Parameter(Mandatory = $true)][object]$Film, [datetimeoffset]$Now = [datetimeoffset]::UtcNow)
+
+    $currentYear = $Now.ToOffset([timespan]::FromHours(8)).Year
+    $premiereYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "premiere_year")
+    if ($null -eq $premiereYear) { $premiereYear = ConvertTo-OptionalInt (Get-ObjectProperty $Film "film_year") }
+    # Missing or future year metadata should not silently reduce checks.
+    if ($null -ne $premiereYear -and $premiereYear -ge 1000 -and $premiereYear -lt ($currentYear - 1)) { return 7 }
+    return 1
+}
+
+function Test-YtsCatalogResultDue {
+    param(
+        [Parameter(Mandatory = $true)][object]$Film,
+        [AllowNull()][object]$Result,
+        [datetimeoffset]$Now = [datetimeoffset]::UtcNow
+    )
+
+    if ($null -eq $Result) { return $true }
+    if ($Result.status -eq "found") { return $false }
+    # Only successful checks advance this date; an overdue failure stays due next run.
+    $today = $Now.ToOffset([timespan]::FromHours(8)).Date
+    $lastSuccess = ([datetimeoffset]$Result.checkedAt).ToOffset([timespan]::FromHours(8)).Date
+    $interval = Get-YtsCatalogRecheckIntervalDays -Film $Film -Now $Now
+    return $lastSuccess.AddDays($interval) -le $today
+}
+
 function Select-YtsCatalogCheckFilms {
     param([object[]]$Films = @(), [datetimeoffset]$Now = [datetimeoffset]::UtcNow)
 
-    # The production schedule and the user's daily boundary are Asia/Shanghai.
-    $today = $Now.ToOffset([timespan]::FromHours(8)).Date
     return @($Films | Where-Object {
         if ((Get-ObjectProperty $_ "tracking_status") -ne "available_found" -or
             ([string](Get-ObjectProperty $_ "imdb_id" "")).Trim() -notmatch '^tt\d+$') { return $false }
         $result = Get-FilmYtsCatalogResult -Film $_
-        if ($null -eq $result) { return $true }
-        if ($result.status -eq "found") { return $false }
-        return ([datetimeoffset]$result.checkedAt).ToOffset([timespan]::FromHours(8)).Date -lt $today
+        return Test-YtsCatalogResultDue -Film $_ -Result $result -Now $Now
     } | Sort-Object { [string](Get-ObjectProperty $_ "yts_checked_at" "") }, { [string](Get-ObjectProperty $_ "imdb_id" "") })
 }
 
@@ -183,8 +206,10 @@ function Sync-NotionYtsCatalog {
         if ((Get-ObjectProperty $film "tracking_status") -ne "available_found") { continue }
         $result = Get-FilmYtsCatalogResult -Film $film
         if ($null -eq $result) { continue }
-        if ($result.status -eq "found" -or ([datetimeoffset]$result.checkedAt).ToOffset([timespan]::FromHours(8)).Date -ge $Now.ToOffset([timespan]::FromHours(8)).Date) {
-            if (-not $resultsByImdb.ContainsKey($result.imdbId) -or $result.status -eq "found") { $resultsByImdb[$result.imdbId] = $result }
+        $cached = $resultsByImdb[$result.imdbId]
+        if ($null -eq $cached -or $result.status -eq "found" -or
+            ($cached.status -ne "found" -and [datetimeoffset]$result.checkedAt -gt [datetimeoffset]$cached.checkedAt)) {
+            $resultsByImdb[$result.imdbId] = $result
         }
     }
     $clock = [System.Diagnostics.Stopwatch]::StartNew()
@@ -197,6 +222,7 @@ function Sync-NotionYtsCatalog {
         if ([string]::IsNullOrWhiteSpace($pageId)) { throw "YTS sync requires a canonical Notion page ID for every candidate." }
         $imdbId = ([string]$film.imdb_id).Trim().ToLowerInvariant()
         $result = $resultsByImdb[$imdbId]
+        if (Test-YtsCatalogResultDue -Film $film -Result $result -Now $Now) { $result = $null }
         if ($null -eq $result) {
             if ($attemptedImdb.ContainsKey($imdbId)) { continue }
             $attemptedImdb[$imdbId] = $true

@@ -529,7 +529,7 @@ function renderYtsCatalog(film) {
     : !imdbId ? "IMDb ID unavailable" : "Not checked yet";
   meta.textContent = result
     ? `Checked ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(result.checkedAt))}`
-    : film.trackingStatus !== "available_found" ? "Checks start once available to watch." : imdbId ? "Checks run daily." : "";
+    : film.trackingStatus !== "available_found" ? "Checks start once available to watch." : imdbId ? "Awaiting scheduled check." : "";
   meta.hidden = !meta.textContent;
   notice.textContent = result?.status === "found" && !torrent ? "No usable Torrent link in this result." : "";
   notice.hidden = !notice.textContent;

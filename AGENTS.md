@@ -10,7 +10,7 @@ https://platypus-device.github.io/festival-tracker/
 - `src/FestivalTracker.psm1`: main PowerShell module. It contains lineup parsers, metadata enrichment, availability checks, Notion sync, Notion schema management, and repair helpers.
 - `scripts/Invoke-FestivalTracker.ps1`: main tracker entrypoint. It delegates to `Invoke-FestivalTracker` in the module.
 - `scripts/Export-TrackerData.ps1`: exports production Notion state into `web/data/tracker-data.json` for the frontend.
-- `src/YtsCatalog.ps1` and `scripts/Sync-YtsCatalog.ps1`: sync YTS catalog annotations to canonical Notion films. Only Available films with active selections and valid IMDb IDs are checked; not-found films are checked daily, while confirmed listings are retained. The browser displays exported results without querying YTS.
+- `src/YtsCatalog.ps1` and `scripts/Sync-YtsCatalog.ps1`: sync YTS catalog annotations to canonical Notion films. Only Available films with active selections and valid IMDb IDs are checked. Initial checks cover every year; not-found films premiered this year or last year are rechecked daily, older films weekly. Failed checks preserve the last-success date and remain due for the next daily task. Confirmed listings are retained. The browser displays exported results without querying YTS.
 - `scripts/Test-TrackerDataQuality.ps1`: validates exported data and optional Notion state before deployment.
 - `config/festivals.json`: enabled festivals, source URLs, parsers, section scopes, and lineup windows.
 - `config/authorized_sources.json`: allowlist for official/download/torrent availability sources.

@@ -194,6 +194,7 @@ test("unchecked and malformed results remain unchecked without a lookup", () => 
     const app = createApp();
     app.openDetail({ ...film, ytsCatalog });
     assert.equal(app.status(), "Not checked yet");
+    assert.equal(app.meta(), "Awaiting scheduled check.");
     assert.equal(app.download().getAttribute("href"), null);
     assert.equal(app.requests.length, 0);
   }
