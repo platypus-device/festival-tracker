@@ -17,7 +17,6 @@ const els = {
   generatedAt: document.querySelector("#generatedAt"),
   metricFilms: document.querySelector("#metricFilms"),
   metricAvailable: document.querySelector("#metricAvailable"),
-  metricEvents: document.querySelector("#metricEvents"),
   searchInput: document.querySelector("#searchInput"),
   festivalFilter: document.querySelector("#festivalFilter"),
   yearFilter: document.querySelector("#yearFilter"),
@@ -25,13 +24,12 @@ const els = {
   statusFilterField: document.querySelector("#statusFilterField"),
   browseControls: document.querySelector("#browseControls"),
   filterFields: document.querySelector("#filterFields"),
+  filterToggle: document.querySelector("#filterToggle"),
   resultsToolbar: document.querySelector("#resultsToolbar"),
   resultsCount: document.querySelector("#resultsCount"),
   sortSelect: document.querySelector("#sortSelect"),
-  viewKicker: document.querySelector("#viewKicker"),
+  sortControl: document.querySelector(".sort-control"),
   viewTitle: document.querySelector("#viewTitle"),
-  viewDescription: document.querySelector("#viewDescription"),
-  viewMeta: document.querySelector("#viewMeta"),
   ytsBatchCheck: document.querySelector("#ytsBatchCheck"),
   ytsBatchLabel: document.querySelector("#ytsBatchLabel"),
   ytsBatchCount: document.querySelector("#ytsBatchCount"),
@@ -59,7 +57,9 @@ const formatDateTime = (value) => {
   if (!value) return "No export time";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return `Updated ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date)}`;
+  const day = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(date);
+  const time = new Intl.DateTimeFormat("en-GB", { timeStyle: "short", hour12: false }).format(date);
+  return `Updated ${day} · ${time}`;
 };
 
 const statusLabel = (status) => {
@@ -110,27 +110,9 @@ const primaryRatingLabel = (film) => {
 };
 
 const viewCopy = {
-  available: {
-    kicker: "Available",
-    title: "First legal availability",
-    description: "Festival cinema, ready to watch.",
-    meta: "films ready to watch",
-    singularMeta: "film ready to watch",
-  },
-  all: {
-    kicker: "Library",
-    title: "Festival selections",
-    description: "One film. Every festival selection.",
-    meta: "tracked films",
-    singularMeta: "tracked film",
-  },
-  events: {
-    kicker: "Events",
-    title: "Recent finds",
-    description: "The first time a film becomes available online.",
-    meta: "availability events",
-    singularMeta: "availability event",
-  },
+  available: "Available films",
+  all: "All films",
+  events: "Discovery log",
 };
 
 const filmSelections = (film) => (Array.isArray(film.selections) && film.selections.length > 0 ? film.selections : [
@@ -243,7 +225,8 @@ function syncFilterDrawer() {
   const drawer = document.querySelector(".filter-drawer");
   if (!drawer) return;
   isCompactLayout = window.matchMedia("(max-width: 680px)").matches;
-  drawer.open = !isCompactLayout;
+  drawer.classList.toggle("open", !isCompactLayout);
+  els.filterToggle.setAttribute("aria-expanded", String(!isCompactLayout));
 }
 
 function handleResize() {
@@ -256,7 +239,6 @@ function setupFilters() {
   const totals = state.data.totals || {};
   els.metricFilms.textContent = totals.films ?? 0;
   els.metricAvailable.textContent = totals.available ?? 0;
-  els.metricEvents.textContent = totals.events ?? 0;
   els.generatedAt.textContent = formatDateTime(state.data.generatedAt);
 
   const festivals = [
@@ -320,11 +302,8 @@ function filteredFilms() {
 }
 
 function renderViewHeader(count) {
-  const copy = viewCopy[state.view] || viewCopy.available;
-  els.viewKicker.textContent = copy.kicker;
-  els.viewTitle.textContent = copy.title;
-  els.viewDescription.textContent = copy.description;
-  els.viewMeta.textContent = `${count} ${count === 1 ? copy.singularMeta : copy.meta}`;
+  els.viewTitle.textContent = viewCopy[state.view] || viewCopy.available;
+  els.viewTitle.classList.toggle("sr-only", state.view !== "events");
   els.resultsCount.textContent = `${count} ${count === 1 ? "film" : "films"}`;
   renderYtsBatchControls();
 }
@@ -437,7 +416,6 @@ function render() {
   els.statusFilterField.hidden = state.view !== "all";
   els.filterFields.classList.toggle("has-status", state.view === "all");
   els.browseControls.hidden = state.view === "events";
-  els.resultsToolbar.hidden = state.view === "events";
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === state.view);
     tab.setAttribute("aria-pressed", String(tab.dataset.view === state.view));
@@ -472,6 +450,9 @@ function renderYtsBatchControls() {
   const batch = activeYtsBatch;
   const running = Boolean(batch?.running);
   const count = running ? 0 : ytsBatchCandidates().length;
+  els.resultsToolbar.hidden = state.view === "events" && !running;
+  els.resultsCount.hidden = state.view === "events";
+  els.sortControl.hidden = state.view === "events";
   els.ytsBatchCheck.hidden = state.view === "events" && !running;
   els.ytsBatchCheck.disabled = !running && count === 0;
   els.ytsBatchLabel.textContent = running ? "Stop" : "Check YTS";
@@ -959,6 +940,11 @@ document.querySelectorAll(".tab").forEach((tab) => {
 els.searchInput.addEventListener("input", (event) => {
   state.search = event.target.value;
   render();
+});
+els.filterToggle.addEventListener("click", () => {
+  const expanded = els.filterToggle.getAttribute("aria-expanded") !== "true";
+  document.querySelector(".filter-drawer").classList.toggle("open", expanded);
+  els.filterToggle.setAttribute("aria-expanded", String(expanded));
 });
 els.festivalFilter.addEventListener("change", (event) => {
   state.festival = event.target.value;

@@ -63,11 +63,14 @@ test("Finds hides controls that do not filter events", async () => {
   await app.ready();
   assert.equal(app.element("#browseControls").hidden, true);
   assert.equal(app.element("#resultsToolbar").hidden, true);
+  assert.equal(app.element(".sort-control").hidden, true);
+  assert.equal(app.element("#viewTitle").textContent, "Discovery log");
   assert.equal(app.element("#statusFilterField").hidden, true);
   assert.match(app.element("#eventList").innerHTML, /Film A/);
   app.setFilters({ view: "all" });
   assert.equal(app.element("#browseControls").hidden, false);
   assert.equal(app.element("#resultsToolbar").hidden, false);
+  assert.equal(app.element(".sort-control").hidden, false);
 });
 
 test("details make the background inert only while open", () => {
@@ -567,9 +570,12 @@ test("Finds has no idle bulk action but a running batch remains stoppable there"
   const pending = app.startYtsBatch();
   app.setFilters({ view: "events" });
   assert.equal(app.batchButton().hidden, false);
+  assert.equal(app.element("#resultsToolbar").hidden, false);
+  assert.equal(app.element(".sort-control").hidden, true);
   app.stopYtsBatch();
   await pending;
   assert.equal(app.batchButton().hidden, true);
+  assert.equal(app.element("#resultsToolbar").hidden, true);
 });
 
 const torrent = (number, overrides = {}) => ({
