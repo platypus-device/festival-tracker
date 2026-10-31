@@ -842,8 +842,8 @@ function openDetail(film) {
   const firstEvent = events[0] || null;
   const selections = filmSelections(film);
   const links = [
-    safeExternalUrl(film.tmdbUrl) ? `<a href="${escapeHtml(safeExternalUrl(film.tmdbUrl))}" target="_blank" rel="noopener noreferrer">TMDb</a>` : "",
-    safeExternalUrl(film.imdbUrl) ? `<a href="${escapeHtml(safeExternalUrl(film.imdbUrl))}" target="_blank" rel="noopener noreferrer">IMDb</a>` : "",
+    safeExternalUrl(film.tmdbUrl) ? `<a href="${escapeHtml(safeExternalUrl(film.tmdbUrl))}" target="_blank" rel="noopener noreferrer">TMDb <span aria-hidden="true">↗</span></a>` : "",
+    safeExternalUrl(film.imdbUrl) ? `<a href="${escapeHtml(safeExternalUrl(film.imdbUrl))}" target="_blank" rel="noopener noreferrer">IMDb <span aria-hidden="true">↗</span></a>` : "",
   ].filter(Boolean);
 
   els.detailContent.innerHTML = `
@@ -851,22 +851,22 @@ function openDetail(film) {
       <span>${escapeHtml(selectionSummaryLabel(film))}</span>
       <button class="close-button" type="button" aria-label="Close detail"></button>
     </div>
-    <div class="detail-hero">
+    <div class="detail-inner">
+      <div class="detail-hero">
       <div class="poster">${posterMarkup(film)}</div>
       <div class="detail-copy">
         <h2 id="detailTitle">${escapeHtml(film.title || "Untitled")}</h2>
         <p class="detail-director">${escapeHtml(film.director || "Unknown director")}</p>
-        <p class="detail-years">${escapeHtml([film.premiereYear ? `Premiere ${film.premiereYear}` : "Premiere year unknown", film.releaseYear ? `Release ${film.releaseYear}` : "Release year unknown"].join(" · "))}</p>
+        <p class="detail-years"><span>${escapeHtml(film.premiereYear ? `Premiere ${film.premiereYear}` : "Premiere year unknown")}</span><span>${escapeHtml(film.releaseYear ? `Release ${film.releaseYear}` : "Release year unknown")}</span></p>
+      </div>
       </div>
       <div class="detail-support">
-        <div class="film-facts">
-          <span>${escapeHtml(statusLabel(film.trackingStatus))}</span>
-          <span>${escapeHtml(primaryRatingLabel(film))}</span>
-        </div>
-        <div class="link-row">${links.join("")}</div>
+        <span class="detail-status ${escapeHtml(statusClass(film.trackingStatus))}">${escapeHtml(statusLabel(film.trackingStatus))}</span>
+        <span class="detail-rating">${escapeHtml(primaryRatingLabel(film))}</span>
+        <div class="detail-links">${links.join("")}</div>
       </div>
-    </div>
     <div class="detail-body">
+      <section class="detail-section">
       <h3>Festival selections</h3>
       <div class="selection-list">
         ${selections
@@ -874,17 +874,19 @@ function openDetail(film) {
             (selection) => `
               <div class="selection-row">
                 <strong>${escapeHtml(shortFestivalLabel(selection.festival) || "Festival")}</strong>
-                <div class="selection-copy">
-                  <span>${escapeHtml([selection.festivalYear, selection.section].filter(Boolean).join(" - ") || "Official selection")}</span>
-                  ${safeExternalUrl(selection.sourceUrl) ? `<a class="selection-source" href="${escapeHtml(safeExternalUrl(selection.sourceUrl))}" target="_blank" rel="noopener noreferrer" aria-label="Source for ${escapeHtml(selectionLabel(selection))}">Source</a>` : ""}
-                </div>
+                <span class="selection-description">${escapeHtml([selection.festivalYear, selection.section].filter(Boolean).join(" · ") || "Official selection")}</span>
+                ${safeExternalUrl(selection.sourceUrl) ? `<a class="selection-source" href="${escapeHtml(safeExternalUrl(selection.sourceUrl))}" target="_blank" rel="noopener noreferrer" aria-label="Source for ${escapeHtml(selectionLabel(selection))}">Source <span aria-hidden="true">↗</span></a>` : ""}
               </div>
             `
           )
           .join("")}
       </div>
+      </section>
+      <section class="detail-section">
       <h3>Overview</h3>
-      <p>${escapeHtml(film.overview || "No overview yet.")}</p>
+      <p class="detail-overview">${escapeHtml(film.overview || "No overview yet.")}</p>
+      </section>
+      <section class="detail-section">
       <h3>Availability</h3>
       ${
         firstEvent
@@ -897,6 +899,8 @@ function openDetail(film) {
               <p>No legal online availability event recorded yet.</p>
             </div>`
       }
+      </section>
+      <section class="detail-section">
       <h3 id="ytsCatalogHeading">YTS catalog</h3>
       <div class="catalog-check" data-yts-catalog role="region" aria-labelledby="ytsCatalogHeading" aria-busy="false">
         <div class="catalog-check-copy">
@@ -913,6 +917,8 @@ function openDetail(film) {
         </div>
         <p class="catalog-notice" data-yts-notice role="status" aria-live="polite" hidden></p>
       </div>
+      </section>
+    </div>
     </div>
   `;
   els.detailPanel.classList.add("open");

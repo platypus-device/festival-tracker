@@ -707,7 +707,8 @@ test("details keep distinct year meanings, put overview before tools, and attach
     selections: [{ festival: "Cannes", festivalYear: 2025, section: "Competition", sourceUrl: "https://example.org/cannes" }, { festival: "Venice", festivalYear: 2026, section: "Main", sourceUrl: "https://example.org/venice" }],
   });
   const markup = app.detailMarkup();
-  assert.match(markup, /Premiere 2025 · Release 2026/);
+  assert.match(markup, /Premiere 2025/);
+  assert.match(markup, /Release 2026/);
   assert.doesNotMatch(markup, /<h3>Years<\/h3>|Source 1|Source 2/);
   assert.ok(markup.indexOf("<h3>Overview") < markup.indexOf("<h3>Availability"));
   assert.ok(markup.indexOf("<h3>Availability") < markup.indexOf('id="ytsCatalogHeading"'));
