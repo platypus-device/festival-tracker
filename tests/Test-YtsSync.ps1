@@ -100,6 +100,20 @@ $pageProperties["IMDb ID"] = [pscustomobject]@{ type = "rich_text"; rich_text = 
 $notionFilm = ConvertFrom-NotionCanonicalFilmPage -Page ([pscustomobject]@{ id = "test-page"; properties = [pscustomobject]$pageProperties })
 $roundTrip = Get-FilmYtsCatalogResult -Film $notionFilm
 Assert-Yts ($roundTrip.torrents.Count -eq 25 -and $roundTrip.status -eq "found") "Notion YTS state round-trips through canonical film import"
+$datePage = [pscustomobject]@{ properties = [pscustomobject]@{
+    "YTS First Found At" = [pscustomobject]@{ type = "date"; date = [pscustomobject]@{ start = [datetime]::SpecifyKind([datetime]"2026-10-31T13:12:00", [DateTimeKind]::Utc) } }
+} }
+$isoDate = Get-NotionTextProperty -Page $datePage -Name "YTS First Found At"
+Assert-Yts ($isoDate -eq "2026-10-31T13:12:00.0000000Z") "typed Notion dates remain ISO timestamps instead of locale-formatted strings"
+$datePage.properties.'YTS First Found At'.date.start = [datetimeoffset]"2026-10-31T21:12:00+08:00"
+$isoOffsetDate = Get-NotionTextProperty -Page $datePage -Name "YTS First Found At"
+Assert-Yts ($isoOffsetDate -eq "2026-10-31T21:12:00.0000000+08:00") "typed Notion dates preserve explicit offsets"
+$dateFilm = New-YtsTestFilm "tt1700" "pending" "found" "2026-10-31T13:12:00Z"
+$dateFilm.yts_first_found_at = $isoOffsetDate
+$dateResult = Get-FilmYtsCatalogResult -Film $dateFilm
+Assert-Yts ($dateResult.firstFoundAt -eq "2026-10-31T13:12:00.0000000+00:00") "shared YTS discovery timestamps normalize to UTC before reuse or export"
+$dateProperties = ConvertTo-NotionYtsCatalogProperties -Result $dateResult
+Assert-Yts ($dateProperties.'YTS First Found At'.date.start -eq $dateResult.firstFoundAt) "reused YTS discovery dates are valid ISO values for Notion writes"
 
 & (Get-Module FestivalTracker) {
     param($Now, $FoundPayload, $MissingPayload, $NewFilm, $Assert)

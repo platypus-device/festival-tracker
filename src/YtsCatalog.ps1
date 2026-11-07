@@ -72,11 +72,13 @@ function Get-FilmYtsCatalogResult {
         $torrents = @(ConvertTo-YtsTorrentMetadata -Torrents @($resources))
     }
     catch { } # A damaged resource field must not hide a confirmed catalog result.
+    $firstFound = [datetimeoffset]::MinValue
+    $hasFirstFound = [datetimeoffset]::TryParse([string](Get-ObjectProperty $Film "yts_first_found_at" ""), [ref]$firstFound)
     return [pscustomobject]@{
         imdbId = $imdbId
         status = $status
         checkedAt = $date.ToUniversalTime().ToString("o")
-        firstFoundAt = [string](Get-ObjectProperty $Film "yts_first_found_at" "")
+        firstFoundAt = if ($hasFirstFound) { $firstFound.ToUniversalTime().ToString("o") } else { "" }
         torrents = @($torrents)
     }
 }

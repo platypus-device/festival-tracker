@@ -3154,7 +3154,15 @@ function Get-NotionTextProperty {
         "url" { return [string]$property.url }
         "select" { return [string](Get-ObjectProperty $property.select "name" "") }
         "number" { return [string]$property.number }
-        "date" { return [string](Get-ObjectProperty $property.date "start" "") }
+        "date" {
+            $start = Get-ObjectProperty $property.date "start" ""
+            # Newer PowerShell JSON readers materialize ISO timestamps as DateTime values.
+            # Casting them to string would send locale-formatted dates back to Notion.
+            if ($start -is [datetime] -or $start -is [datetimeoffset]) {
+                return $start.ToString("o", [System.Globalization.CultureInfo]::InvariantCulture)
+            }
+            return [string]$start
+        }
         default { return "" }
     }
 }
