@@ -92,7 +92,7 @@ Source Serif 4 与 DM Sans 随网站托管，采用 SIL Open Font License，避�
 
 ## YTS 标签
 
-- 海报只保留一个收录状态标签，复用原 Available 的右上角位置与样式，距边缘为 8px。
+- YTS listed 视图不显示卡片状态标签，避免与视图含义重复；All films 海报保留一个收录状态标签，复用原 Available 的右上角位置与样式，距边缘为 8px。
 - 共用同一字体、11px 字号、500 字重、1 倍行高、20px 高度、4px 圆角、7px 左右内边距，宽度随文字自然变化。
 - 已收录使用原 Available 的不透明绿色语义底色与高对比文字，仅显示 `YTS`；未找到、未检查使用原中性样式，显示 Not found、Not checked。
 - 已收录只依据 Notion 导出且与影片 IMDb ID 匹配的 `found` 结果，不依赖历史合法上线状态或浏览器缓存。

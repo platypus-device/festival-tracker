@@ -315,7 +315,7 @@ function renderFilmGrid() {
         <button class="film-card" data-film-id="${escapeHtml(film.id)}">
           <div class="poster">
             ${posterMarkup(film)}
-            <span class="status-pill ${escapeHtml(statusClass(film))}"${filmCatalogStatus(film) === "found" ? ' title="Listed on YTS"' : ""}>${escapeHtml(statusLabel(film))}</span>
+            ${state.view === "all" ? `<span class="status-pill ${escapeHtml(statusClass(film))}"${filmCatalogStatus(film) === "found" ? ' title="Listed on YTS"' : ""}>${escapeHtml(statusLabel(film))}</span>` : ""}
           </div>
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>

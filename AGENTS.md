@@ -64,7 +64,7 @@ Optional:
 ## GitHub Actions And Deployment
 Deployment is handled by `.github/workflows/tracker.yml`.
 
-- Push to `main`: repair year metadata in Notion, export web data from Notion, run quality checks, prepare `web/build-meta.*`, and deploy `web/` to GitHub Pages.
+- Push to `main`: repair year metadata in Notion, check due YTS listings (without rechecking confirmed listings or fresh successful results), export web data from Notion, run quality checks, prepare `web/build-meta.*`, and deploy `web/` to GitHub Pages.
 - Daily scheduled run: refreshes `Metadata`, then checks due YTS listings for all active films.
 - Weekly scheduled run: runs `Lineups` with festival windows respected, then `Metadata` and YTS checks.
 - Manual workflow dispatch: supports `Metadata`, `Lineups`, or `All`.

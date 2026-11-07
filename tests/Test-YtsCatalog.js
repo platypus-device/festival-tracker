@@ -130,9 +130,10 @@ function createApp({ store = new Map(), storageBlocked = false, search = "", dat
       context.testFilters = filters;
       vm.runInContext("Object.assign(state, testFilters); render();", context);
     },
-    gridMarkup(films) {
+    gridMarkup(films, view = "all") {
       context.gridFilms = films;
-      vm.runInContext('state.data = { films: gridFilms, events: [] }; state.view = "all"; renderFilmGrid();', context);
+      context.gridView = view;
+      vm.runInContext('state.data = { films: gridFilms, events: [] }; state.view = gridView; renderFilmGrid();', context);
       return element("#filmGrid").innerHTML;
     },
     status: () => element("[data-yts-status]").textContent,
@@ -279,14 +280,19 @@ test("details keep distinct year meanings, put overview before tools, and attach
   assert.match(markup, /href="https:\/\/example.org\/venice"[^>]*aria-label="Source for Venice - 2026 - Main"/);
 });
 
-test("cards retain the original rating and festival formats, with one green YTS badge and no detection date", () => {
+test("cards retain original formats and only All films shows the green YTS badge", () => {
   const app = createApp();
-  const markup = app.gridMarkup([{ ...film, imdbRating: 7.8, ytsCatalog: catalog(), selections: [{ festival: "Cannes", festivalYear: 2026, section: "Competition" }] }]);
+  const films = [{ ...film, imdbRating: 7.8, ytsCatalog: catalog(), selections: [{ festival: "Cannes", festivalYear: 2026, section: "Competition" }] }];
+  const markup = app.gridMarkup(films);
   assert.match(markup, /class="film-rating">IMDb 7\.8<\/span>/);
   assert.match(markup, /class="film-selection">Cannes<\/span>/);
   assert.equal((markup.match(/status-pill/g) || []).length, 1);
   assert.match(markup, /status-pill is-available/);
   assert.doesNotMatch(markup, /First detected|\/ 10|is-yts|Available<\/span>/);
+  const ytsMarkup = app.gridMarkup(films, "yts");
+  assert.doesNotMatch(ytsMarkup, /status-pill|Listed on YTS|First detected/);
+  assert.match(ytsMarkup, /class="film-rating">IMDb 7\.8<\/span>/);
+  assert.match(app.gridMarkup(films, "all"), /status-pill is-available/);
 });
 
 test("discovery log ignores historical legal availability events and mismatched IMDb identities", async () => {
