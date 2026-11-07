@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("Lineups", "Availability", "All")]
+    [ValidateSet("Lineups", "Metadata", "Availability", "All")]
     [string]$Mode = "All",
 
     [string]$ConfigPath = (Join-Path (Get-Location) "config/festivals.json"),

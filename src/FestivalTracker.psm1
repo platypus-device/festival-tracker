@@ -689,10 +689,6 @@ function Test-ShouldRefreshOmdbRating {
         return $true
     }
 
-    if ([string](Get-ObjectProperty $Film "tracking_status" "pending") -eq "available_found") {
-        return $false
-    }
-
     if ([string]::IsNullOrWhiteSpace($checkedAtText)) {
         return $true
     }
@@ -2431,10 +2427,6 @@ function Update-FilmMatches {
                 continue
             }
         }
-        if ((Get-ObjectProperty $film "tracking_status" "pending") -eq "available_found") {
-            continue
-        }
-
         try {
             $match = Get-TmdbMovieMatch -Film $film
             if ($null -ne $match) {
@@ -3564,7 +3556,7 @@ function ConvertTo-NotionSelectionProperties {
 }
 
 function ConvertTo-NotionCanonicalFilmProperties {
-    param([Parameter(Mandatory = $true)][object]$Film)
+    param([Parameter(Mandatory = $true)][object]$Film, [switch]$CatalogOnly)
 
     Repair-RecordTextFields -Record $Film | Out-Null
     $trackingStatus = [string](Get-ObjectProperty $Film "tracking_status" "pending")
@@ -3616,6 +3608,11 @@ function ConvertTo-NotionCanonicalFilmProperties {
         }
     }
 
+    if ($CatalogOnly) {
+        foreach ($name in @("Tracking Status", "First Available Date", "Last Checked", "Authorized Source URLs")) {
+            $properties.Remove($name)
+        }
+    }
     return $properties
 }
 
@@ -3842,10 +3839,11 @@ function Sync-NotionCanonicalFilm {
     param(
         [Parameter(Mandatory = $true)][object]$Film,
         [Parameter(Mandatory = $true)][string]$DatabaseId,
-        [object]$Context = $null
+        [object]$Context = $null,
+        [switch]$CatalogOnly
     )
 
-    $properties = ConvertTo-NotionCanonicalFilmProperties -Film $Film
+    $properties = ConvertTo-NotionCanonicalFilmProperties -Film $Film -CatalogOnly:$CatalogOnly
     $page = $null
     if (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $Film "notion_page_id" ""))) {
         $pageId = [string](Get-ObjectProperty $Film "notion_page_id" "")
@@ -3936,10 +3934,14 @@ function Sync-NotionFilm {
         [Parameter(Mandatory = $true)][object]$Film,
         [Parameter(Mandatory = $true)][string]$DatabaseId,
         [object]$Context = $null,
-        [switch]$SelectionOnly
+        [switch]$SelectionOnly,
+        [switch]$CatalogOnly
     )
 
     $properties = if ($SelectionOnly) { ConvertTo-NotionSelectionProperties -Film $Film } else { ConvertTo-NotionFilmProperties -Film $Film }
+    if ($CatalogOnly -and -not $SelectionOnly) {
+        foreach ($name in @("Tracking Status", "First Available Date", "Last Checked", "Authorized Source URLs")) { $properties.Remove($name) }
+    }
     $page = $null
     if (-not [string]::IsNullOrWhiteSpace($Film.notion_page_id)) {
         $pageId = [string]$Film.notion_page_id
@@ -4575,7 +4577,8 @@ function Ensure-NotionThreeTableSchema {
     param(
         [Parameter(Mandatory = $true)][string]$FilmsDatabaseId,
         [Parameter(Mandatory = $true)][string]$SelectionsDatabaseId,
-        [Parameter(Mandatory = $true)][string]$EventsDatabaseId
+        [string]$EventsDatabaseId,
+        [switch]$CatalogOnly
     )
 
     $filmProperties = @{
@@ -4608,6 +4611,9 @@ function Ensure-NotionThreeTableSchema {
         "Last Checked" = @{ date = @{} }
         "Needs Review" = @{ checkbox = @{} }
     }
+    if ($CatalogOnly) {
+        foreach ($name in @("Tracking Status", "First Available Date", "Last Checked", "Authorized Source URLs")) { $filmProperties.Remove($name) }
+    }
     Update-NotionDatabaseSchemaProperties -DatabaseId $FilmsDatabaseId -DatabaseLabel "Films" -DesiredProperties $filmProperties | Out-Null
 
     $selectionProperties = @{
@@ -4627,6 +4633,8 @@ function Ensure-NotionThreeTableSchema {
     }
     Update-NotionDatabaseSchemaProperties -DatabaseId $SelectionsDatabaseId -DatabaseLabel "Selections" -DesiredProperties $selectionProperties | Out-Null
 
+    if ($CatalogOnly) { return }
+    if ([string]::IsNullOrWhiteSpace($EventsDatabaseId)) { throw "Set NOTION_EVENTS_DATABASE_ID for legacy availability schema management." }
     $eventProperties = @{
         "Film" = @{
             relation = @{
@@ -4674,7 +4682,8 @@ function Sync-NotionState {
         [object[]]$Films = @(),
         [object[]]$NewEvents = @(),
         [object[]]$ExistingEvents = @(),
-        [switch]$EnsureNotionSchema
+        [switch]$EnsureNotionSchema,
+        [switch]$CatalogOnly
     )
 
     $canonicalFilmsDb = Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"
@@ -4684,7 +4693,8 @@ function Sync-NotionState {
     if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
         $selectionsDb = $filmsDb
     }
-    if ([string]::IsNullOrWhiteSpace($eventsDb)) {
+    if ($CatalogOnly) { $NewEvents = @(); $ExistingEvents = @(); $eventsDb = "" }
+    if (-not $CatalogOnly -and [string]::IsNullOrWhiteSpace($eventsDb)) {
         throw "Set NOTION_EVENTS_DATABASE_ID before syncing Notion."
     }
 
@@ -4701,7 +4711,7 @@ function Sync-NotionState {
         })
 
         if ($EnsureNotionSchema) {
-            Ensure-NotionThreeTableSchema -FilmsDatabaseId $canonicalFilmsDb -SelectionsDatabaseId $selectionsDb -EventsDatabaseId $eventsDb
+            Ensure-NotionThreeTableSchema -FilmsDatabaseId $canonicalFilmsDb -SelectionsDatabaseId $selectionsDb -EventsDatabaseId $eventsDb -CatalogOnly:$CatalogOnly
         }
 
         $contextSelectionsDb = if (@($selectionItems).Count -gt 0) { $selectionsDb } else { "" }
@@ -4722,7 +4732,7 @@ function Sync-NotionState {
             if ([string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $film "canonical_key" ""))) {
                 Set-RecordProperty -Record $film -Name "canonical_key" -Value (Get-CanonicalFilmKey -Film $film)
             }
-            $synced = Sync-NotionCanonicalFilm -Film $film -DatabaseId $canonicalFilmsDb -Context $syncContext
+            $synced = Sync-NotionCanonicalFilm -Film $film -DatabaseId $canonicalFilmsDb -Context $syncContext -CatalogOnly:$CatalogOnly
             $syncedCanonicalFilms.Add($synced)
             $key = [string](Get-ObjectProperty $synced "canonical_key" "")
             $pageId = [string](Get-ObjectProperty $synced "notion_page_id" "")
@@ -4787,14 +4797,14 @@ function Sync-NotionState {
 
     if ($EnsureNotionSchema) {
         Ensure-NotionFilmMetadataProperties -DatabaseId $filmsDb
-        Ensure-NotionEventRelationProperty -EventsDatabaseId $eventsDb -FilmsDatabaseId $filmsDb
+        if (-not $CatalogOnly) { Ensure-NotionEventRelationProperty -EventsDatabaseId $eventsDb -FilmsDatabaseId $filmsDb }
     }
 
     $syncContext = New-NotionSyncContext -SelectionsDatabaseId $filmsDb -EventsDatabaseId $eventsDb
 
     $syncedFilms = New-Object System.Collections.Generic.List[object]
     foreach ($film in @($Films)) {
-        $syncedFilms.Add((Sync-NotionFilm -Film $film -DatabaseId $filmsDb -Context $syncContext))
+        $syncedFilms.Add((Sync-NotionFilm -Film $film -DatabaseId $filmsDb -Context $syncContext -CatalogOnly:$CatalogOnly))
     }
 
     $filmPageIdByTrackerId = @{}
@@ -5170,7 +5180,7 @@ function Get-LineupPollutionRepairPlan {
 
 function Select-NotionSyncFilms {
     param(
-        [ValidateSet("Lineups", "Availability", "All")][string]$Mode,
+        [ValidateSet("Lineups", "Metadata", "Availability", "All")][string]$Mode,
         [object[]]$Films = @(),
         [object[]]$LineupRecords = @()
     )
@@ -5183,7 +5193,7 @@ function Select-NotionSyncFilms {
 
 function Invoke-FestivalTracker {
     param(
-        [ValidateSet("Lineups", "Availability", "All")][string]$Mode = "All",
+        [ValidateSet("Lineups", "Metadata", "Availability", "All")][string]$Mode = "All",
         [string]$ConfigPath = (Join-Path (Get-Location) "config/festivals.json"),
         [string]$AuthorizedSourcesPath = (Join-Path (Get-Location) "config/authorized_sources.json"),
         [string]$StateDir = (Join-Path (Get-Location) ".tracker"),
@@ -5195,26 +5205,23 @@ function Invoke-FestivalTracker {
     )
 
     $filmsPath = Join-Path $StateDir "films.json"
-    $eventsPath = Join-Path $StateDir "events.json"
     $config = Read-JsonFile -Path $ConfigPath
-    $authorizedConfig = Read-JsonFile -Path $AuthorizedSourcesPath
     if ($null -eq $config) {
         throw "Missing tracker config: $ConfigPath"
     }
-    if ($null -eq $authorizedConfig) {
-        throw "Missing authorized sources config: $AuthorizedSourcesPath"
-    }
+    # Retain the old mode name as a compatibility alias; no mode checks legal availability.
+    if ($Mode -eq "Availability") { $Mode = "Metadata" }
 
     $films = @()
     $importedFilmsFromNotion = $false
     $useThreeTableNotion = $UseNotion -and -not [string]::IsNullOrWhiteSpace((Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"))
     if ($UseNotion) {
-        if ($useThreeTableNotion -and ($Mode -eq "Availability")) {
+        if ($useThreeTableNotion -and ($Mode -eq "Metadata")) {
             $canonicalFilmsDb = Get-EnvValue "NOTION_CANONICAL_FILMS_DATABASE_ID"
             $selectionsDb = Get-EnvValue "NOTION_SELECTIONS_DATABASE_ID"
             try {
                 if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
-                    throw "Set NOTION_SELECTIONS_DATABASE_ID before running Availability in the three-table Notion model."
+                    throw "Set NOTION_SELECTIONS_DATABASE_ID before refreshing canonical film metadata."
                 }
                 $canonicalFilms = @(Import-NotionCanonicalFilms -DatabaseId $canonicalFilmsDb)
                 $activeSelections = @(Import-NotionSelections -DatabaseId $selectionsDb)
@@ -5244,6 +5251,7 @@ function Invoke-FestivalTracker {
         }
     }
 
+    if ($UseNotion -and -not $importedFilmsFromNotion) { throw "Notion import failed; refusing to sync production from local fallback state." }
     if (-not $importedFilmsFromNotion) {
         $localFilms = @(Read-JsonFile -Path $filmsPath -Default @())
         $films = @(Merge-FilmRecords -Existing $films -Incoming $localFilms)
@@ -5258,48 +5266,27 @@ function Invoke-FestivalTracker {
 
     $newEvents = @()
     $events = @()
-    if ($UseNotion) {
-        $eventsDb = Get-EnvValue "NOTION_EVENTS_DATABASE_ID"
-        if (-not [string]::IsNullOrWhiteSpace($eventsDb)) {
-            try {
-                $events = @(Import-NotionEvents -DatabaseId $eventsDb)
-                Write-Host "Imported $($events.Count) availability events from Notion."
-            }
-            catch {
-                Write-Warning "Could not import availability events from Notion: $($_.Exception.Message)"
-            }
-        }
-    }
-    else {
-        $events = @(Read-JsonFile -Path $eventsPath -Default @())
-    }
-
-    if ($Mode -eq "Availability" -or $Mode -eq "All") {
+    if ($Mode -eq "Metadata" -or $Mode -eq "All") {
         if (@($films).Count -gt 0) {
             $films = @(Update-FilmMatches -Films $films)
             $films = @(Update-FilmImdbDatasetRatings -Films $films -StateDir $StateDir)
             $films = @(Update-FilmOmdbRatings -Films $films -MaxUpdates $OmdbMaxUpdates)
-            $availabilityResult = Add-FirstAvailabilityEvents -Films $films -ExistingEvents $events -AuthorizedConfig $authorizedConfig
-            $films = @($availabilityResult.films)
-            $newEvents = @($availabilityResult.new_events)
-            $events = @($availabilityResult.all_events)
-            Write-Host "Availability sync created $($newEvents.Count) first-availability events."
+            Write-Host "Refreshed film metadata and ratings."
         }
         else {
-            Write-Host "Availability sync skipped; no films are available to check."
+            Write-Host "Metadata refresh skipped; no films to update."
         }
     }
 
     if (-not $DryRun) {
         Write-JsonFile -Path $filmsPath -Value $films
-        Write-JsonFile -Path $eventsPath -Value $events
         if ($UseNotion) {
             $notionSyncFilms = @(Select-NotionSyncFilms -Mode $Mode -Films $films -LineupRecords $lineupRecords)
             if ($Mode -eq "Lineups" -and $notionSyncFilms.Count -eq 0) {
                 Write-Host "Notion sync skipped; lineup sync produced no records."
             }
             else {
-                Sync-NotionState -Films $notionSyncFilms -NewEvents $newEvents -ExistingEvents $events -EnsureNotionSchema:$EnsureNotionSchema | Out-Null
+                Sync-NotionState -Films $notionSyncFilms -EnsureNotionSchema:$EnsureNotionSchema -CatalogOnly | Out-Null
             }
         }
     }

@@ -1,7 +1,8 @@
 param(
     [string]$OutputPath = (Join-Path (Get-Location) "web\data\tracker-data.json"),
     [switch]$UseNotion,
-    [string]$StateDir = (Join-Path (Get-Location) ".tracker")
+    [string]$StateDir = (Join-Path (Get-Location) ".tracker"),
+    [switch]$IncludeLegacyAvailability
 )
 
 $ErrorActionPreference = "Stop"
@@ -568,11 +569,13 @@ if ($UseNotion) {
     if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
         $selectionsDb = $filmsDb
     }
-    if ([string]::IsNullOrWhiteSpace($eventsDb)) {
+    if ($IncludeLegacyAvailability -and [string]::IsNullOrWhiteSpace($eventsDb)) {
         throw "Set NOTION_EVENTS_DATABASE_ID before exporting from Notion."
     }
 
-    $events = @(Get-NotionDatabasePages -DatabaseId $eventsDb | ForEach-Object { ConvertTo-EventRecord -Page $_ })
+    if ($IncludeLegacyAvailability) {
+        $events = @(Get-NotionDatabasePages -DatabaseId $eventsDb | ForEach-Object { ConvertTo-EventRecord -Page $_ })
+    }
     if (-not [string]::IsNullOrWhiteSpace($canonicalFilmsDb)) {
         if ([string]::IsNullOrWhiteSpace($selectionsDb)) {
             throw "Set NOTION_SELECTIONS_DATABASE_ID or NOTION_FILMS_DATABASE_ID before exporting selections from Notion."
@@ -615,8 +618,8 @@ else {
         $films += $film
     }
     $events = @()
-    foreach ($event in (Read-JsonFile -Path $eventsPath -Default @())) {
-        $events += $event
+    if ($IncludeLegacyAvailability) {
+        foreach ($event in (Read-JsonFile -Path $eventsPath -Default @())) { $events += $event }
     }
 }
 
@@ -632,7 +635,7 @@ if ($usingCanonicalFilms) {
         Add-Member -InputObject $film -NotePropertyName "selectionLabels" -NotePropertyValue @($film.selections | ForEach-Object { Get-SelectionLabel -Selection $_ } | Where-Object { $_ }) -Force
     }
 }
-Add-OrphanAvailabilityEventsToWebFilms -Films $webFilms -Events $events
+if ($IncludeLegacyAvailability) { Add-OrphanAvailabilityEventsToWebFilms -Films $webFilms -Events $events }
 $allSelections = @(
     $webFilms |
         ForEach-Object { @($_.selections) }
@@ -762,10 +765,47 @@ $payload = [pscustomobject]@{
     events = @($events)
 }
 
+if (-not $IncludeLegacyAvailability) {
+    # Historical availability stays in Notion; the public catalog only describes YTS observations.
+    $discoveries = @(
+        foreach ($film in $webFilms) {
+            $catalog = Get-ObjectProperty $film "ytsCatalog"
+            $imdbId = ([string](Get-ObjectProperty $film "imdbId" "")).Trim().ToLowerInvariant()
+            if ($null -ne $catalog -and $catalog.imdbId -cne $imdbId) {
+                $film.ytsCatalog = $null
+                continue
+            }
+            if ($null -eq $catalog -or $catalog.status -ne "found") { continue }
+            $firstFound = [datetimeoffset]::MinValue
+            if (-not [datetimeoffset]::TryParse([string]$catalog.firstFoundAt, [ref]$firstFound)) { continue }
+            [pscustomobject]@{
+                id = "yts:$($film.id):$imdbId"
+                film_id = $film.id
+                film_title = $film.title
+                director = $film.director
+                festival = $film.selectionSummary
+                imdb_id = $imdbId
+                first_detected_at = $firstFound.ToUniversalTime().ToString("o")
+                event_date = $firstFound.ToOffset([timespan]::FromHours(8)).ToString("yyyy-MM-dd")
+            }
+        }
+    )
+    foreach ($film in $webFilms) {
+        foreach ($name in @("trackingStatus", "firstAvailableDate", "availability")) { $film.PSObject.Properties.Remove($name) }
+    }
+    $payload.PSObject.Properties.Remove("events")
+    foreach ($name in @("available", "events")) { $payload.totals.PSObject.Properties.Remove($name) }
+    foreach ($name in @("pendingWithAvailability", "trackingNeedsReview")) { $payload.diagnostics.PSObject.Properties.Remove($name) }
+    Add-Member -InputObject $payload -NotePropertyName "catalogMode" -NotePropertyValue "yts"
+    Add-Member -InputObject $payload -NotePropertyName "discoveries" -NotePropertyValue @($discoveries | Sort-Object first_detected_at -Descending)
+    Add-Member -InputObject $payload.totals -NotePropertyName "ytsListed" -NotePropertyValue @($webFilms | Where-Object { $null -ne $_.ytsCatalog -and $_.ytsCatalog.status -eq "found" }).Count
+    Add-Member -InputObject $payload.totals -NotePropertyName "discoveries" -NotePropertyValue $discoveries.Count
+}
+
 $outputDirectory = Split-Path -Parent $OutputPath
 if (-not (Test-Path $outputDirectory)) {
     New-Item -ItemType Directory -Path $outputDirectory | Out-Null
 }
 
 $payload | ConvertTo-Json -Depth 20 | Set-Content -Path $OutputPath -Encoding UTF8
-Write-Host "Exported $(@($webFilms).Count) films and $(@($events).Count) events to $OutputPath"
+Write-Host "Exported $(@($webFilms).Count) films to $OutputPath"

@@ -1,19 +1,19 @@
 # Festival Tracker Agent Guide
 
 ## Purpose
-Festival Tracker tracks films selected by major festivals and awards, enriches film metadata, records the first time each film becomes legally available online, and publishes a static browsing UI through GitHub Pages.
+Festival Tracker tracks films selected by major festivals and awards, enriches metadata and ratings, records their YTS catalog listings and first observation dates, and publishes a static browsing UI through GitHub Pages.
 
 Live site:
 https://platypus-device.github.io/festival-tracker/
 
 ## Architecture
-- `src/FestivalTracker.psm1`: main PowerShell module. It contains lineup parsers, metadata enrichment, availability checks, Notion sync, Notion schema management, and repair helpers.
+- `src/FestivalTracker.psm1`: main PowerShell module. It contains lineup parsers, metadata enrichment, Notion sync, schema management, and historical repair helpers. Normal runs do not check legal providers or create availability events.
 - `scripts/Invoke-FestivalTracker.ps1`: main tracker entrypoint. It delegates to `Invoke-FestivalTracker` in the module.
 - `scripts/Export-TrackerData.ps1`: exports production Notion state into `web/data/tracker-data.json` for the frontend.
-- `src/YtsCatalog.ps1` and `scripts/Sync-YtsCatalog.ps1`: sync YTS catalog annotations to canonical Notion films. Only Available films with active selections and valid IMDb IDs are checked. Initial checks cover every year; not-found films premiered this year or last year are rechecked daily, older films weekly. Failed checks preserve the last-success date and remain due for the next daily task. Confirmed listings are retained. The browser displays exported results without querying YTS.
+- `src/YtsCatalog.ps1` and `scripts/Sync-YtsCatalog.ps1`: check all canonical films with active selections and valid IMDb IDs, independently of historical availability status. Initial checks cover every year; not-found films premiered this year or last year are rechecked daily, older films weekly. Failed checks preserve the last-success date and remain due for the next daily task. Confirmed listings are retained. The browser displays exported results without querying YTS.
 - `scripts/Test-TrackerDataQuality.ps1`: validates exported data and optional Notion state before deployment.
 - `config/festivals.json`: enabled festivals, source URLs, parsers, section scopes, and lineup windows.
-- `config/authorized_sources.json`: allowlist for official/download/torrent availability sources.
+- `config/authorized_sources.json`: historical legal-source allowlist, used only by explicit legacy helpers and regression tests.
 - `web/`: static frontend deployed as the GitHub Pages artifact.
 - `web/data/tracker-data.json`: generated frontend data consumed by `web/app.js`.
 - `.github/workflows/tracker.yml`: GitHub Actions sync, export, quality check, and Pages deployment.
@@ -33,41 +33,41 @@ config/festivals.json
 
 ## Tracker Modes
 - `Lineups`: fetches configured festival sources, parses lineup records, and merges them into the current film state.
-- `Availability`: refreshes metadata and ratings, checks legal availability providers/sources, and creates first-availability events.
-- `All`: runs lineup sync and availability sync in one pass.
+- `Metadata`: refreshes metadata and ratings without reading or writing historical Events.
+- `Availability`: compatibility alias for `Metadata`; it no longer checks legal providers.
+- `All`: runs lineup sync and metadata refresh in one pass. The workflow then checks due YTS listings using `scripts/Sync-YtsCatalog.ps1`.
 
-Use `-UseNotion` for normal project work. Production state lives in Notion. Without `-UseNotion`, the tracker reads and writes `.tracker/films.json` and `.tracker/events.json` only as a local fallback for development and tests.
+Use `-UseNotion` for normal project work. Production state lives in Notion. Without `-UseNotion`, the tracker uses `.tracker/films.json` only as a local fallback for development and tests. Historical `.tracker/events.json` is left untouched.
 
 ## Notion-First State Model
 The project is designed to run without this local machine in the production loop. GitHub Actions reads and writes Notion using repository secrets, exports `web/data/tracker-data.json`, and deploys the static `web/` artifact to GitHub Pages.
 
-The current workflow uses the three-table Notion model:
+The current workflow uses two active Notion tables and preserves the historical Events table:
 - Canonical Films: one row per canonical film.
 - Selections: festival/award selection rows related to canonical films.
-- Events: first legal availability events related to canonical films.
+- Events (historical): retired first legal availability events, preserved without normal reads or writes.
 
-Legacy `NOTION_FILMS_DATABASE_ID` support still exists, but new work should assume the three-table model unless the task explicitly concerns migration or legacy compatibility. Do not treat `.tracker/films.json` or `.tracker/events.json` as authoritative project data.
+Legacy `NOTION_FILMS_DATABASE_ID` support still exists, but new work should use Canonical Films + Selections unless the task explicitly concerns migration or historical maintenance. Normal exports contain `ytsCatalog`, `discoveries`, and `totals.ytsListed`; they omit legal availability fields and events. `-IncludeLegacyAvailability` is an explicit export option for archive maintenance and tests. Do not treat `.tracker/films.json` or `.tracker/events.json` as authoritative project data.
 
 Required production secrets:
 - `NOTION_TOKEN`
 - `TMDB_BEARER_TOKEN`
 - `NOTION_CANONICAL_FILMS_DATABASE_ID`
 - `NOTION_SELECTIONS_DATABASE_ID`
-- `NOTION_EVENTS_DATABASE_ID`
 
 Optional:
 - `TMDB_API_KEY`
 - `OMDB_API_KEY`
-- `WATCHMODE_API_KEY`
+- `NOTION_EVENTS_DATABASE_ID` (historical maintenance only)
 - legacy `NOTION_FILMS_DATABASE_ID`
 
 ## GitHub Actions And Deployment
 Deployment is handled by `.github/workflows/tracker.yml`.
 
 - Push to `main`: repair year metadata in Notion, export web data from Notion, run quality checks, prepare `web/build-meta.*`, and deploy `web/` to GitHub Pages.
-- Daily scheduled run: defaults to `Availability`.
-- Weekly scheduled run: runs `Lineups` with festival windows respected, then runs `Availability`.
-- Manual workflow dispatch: supports `Availability`, `Lineups`, or `All`.
+- Daily scheduled run: refreshes `Metadata`, then checks due YTS listings for all active films.
+- Weekly scheduled run: runs `Lineups` with festival windows respected, then `Metadata` and YTS checks.
+- Manual workflow dispatch: supports `Metadata`, `Lineups`, or `All`.
 
 `web/build-meta.js` is generated during deployment with the current commit SHA. The frontend uses it as the cache version for `web/data/tracker-data.json`. The frontend never talks to Notion directly; it only reads the exported static JSON.
 
@@ -79,9 +79,9 @@ Run full tracker against Notion:
 .\scripts\Invoke-FestivalTracker.ps1 -Mode All -UseNotion
 ```
 
-Run availability only and ensure Notion schema:
+Refresh metadata and ensure the active Notion schema:
 ```powershell
-.\scripts\Invoke-FestivalTracker.ps1 -Mode Availability -UseNotion -EnsureNotionSchema
+.\scripts\Invoke-FestivalTracker.ps1 -Mode Metadata -UseNotion -EnsureNotionSchema
 ```
 
 Export frontend data from Notion:
@@ -131,7 +131,7 @@ http://127.0.0.1:4317/
 - `filmSelections()` handles current canonical selections plus legacy single-selection records.
 
 For frontend changes, verify:
-- Available view loads.
+- YTS listed view loads.
 - All Films view loads.
 - Finds view loads when relevant.
 - Search works.
@@ -145,7 +145,7 @@ For frontend changes, verify:
 - Notion property diff and schema diff behavior.
 - Three-table Notion relation and event-link repair logic.
 - Export merging for duplicate/canonical film cards.
-- Availability event attachment and orphan detection.
+- YTS discovery identity/date validation, and explicit legacy availability attachment/orphan regression coverage.
 - Year repair behavior.
 - TMDb provider offer mapping.
 - Authorized source allowlist behavior.

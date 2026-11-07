@@ -49,7 +49,8 @@ $changedIdentity = New-YtsTestFilm "tt1006" "available_found" "found" "2026-10-3
 $changedIdentity.yts_imdb_id = "tt9999"
 $noImdb = New-YtsTestFilm ""
 $candidates = @(Select-YtsCatalogCheckFilms -Films @($fresh, $pending, $missing, $today, $listed, $changedIdentity, $noImdb) -Now $now)
-Assert-Yts ($candidates.Count -eq 3) "only available, valid, unchecked or previously missing films are due"
+Assert-Yts ($candidates.Count -eq 4) "valid unchecked or missing films are due regardless of historical availability"
+Assert-Yts (@($candidates | Where-Object { $_.imdb_id -eq "tt1002" }).Count -eq 1) "pending films receive their first YTS check"
 Assert-Yts (@($candidates | Where-Object { $_.imdb_id -eq "tt1003" }).Count -eq 1) "missing films are due again on the next Shanghai calendar day"
 Assert-Yts (@($candidates | Where-Object { $_.imdb_id -eq "tt1006" }).Count -eq 1) "IMDb identity changes invalidate an old found result"
 
@@ -79,8 +80,8 @@ $eventFilm = New-YtsTestFilm "tt1010" "pending"
 $orphanFilm = New-YtsTestFilm "tt1011"
 $selection = [pscustomobject]@{ id = "selection"; film_relation_ids = @($eventFilm.notion_page_id) }
 $event = [pscustomobject]@{ film_id = $eventFilm.id; film_title = $eventFilm.title }
-$active = @(Select-YtsAvailableFilms -Films @($eventFilm, $orphanFilm) -Selections @($selection) -Events @($event))
-Assert-Yts ($active.Count -eq 1 -and $active[0].tracking_status -eq "available_found") "YTS scope includes event-backed Available films and excludes inactive selections"
+$active = @(Select-CanonicalFilmsWithActiveSelections -Films @($eventFilm, $orphanFilm) -Selections @($selection))
+Assert-Yts ($active.Count -eq 1 -and $active[0].tracking_status -eq "pending") "YTS scope includes pending films with active selections without rewriting historical availability"
 
 # Round-trip multi-span JSON through the actual Notion reader, without truncation.
 $many = [pscustomobject]@{ imdbId = "tt1001"; status = "found"; checkedAt = $now.ToString("o"); firstFoundAt = $now.ToString("o"); torrents = @((1..25) | ForEach-Object { $resource }) }
@@ -129,13 +130,14 @@ Assert-Yts ($roundTrip.torrents.Count -eq 25 -and $roundTrip.status -eq "found")
             param($Method, $Path, $Body)
             $script:YtsTestWrites.Add([pscustomobject]@{ path = $Path; properties = $Body.properties })
         }
-        $a = New-YtsTestFilm "tt1001"
+        $a = New-YtsTestFilm "tt1001" "pending"
         $duplicate = New-YtsTestFilm "tt1001"
         $duplicate.notion_page_id = "duplicate-page"
         $b = New-YtsTestFilm "tt1002"
         $stats = Sync-NotionYtsCatalog -Films @($a, $duplicate, $b) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
         Assert-Yts ($stats.requests -eq 2 -and $stats.updated -eq 3) "YTS sync makes one request per IMDb ID and saves all canonical pages"
         Assert-Yts ($a.yts_status -eq "found" -and $b.yts_status -eq "not_found") "YTS sync persists positive and negative results"
+        Assert-Yts ($a.tracking_status -eq "pending") "a confirmed YTS listing never rewrites historical legal-availability status"
         Assert-Yts (@($script:YtsTestWrites | Where-Object { @($_.properties.Keys | Where-Object { $_ -notlike "YTS *" }).Count -gt 0 }).Count -eq 0) "YTS sync patches only its own Notion fields"
         $again = Sync-NotionYtsCatalog -Films @($a, $duplicate, $b) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
         Assert-Yts ($again.requests -eq 0) "repeat same-day runs perform no YTS checks"

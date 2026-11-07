@@ -1,7 +1,6 @@
 param(
     [string]$FilmsDatabaseId = $env:NOTION_CANONICAL_FILMS_DATABASE_ID,
     [string]$SelectionsDatabaseId = $env:NOTION_SELECTIONS_DATABASE_ID,
-    [string]$EventsDatabaseId = $env:NOTION_EVENTS_DATABASE_ID,
     [ValidateRange(0, 60000)][int]$MinIntervalMs = 3000,
     [ValidateRange(1, 120)][int]$MaxDurationMinutes = 25,
     [switch]$DryRun
@@ -9,13 +8,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 Import-Module (Join-Path $PSScriptRoot "..\src\FestivalTracker.psm1") -Force
-if ([string]::IsNullOrWhiteSpace($FilmsDatabaseId) -or [string]::IsNullOrWhiteSpace($SelectionsDatabaseId) -or [string]::IsNullOrWhiteSpace($EventsDatabaseId)) {
-    throw "Set NOTION_CANONICAL_FILMS_DATABASE_ID, NOTION_SELECTIONS_DATABASE_ID and NOTION_EVENTS_DATABASE_ID before syncing YTS."
+if ([string]::IsNullOrWhiteSpace($FilmsDatabaseId) -or [string]::IsNullOrWhiteSpace($SelectionsDatabaseId)) {
+    throw "Set NOTION_CANONICAL_FILMS_DATABASE_ID and NOTION_SELECTIONS_DATABASE_ID before syncing YTS."
 }
 $films = @(Import-NotionCanonicalFilms -DatabaseId $FilmsDatabaseId)
 $selections = @(Import-NotionSelections -DatabaseId $SelectionsDatabaseId)
-$events = @(Import-NotionEvents -DatabaseId $EventsDatabaseId)
-$activeFilms = @(Select-YtsAvailableFilms -Films $films -Selections $selections -Events $events)
+$activeFilms = @(Select-CanonicalFilmsWithActiveSelections -Films $films -Selections $selections)
 $summary = Sync-NotionYtsCatalog -Films $activeFilms -DatabaseId $FilmsDatabaseId -MinIntervalMs $MinIntervalMs -MaxDurationMinutes $MaxDurationMinutes -DryRun:$DryRun
 $summary | ConvertTo-Json
 if ($env:GITHUB_STEP_SUMMARY) {

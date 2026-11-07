@@ -1,6 +1,6 @@
 const state = {
   data: null,
-  view: "available",
+  view: "yts",
   search: "",
   festival: "",
   year: "",
@@ -8,15 +8,15 @@ const state = {
   sort: "rating",
 };
 
-const validViews = new Set(["available", "all", "events"]);
-const validStatuses = new Set(["", "pending", "available_found"]);
-const validSorts = new Set(["rating", "available", "festival", "title"]);
+const validViews = new Set(["yts", "all", "events"]);
+const validStatuses = new Set(["", "found", "not_found", "unchecked"]);
+const validSorts = new Set(["rating", "detected", "festival", "title"]);
 let isCompactLayout = window.matchMedia("(max-width: 680px)").matches;
 
 const els = {
   generatedAt: document.querySelector("#generatedAt"),
   metricFilms: document.querySelector("#metricFilms"),
-  metricAvailable: document.querySelector("#metricAvailable"),
+  metricYts: document.querySelector("#metricYts"),
   searchInput: document.querySelector("#searchInput"),
   festivalFilter: document.querySelector("#festivalFilter"),
   yearFilter: document.querySelector("#yearFilter"),
@@ -57,22 +57,17 @@ const formatDateTime = (value) => {
   return `Updated ${day} · ${time}`;
 };
 
-const statusLabel = (status) => {
-  if (status === "available_found") return "Available";
-  return "Pending";
+const filmCatalogStatus = (film) => readYtsCatalogResult(film)?.status || "unchecked";
+
+const statusLabel = (film) => {
+  const status = filmCatalogStatus(film);
+  if (status === "found") return "YTS";
+  return status === "not_found" ? "Not found" : "Not checked";
 };
 
-const statusClass = (status) => {
-  if (status === "available_found") return "is-available";
+const statusClass = (film) => {
+  if (filmCatalogStatus(film) === "found") return "is-available";
   return "is-pending";
-};
-
-const availabilitySummary = (event) => {
-  if (!event) return "";
-  const date = event.event_date || "Recorded";
-  const types = Array.isArray(event.availability_types) ? event.availability_types : [];
-  const readableTypes = types.map((type) => type.replaceAll("_", " ")).join(", ");
-  return readableTypes ? `${date} - ${readableTypes}` : date;
 };
 
 const ratingLabel = (rating) => {
@@ -105,7 +100,7 @@ const primaryRatingLabel = (film) => {
 };
 
 const viewCopy = {
-  available: "Available films",
+  yts: "YTS listed films",
   all: "All films",
   events: "Discovery log",
 };
@@ -166,9 +161,9 @@ const posterMarkup = (film) => {
 
 function readUrlState() {
   const params = new URLSearchParams(window.location.search);
-  const view = params.get("view");
-  const status = params.get("status");
-  const sort = params.get("sort");
+  const view = params.get("view") === "available" ? "yts" : params.get("view");
+  const status = params.get("status") === "available_found" ? "found" : params.get("status");
+  const sort = params.get("sort") === "available" ? "detected" : params.get("sort");
   const search = params.get("q");
   const festival = params.get("festival");
   const year = params.get("year");
@@ -191,7 +186,7 @@ function syncControls() {
 
 function writeUrlState() {
   const params = new URLSearchParams();
-  if (state.view !== "available") params.set("view", state.view);
+  if (state.view !== "yts") params.set("view", state.view);
   if (state.search) params.set("q", state.search);
   if (state.festival) params.set("festival", state.festival);
   if (state.year) params.set("year", state.year);
@@ -233,7 +228,7 @@ function handleResize() {
 function setupFilters() {
   const totals = state.data.totals || {};
   els.metricFilms.textContent = totals.films ?? 0;
-  els.metricAvailable.textContent = totals.available ?? 0;
+  els.metricYts.textContent = (state.data.films || []).filter((film) => filmCatalogStatus(film) === "found").length;
   els.generatedAt.textContent = formatDateTime(state.data.generatedAt);
 
   const festivals = [
@@ -262,8 +257,8 @@ function filteredFilms() {
   const query = state.search.trim().toLowerCase();
   let films = Array.isArray(state.data.films) ? [...state.data.films] : [];
 
-  if (state.view === "available") {
-    films = films.filter((film) => film.trackingStatus === "available_found");
+  if (state.view === "yts") {
+    films = films.filter((film) => filmCatalogStatus(film) === "found");
   }
   if (state.festival) {
     films = films.filter((film) => filmSelections(film).some((selection) => selection.festival === state.festival));
@@ -272,9 +267,7 @@ function filteredFilms() {
     films = films.filter((film) => filmBrowseYear(film) === state.year);
   }
   if (state.view === "all" && state.status) {
-    films = films.filter((film) => state.status === "available_found"
-      ? film.trackingStatus === "available_found"
-      : film.trackingStatus !== "available_found");
+    films = films.filter((film) => filmCatalogStatus(film) === state.status);
   }
   if (query) {
     films = films.filter((film) => {
@@ -289,7 +282,7 @@ function filteredFilms() {
   films.sort((a, b) => {
     if (state.sort === "title") return String(a.title || "").localeCompare(String(b.title || ""));
     if (state.sort === "festival") return String(a.festival || "").localeCompare(String(b.festival || ""));
-    if (state.sort === "available") return String(b.firstAvailableDate || "").localeCompare(String(a.firstAvailableDate || ""));
+    if (state.sort === "detected") return String(readYtsCatalogResult(b)?.firstFoundAt || "").localeCompare(String(readYtsCatalogResult(a)?.firstFoundAt || ""));
     return ratingSourceRank(b) - ratingSourceRank(a) || primaryRatingValue(b) - primaryRatingValue(a);
   });
 
@@ -297,7 +290,7 @@ function filteredFilms() {
 }
 
 function renderViewHeader(count) {
-  els.viewTitle.textContent = viewCopy[state.view] || viewCopy.available;
+  els.viewTitle.textContent = viewCopy[state.view] || viewCopy.yts;
   els.viewTitle.classList.toggle("sr-only", state.view !== "events");
   els.resultsCount.textContent = `${count} ${count === 1 ? "film" : "films"}`;
 }
@@ -322,8 +315,7 @@ function renderFilmGrid() {
         <button class="film-card" data-film-id="${escapeHtml(film.id)}">
           <div class="poster">
             ${posterMarkup(film)}
-            <span class="status-pill ${escapeHtml(statusClass(film.trackingStatus))}">${escapeHtml(statusLabel(film.trackingStatus))}</span>
-            ${ytsCatalogCardMarkup(film)}
+            <span class="status-pill ${escapeHtml(statusClass(film))}"${filmCatalogStatus(film) === "found" ? ' title="Listed on YTS"' : ""}>${escapeHtml(statusLabel(film))}</span>
           </div>
           <div class="film-meta">
             <h2 class="film-title">${escapeHtml(film.title || "Untitled")}</h2>
@@ -348,13 +340,7 @@ function renderFilmGrid() {
 
 function findFilmForEvent(event) {
   const films = Array.isArray(state.data.films) ? state.data.films : [];
-  const eventId = String(event?.id || "");
   const eventFilmId = String(event?.film_id || "");
-
-  if (eventId) {
-    const filmByEventId = films.find((film) => (film.availability || []).some((item) => String(item.id || "") === eventId));
-    if (filmByEventId) return filmByEventId;
-  }
 
   if (!eventFilmId) return null;
   return films.find((film) =>
@@ -364,12 +350,15 @@ function findFilmForEvent(event) {
 }
 
 function renderEvents() {
-  const events = Array.isArray(state.data.events) ? [...state.data.events] : [];
-  events.sort((a, b) => String(b.event_date || "").localeCompare(String(a.event_date || "")));
+  const events = (Array.isArray(state.data.discoveries) ? state.data.discoveries : []).filter((event) => {
+    const film = findFilmForEvent(event);
+    return film && filmCatalogStatus(film) === "found" && event.imdb_id === ytsCatalogImdbId(film);
+  });
+  events.sort((a, b) => String(b.first_detected_at || "").localeCompare(String(a.first_detected_at || "")));
   setMode("events");
   renderViewHeader(events.length);
   if (events.length === 0) {
-    els.eventList.innerHTML = `<div class="empty">No availability events yet.</div>`;
+    els.eventList.innerHTML = `<div class="empty">No YTS discoveries yet.</div>`;
     return;
   }
 
@@ -383,9 +372,9 @@ function renderEvents() {
           <time>${escapeHtml(event.event_date || "No date")}</time>
           <div>
             <h3>${escapeHtml(event.film_title || "Untitled")}</h3>
-            <p>${escapeHtml([event.providers?.join(", "), event.countries?.join(", ")].filter(Boolean).join(" - "))}</p>
+            <p>${escapeHtml(event.festival || "")}</p>
           </div>
-          <span class="chip">${escapeHtml((event.availability_types || []).join(", "))}</span>
+          <span class="chip">Listed on YTS</span>
         </article>
       `;
       }
@@ -481,16 +470,10 @@ function ytsTorrentSpec(torrent) {
 function readYtsCatalogResult(film) {
   const imdbId = ytsCatalogImdbId(film);
   const result = film.ytsCatalog;
-  if (film.trackingStatus !== "available_found" || !imdbId || result?.imdbId !== imdbId ||
+  if (!imdbId || result?.imdbId !== imdbId ||
       !["found", "not_found"].includes(result.status) || typeof result.checkedAt !== "string" ||
       !Number.isFinite(Date.parse(result.checkedAt))) return null;
   return result;
-}
-
-function ytsCatalogCardMarkup(film) {
-  return readYtsCatalogResult(film)?.status === "found"
-    ? `<span class="status-pill is-yts" title="Listed on YTS">YTS</span>`
-    : "";
 }
 
 function renderYtsCatalog(film) {
@@ -531,7 +514,7 @@ function renderYtsCatalog(film) {
     : !imdbId ? "IMDb ID unavailable" : "Not checked yet";
   meta.textContent = result
     ? `Checked ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(result.checkedAt))}`
-    : film.trackingStatus !== "available_found" ? "Checks start once available to watch." : imdbId ? "Awaiting scheduled check." : "";
+    : imdbId ? "Awaiting scheduled check." : "";
   meta.hidden = !meta.textContent;
   notice.textContent = result?.status === "found" && !torrent ? "No usable Torrent link in this result." : "";
   notice.hidden = !notice.textContent;
@@ -541,8 +524,6 @@ let detailReturnFocus = null;
 
 function openDetail(film) {
   if (els.detailPanel.getAttribute("aria-hidden") !== "false") detailReturnFocus = document.activeElement;
-  const events = Array.isArray(film.availability) ? film.availability : [];
-  const firstEvent = events[0] || null;
   const selections = filmSelections(film);
   const links = [
     safeExternalUrl(film.tmdbUrl) ? `<a class="external-link" href="${escapeHtml(safeExternalUrl(film.tmdbUrl))}" target="_blank" rel="noopener noreferrer">${externalLinkContent("TMDb")}</a>` : "",
@@ -564,7 +545,7 @@ function openDetail(film) {
       </div>
       </div>
       <div class="detail-support">
-        <span class="detail-status ${escapeHtml(statusClass(film.trackingStatus))}">${escapeHtml(statusLabel(film.trackingStatus))}</span>
+        <span class="detail-status ${escapeHtml(statusClass(film))}">${escapeHtml(filmCatalogStatus(film) === "found" ? "YTS listed" : statusLabel(film))}</span>
         <span class="detail-rating">${escapeHtml(primaryRatingLabel(film))}</span>
         <div class="detail-links">${links.join("")}</div>
       </div>
@@ -588,20 +569,6 @@ function openDetail(film) {
       <section class="detail-section">
       <h3>Overview</h3>
       <p class="detail-overview">${escapeHtml(film.overview || "No overview yet.")}</p>
-      </section>
-      <section class="detail-section">
-      <h3>Availability</h3>
-      ${
-        firstEvent
-          ? `<div class="availability-card availability-summary">
-              <strong>Available to watch</strong>
-              <p>${escapeHtml(availabilitySummary(firstEvent))}</p>
-            </div>`
-          : `<div class="availability-card">
-              <strong>Not available yet</strong>
-              <p>No legal online availability event recorded yet.</p>
-            </div>`
-      }
       </section>
       <section class="detail-section">
       <h3 id="ytsCatalogHeading">YTS catalog</h3>

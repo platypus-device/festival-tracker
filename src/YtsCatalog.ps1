@@ -1,4 +1,4 @@
-# YTS is a separate catalog annotation. It never creates legal-availability events.
+# YTS is the tracked catalog. Historical legal-availability records are left untouched.
 function ConvertTo-YtsTorrentMetadata {
     param([object[]]$Torrents = @())
 
@@ -112,39 +112,10 @@ function Select-YtsCatalogCheckFilms {
     param([object[]]$Films = @(), [datetimeoffset]$Now = [datetimeoffset]::UtcNow)
 
     return @($Films | Where-Object {
-        if ((Get-ObjectProperty $_ "tracking_status") -ne "available_found" -or
-            ([string](Get-ObjectProperty $_ "imdb_id" "")).Trim() -notmatch '^tt\d+$') { return $false }
+        if (([string](Get-ObjectProperty $_ "imdb_id" "")).Trim() -notmatch '^tt\d+$') { return $false }
         $result = Get-FilmYtsCatalogResult -Film $_
         return Test-YtsCatalogResultDue -Film $_ -Result $result -Now $Now
     } | Sort-Object { [string](Get-ObjectProperty $_ "yts_checked_at" "") }, { [string](Get-ObjectProperty $_ "imdb_id" "") })
-}
-
-function Select-YtsAvailableFilms {
-    param([object[]]$Films = @(), [object[]]$Selections = @(), [object[]]$Events = @())
-
-    $activeFilms = @(Select-CanonicalFilmsWithActiveSelections -Films $Films -Selections $Selections)
-    # The web export also treats an attached first-availability event as Available.
-    foreach ($event in $Events) {
-        $link = Resolve-AvailabilityEventFilmLink -Event $event -Films $activeFilms -Selections $Selections
-        $matches = @()
-        if ($null -ne $link) {
-            $matches = @($activeFilms | Where-Object { $_.notion_page_id -eq $link.notion_page_id })
-        }
-        else {
-            $title = ConvertTo-NormalizedTitle ([string](Get-ObjectProperty $event "film_title" ""))
-            if ($title) {
-                $matches = @($activeFilms | Where-Object {
-                    (ConvertTo-NormalizedTitle ([string]$_.title)) -eq $title -or
-                    (ConvertTo-NormalizedTitle ([string]$_.original_title)) -eq $title
-                })
-            }
-        }
-        if ($matches.Count -eq 1) {
-            # This only normalizes the in-memory candidate list; YTS patches no availability fields.
-            Set-RecordProperty -Record $matches[0] -Name "tracking_status" -Value "available_found"
-        }
-    }
-    return $activeFilms
 }
 
 function Ensure-NotionYtsCatalogSchema {
@@ -203,7 +174,6 @@ function Sync-NotionYtsCatalog {
     Ensure-NotionYtsCatalogSchema -DatabaseId $DatabaseId
     $resultsByImdb = @{}
     foreach ($film in $Films) {
-        if ((Get-ObjectProperty $film "tracking_status") -ne "available_found") { continue }
         $result = Get-FilmYtsCatalogResult -Film $film
         if ($null -eq $result) { continue }
         $cached = $resultsByImdb[$result.imdbId]

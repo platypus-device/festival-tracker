@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Festival films and their first legal online availability, in one independent cinema index." />
+    <meta name="description" content="Festival films and their YTS catalog listings, in one independent cinema index." />
     <title>Festival Tracker</title>
     <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./fonts/source-serif-4-latin.woff2" as="font" type="font/woff2" crossorigin />
@@ -20,13 +20,13 @@
         </div>
       </header>
       <nav class="tabs" aria-label="Views">
-        <button type="button" class="tab active" data-view="available" aria-pressed="true">Available <span id="metricAvailable" class="tab-count">0</span></button>
+        <button type="button" class="tab active" data-view="yts" aria-pressed="true">YTS listed <span id="metricYts" class="tab-count">0</span></button>
         <button type="button" class="tab" data-view="all" aria-pressed="false">All films <span id="metricFilms" class="tab-count">0</span></button>
         <button type="button" class="tab tab-log" data-view="events" aria-pressed="false">Discovery log</button>
       </nav>
 
       <main id="content" tabindex="-1" aria-labelledby="viewTitle">
-        <h2 id="viewTitle" class="view-title sr-only">Available films</h2>
+        <h2 id="viewTitle" class="view-title sr-only">YTS listed films</h2>
         <section id="browseControls" class="controls" aria-label="Filters">
           <label class="search-field">
             Search
@@ -47,8 +47,9 @@
                 Status
                 <select id="statusFilter" name="status">
                   <option value="">Any status</option>
-                  <option value="available_found">Available</option>
-                  <option value="pending">Pending</option>
+                  <option value="found">Listed on YTS</option>
+                  <option value="not_found">Not found</option>
+                  <option value="unchecked">Not checked</option>
                 </select>
               </label>
             </div>
@@ -61,7 +62,7 @@
               <span class="sort-label">Sort by</span>
               <select id="sortSelect" name="sort" aria-label="Sort films">
                 <option value="rating">Rating</option>
-                <option value="available">Available date</option>
+                <option value="detected">First detected</option>
                 <option value="festival">Festival</option>
                 <option value="title">Title</option>
               </select>
@@ -81,6 +82,6 @@
     <div id="overlay" class="overlay hidden"></div>
 
     <script src="./build-meta.js?v=20261031-yts-cadence-v2"></script>
-    <script src="./app.js?v=20261101-links-v1"></script>
+    <script src="./app.js?v=20261107-yts-only-v1"></script>
   </body>
 </html>

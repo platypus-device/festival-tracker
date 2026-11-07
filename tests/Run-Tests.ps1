@@ -1060,7 +1060,7 @@ Set-RecordProperty -Record $duplicateFestivalFilms[1] -Name "yts_first_found_at"
 Set-RecordProperty -Record $duplicateFestivalFilms[1] -Name "yts_torrents_json" -Value '[{"url":"https://yts.gg/torrent/download/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","quality":"1080p"}]'
 ConvertTo-Json -InputObject $duplicateFestivalFilms -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "films.json") -Encoding UTF8
 ConvertTo-Json -InputObject $duplicateEvents -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "events.json") -Encoding UTF8
-& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir | Out-Null
+& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $exportOutput -StateDir $exportStateDir -IncludeLegacyAvailability | Out-Null
 $exportedWebData = Get-Content $exportOutput -Raw | ConvertFrom-Json
 $exportedSelectionCount = @($exportedWebData.films | ForEach-Object { @($_.selections) }).Count
 Assert-Equal 6 $exportedWebData.totals.films "exports unique web cards for duplicate TMDb selections"
@@ -1114,6 +1114,27 @@ Assert-Equal "2025,2024" (($exportedWebData.premiereYears | ForEach-Object { [st
 Assert-Equal "2025,2024" (($exportedWebData.filmYears | ForEach-Object { [string]$_ }) -join ",") "keeps legacy filmYears aligned with premiere years"
 Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]$_ }) -join ",") "exports festival years from selections"
 Assert-Equal "Berlin,Cannes,Locarno,NYFF,Venice" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
+$catalogOutput = Join-Path $exportStateDir "catalog-data.json"
+$historicalEventsBefore = Get-Content -LiteralPath (Join-Path $exportStateDir "events.json") -Raw
+& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $catalogOutput -StateDir $exportStateDir | Out-Null
+$catalogData = Get-Content -LiteralPath $catalogOutput -Raw | ConvertFrom-Json
+Assert-Equal "yts" $catalogData.catalogMode "default export is a YTS catalog"
+Assert-Equal 6 $catalogData.totals.films "YTS export retains all canonical film cards"
+Assert-Equal 1 $catalogData.totals.ytsListed "YTS totals use catalog results rather than legal availability"
+Assert-Equal 1 $catalogData.discoveries.Count "YTS discoveries come from confirmed listings"
+Assert-Equal "2026-10-30" $catalogData.discoveries[0].event_date "YTS discovery date uses the first observation in Shanghai"
+Assert-Equal "tt1001" $catalogData.discoveries[0].imdb_id "YTS discovery is bound to the matching IMDb identity"
+Assert-True ($null -eq $catalogData.PSObject.Properties["events"]) "default export excludes historical availability events"
+Assert-True ($null -eq $catalogData.totals.PSObject.Properties["available"]) "default totals exclude legal availability"
+Assert-True (@($catalogData.films | Where-Object { $null -ne $_.PSObject.Properties["firstAvailableDate"] -or $null -ne $_.PSObject.Properties["availability"] -or $null -ne $_.PSObject.Properties["trackingStatus"] }).Count -eq 0) "default film cards exclude retired availability fields"
+Assert-Equal $historicalEventsBefore (Get-Content -LiteralPath (Join-Path $exportStateDir "events.json") -Raw) "catalog export preserves the historical local event archive"
+$catalogQualityScript = Join-Path $PSScriptRoot "..\scripts\Test-TrackerDataQuality.ps1"
+$catalogQualityOutput = & $testPowerShell -NoProfile -ExecutionPolicy Bypass -File $catalogQualityScript -DataPath $catalogOutput 2>&1
+Assert-Equal 0 $LASTEXITCODE "quality checks accept the YTS catalog without a legacy Events dependency"
+$catalogData.discoveries[0].imdb_id = "tt9999"
+$catalogData | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $catalogOutput -Encoding UTF8
+$invalidCatalogQualityOutput = & $testPowerShell -NoProfile -ExecutionPolicy Bypass -File $catalogQualityScript -DataPath $catalogOutput 2>&1
+Assert-True ($LASTEXITCODE -ne 0 -and ([string]($invalidCatalogQualityOutput -join "`n")).Contains("invalid_yts_discovery")) "quality checks reject YTS discoveries linked to a different IMDb identity"
 Remove-Item -LiteralPath $exportStateDir -Recurse -Force
 
 $qualityStateDir = Join-Path ([System.IO.Path]::GetTempPath()) ("festival-quality-test-" + [guid]::NewGuid().ToString("N"))
@@ -1135,7 +1156,7 @@ ConvertTo-Json -InputObject @(
         needs_review = $false
     }
 ) -Depth 10 | Set-Content -Path (Join-Path $qualityStateDir "events.json") -Encoding UTF8
-& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $qualityOutput -StateDir $qualityStateDir | Out-Null
+& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $qualityOutput -StateDir $qualityStateDir -IncludeLegacyAvailability | Out-Null
 $qualityScript = Join-Path $PSScriptRoot "..\scripts\Test-TrackerDataQuality.ps1"
 $qualityCheckOutput = & $testPowerShell -NoProfile -ExecutionPolicy Bypass -File $qualityScript -DataPath $qualityOutput 2>&1
 $qualityExitCode = $LASTEXITCODE
@@ -1250,7 +1271,7 @@ ConvertTo-Json -InputObject @(
         needs_review = $false
     }
 ) -Depth 10 | Set-Content -Path (Join-Path $ambiguousStateDir "events.json") -Encoding UTF8
-& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $ambiguousOutput -StateDir $ambiguousStateDir | Out-Null
+& (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $ambiguousOutput -StateDir $ambiguousStateDir -IncludeLegacyAvailability | Out-Null
 $ambiguousWebData = Get-Content $ambiguousOutput -Raw | ConvertFrom-Json
 $ambiguousAttachedCount = @($ambiguousWebData.films | ForEach-Object { @($_.availability) }).Count
 Assert-Equal 0 $ambiguousAttachedCount "does not attach ambiguous title-only orphan event"
@@ -1518,6 +1539,7 @@ Assert-Equal (Get-Date).ToString("yyyy-MM-dd") $ratedFilms[1].imdb_rating_checke
 Remove-Item -LiteralPath $imdbStateDir -Recurse -Force
 
 & (Join-Path $PSScriptRoot "Test-YtsSync.ps1")
+& (Join-Path $PSScriptRoot "Test-CatalogPipeline.ps1")
 
 if ($Script:Failures -gt 0) {
     throw "$Script:Failures test(s) failed."

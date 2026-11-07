@@ -1,4 +1,4 @@
-name: Festival Legal Availability Tracker
+name: Festival Film Catalog Tracker
 
 on:
   push:
@@ -11,10 +11,10 @@ on:
         required: true
         type: choice
         options:
-          - Availability
+          - Metadata
           - Lineups
           - All
-        default: Availability
+        default: Metadata
       respect_festival_windows:
         description: "Only fetch active lineup windows for Lineups/All"
         required: true
@@ -92,32 +92,6 @@ jobs:
         shell: pwsh
         run: ./tests/Run-Tests.ps1
 
-      - name: Restore availability records archived by policy cleanup
-        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[restore-availability]')
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-        run: |
-          & ./scripts/Restore-AccidentallyArchivedPages.ps1 -Apply
-
-      - name: Archive orphan films and events for removed source selections
-        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[cleanup-policy-events]')
-        shell: pwsh
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
-          NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
-          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
-        run: |
-          & ./scripts/Archive-PolicyAvailabilityEvents.ps1 -Apply -FilmTrackerIds @(
-            "941ce1aa89ff8f83c7749109",
-            "d4b273ff6aba55fb0b5a6c68",
-            "ef62146f51d16f4da25844db",
-            "771473776c24ab8ef47a9cc0",
-            "47aabdcd7f4e8c3c795c4636"
-          )
-
       - name: Set IMDb cache key
         if: github.event_name != 'push'
         shell: pwsh
@@ -145,12 +119,10 @@ jobs:
           TMDB_BEARER_TOKEN: ${{ secrets.TMDB_BEARER_TOKEN }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
-          WATCHMODE_API_KEY: ${{ secrets.WATCHMODE_API_KEY }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
           NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
           NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
-          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
           $mode = "${{ github.event.inputs.mode }}"
           $eventName = "${{ github.event_name }}"
@@ -162,7 +134,7 @@ jobs:
             $forceRespectWindows = $true
           }
           elseif ([string]::IsNullOrWhiteSpace($mode)) {
-            $mode = "Availability"
+            $mode = "Metadata"
           }
 
           $trackerArgs = @{
@@ -181,7 +153,7 @@ jobs:
 
           & ./scripts/Invoke-FestivalTracker.ps1 @trackerArgs
           if ($mode -eq "Lineups") {
-            & ./scripts/Invoke-FestivalTracker.ps1 -Mode Availability -UseNotion
+            & ./scripts/Invoke-FestivalTracker.ps1 -Mode Metadata -UseNotion
           }
 
       - name: Archive out-of-scope selections
@@ -192,9 +164,8 @@ jobs:
           NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
           NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
           NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
-          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
-          & ./scripts/Archive-OutOfScopeSelections.ps1 -Apply -ArchiveOrphanFilms
+          & ./scripts/Archive-OutOfScopeSelections.ps1 -Apply
 
       - name: Repair year metadata
         timeout-minutes: 10
@@ -204,18 +175,16 @@ jobs:
           NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
           NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
           NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
-          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
           & ./scripts/Repair-YearMetadata.ps1 -UseNotion -Apply
 
-      - name: Sync YTS catalog for available films
+      - name: Sync YTS catalog for selected films
         timeout-minutes: 30
         shell: pwsh
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
           NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
-          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: ./scripts/Sync-YtsCatalog.ps1
 
       - name: Export tracker data
@@ -226,7 +195,6 @@ jobs:
           NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
           NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
           NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
-          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
           & ./scripts/Export-TrackerData.ps1 -UseNotion
 
@@ -238,7 +206,6 @@ jobs:
           NOTION_CANONICAL_FILMS_DATABASE_ID: ${{ secrets.NOTION_CANONICAL_FILMS_DATABASE_ID }}
           NOTION_SELECTIONS_DATABASE_ID: ${{ secrets.NOTION_SELECTIONS_DATABASE_ID }}
           NOTION_FILMS_DATABASE_ID: ${{ secrets.NOTION_FILMS_DATABASE_ID }}
-          NOTION_EVENTS_DATABASE_ID: ${{ secrets.NOTION_EVENTS_DATABASE_ID }}
         run: |
           & ./scripts/Test-TrackerDataQuality.ps1 -UseNotion -DataPath ./web/data/tracker-data.json
 

@@ -14,11 +14,11 @@ const response = (payload, status = 200, headers = {}) => ({ ok: status === 200,
 
 const browseData = {
   films: [
-    { ...film, trackingStatus: "available_found", lowConfidence: true },
-    { ...otherFilm, trackingStatus: "pending" },
+    { ...film, trackingStatus: "pending", lowConfidence: true, ytsCatalog: catalog() },
+    { ...otherFilm, trackingStatus: "available_found", ytsCatalog: { ...catalog("not_found"), imdbId: otherFilm.imdbId } },
     { id: "legacy", title: "Legacy review", trackingStatus: "needs_review" },
   ],
-  events: [{ id: "event-a", film_id: film.id, film_title: film.title, event_date: "2026-10-31" }],
+  discoveries: [{ id: "yts-a", film_id: film.id, film_title: film.title, imdb_id: film.imdbId, first_detected_at: "2026-10-31T01:00:00Z", event_date: "2026-10-31" }],
 };
 
 test("obsolete review URLs do not produce a dead-end filter", async () => {
@@ -29,29 +29,31 @@ test("obsolete review URLs do not produce a dead-end filter", async () => {
   assert.equal(app.urls.at(-1), "/?view=all");
 });
 
-test("availability filters stay independent of metadata quality", async () => {
-  const app = createApp({ data: browseData, search: "?view=all&status=available_found" });
+test("YTS filters stay independent of historical availability and metadata quality", async () => {
+  const app = createApp({ data: browseData, search: "?view=all&status=found" });
   await app.ready();
   assert.deepEqual(Array.from(app.filteredFilms(), f => f.id), [film.id]);
   assert.equal(app.element("#statusFilterField").hidden, false);
-  app.setFilters({ status: "pending" });
-  assert.deepEqual(Array.from(app.filteredFilms(), f => f.id).sort(), [otherFilm.id, "legacy"].sort());
+  app.setFilters({ status: "not_found" });
+  assert.deepEqual(Array.from(app.filteredFilms(), f => f.id), [otherFilm.id]);
+  app.setFilters({ status: "unchecked" });
+  assert.deepEqual(Array.from(app.filteredFilms(), f => f.id), ["legacy"]);
 });
 
-test("hidden status filters cannot empty Available and are restored on returning to All films", async () => {
-  const app = createApp({ data: browseData, search: "?view=all&status=pending" });
+test("hidden status filters cannot empty YTS and are restored on returning to All films", async () => {
+  const app = createApp({ data: browseData, search: "?view=all&status=unchecked" });
   await app.ready();
-  app.setFilters({ view: "available" });
+  app.setFilters({ view: "yts" });
   assert.deepEqual(Array.from(app.filteredFilms(), f => f.id), [film.id]);
   assert.equal(app.element("#statusFilterField").hidden, true);
   assert.equal(app.urls.at(-1), "/");
   app.setFilters({ view: "all" });
-  assert.equal(app.filteredFilms().length, 2);
-  assert.match(app.urls.at(-1), /status=pending/);
+  assert.equal(app.filteredFilms().length, 1);
+  assert.match(app.urls.at(-1), /status=unchecked/);
 });
 
-test("Available URLs with incompatible status parameters still show available films", async () => {
-  const app = createApp({ data: browseData, search: "?status=pending" });
+test("legacy Available URLs resolve to YTS without a hidden incompatible filter", async () => {
+  const app = createApp({ data: browseData, search: "?view=available&status=unchecked" });
   await app.ready();
   assert.deepEqual(Array.from(app.filteredFilms(), f => f.id), [film.id]);
   assert.equal(app.urls.at(-1), "/");
@@ -179,13 +181,13 @@ test("old browser-only caches cannot override the published Notion snapshot", as
   assert.equal(app.requests.length, 0);
 });
 
-test("pending films do not display catalog annotations or run checks", () => {
+test("historically pending films display confirmed YTS listings without browser checks", () => {
   const pending = { ...film, trackingStatus: "pending", ytsCatalog: catalog() };
   const app = createApp();
-  assert.doesNotMatch(app.gridMarkup([pending]), /Listed on YTS/);
+  assert.match(app.gridMarkup([pending]), /status-pill is-available.*Listed on YTS/);
   app.openDetail(pending);
-  assert.equal(app.status(), "Not checked yet");
-  assert.match(app.meta(), /once available/);
+  assert.equal(app.status(), "Listed on YTS");
+  assert.match(app.meta(), /Checked/);
   assert.equal(app.requests.length, 0);
 });
 
@@ -271,8 +273,29 @@ test("details keep distinct year meanings, put overview before tools, and attach
   assert.match(markup, /Premiere 2025/);
   assert.match(markup, /Release 2026/);
   assert.doesNotMatch(markup, /<h3>Years<\/h3>|Source 1|Source 2/);
-  assert.ok(markup.indexOf("<h3>Overview") < markup.indexOf("<h3>Availability"));
-  assert.ok(markup.indexOf("<h3>Availability") < markup.indexOf('id="ytsCatalogHeading"'));
+  assert.ok(markup.indexOf("<h3>Overview") < markup.indexOf('id="ytsCatalogHeading"'));
+  assert.doesNotMatch(markup, /<h3>Availability|Available to watch|legal online availability/);
   assert.match(markup, /href="https:\/\/example.org\/cannes"[^>]*aria-label="Source for Cannes - 2025 - Competition"/);
   assert.match(markup, /href="https:\/\/example.org\/venice"[^>]*aria-label="Source for Venice - 2026 - Main"/);
+});
+
+test("cards retain the original rating and festival formats, with one green YTS badge and no detection date", () => {
+  const app = createApp();
+  const markup = app.gridMarkup([{ ...film, imdbRating: 7.8, ytsCatalog: catalog(), selections: [{ festival: "Cannes", festivalYear: 2026, section: "Competition" }] }]);
+  assert.match(markup, /class="film-rating">IMDb 7\.8<\/span>/);
+  assert.match(markup, /class="film-selection">Cannes<\/span>/);
+  assert.equal((markup.match(/status-pill/g) || []).length, 1);
+  assert.match(markup, /status-pill is-available/);
+  assert.doesNotMatch(markup, /First detected|\/ 10|is-yts|Available<\/span>/);
+});
+
+test("discovery log ignores historical legal availability events and mismatched IMDb identities", async () => {
+  const app = createApp({ search: "?view=events", data: {
+    ...browseData,
+    discoveries: [{ ...browseData.discoveries[0], imdb_id: otherFilm.imdbId }],
+    events: [{ film_id: film.id, film_title: "Old legal event", event_date: "2026-10-31" }],
+  } });
+  await app.ready();
+  assert.match(app.element("#eventList").innerHTML, /No YTS discoveries yet/);
+  assert.doesNotMatch(app.element("#eventList").innerHTML, /Old legal event/);
 });

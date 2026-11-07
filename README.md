@@ -1,23 +1,16 @@
 # Festival Tracker
 
-Tracks festival films and records the first time each film becomes legally available online.
+Tracks festival and award films, enriches their metadata and ratings, and records when this tracker first finds each film in the YTS catalog.
 
 Live site: https://platypus-device.github.io/festival-tracker/
 
 ## What It Tracks
 
-Legal availability types:
+YTS checks cover every film with a valid IMDb ID and an active festival or award selection, regardless of its historical legal-availability status. Every unchecked film receives an initial check regardless of its year. After a successful not-found result, films premiered in the current or previous year are rechecked daily; older films are rechecked every seven Asia/Shanghai calendar days. The recent-year window rolls automatically each January. Premiere year is used first, with legacy film year as a fallback; unknown or future years keep daily checks. Confirmed listings are retained without routine rechecks.
 
-- `streaming_subscription`
-- `streaming_free`
-- `digital_rent`
-- `digital_buy`
-- `authorized_download`
-- `authorized_torrent`
+The website has YTS listed, All films, and Discovery log views. The log uses the first observation recorded by this tracker, which is not the film's YTS upload date. Cards keep the original festival and IMDb/TMDb rating formats; the single green YTS label reuses the former Available label style. Observation dates appear in the log rather than under film cards.
 
-Legal availability does not count theatrical screenings, festival online tickets, TV broadcasts, or physical media. YTS catalog listings are stored separately and never create legal-availability events.
-
-YTS checks cover only films in the website's Available view with a valid IMDb ID and an active festival selection. Every unchecked film receives an initial check regardless of its year. After a successful not-found result, films premiered in the current or previous year are rechecked daily; older films are rechecked every seven Asia/Shanghai calendar days. The recent-year window rolls automatically each January. Premiere year is used first, with legacy film year as a fallback; unknown or future years keep daily checks. Confirmed listings are retained without routine rechecks.
+Legal provider checks and first-availability event creation are retired. Historical Notion Events and availability properties are preserved, but normal syncs and exports neither read nor update them. The production model requires only Canonical Films and Selections. Legacy availability helpers remain for explicit archive maintenance and regression tests; `Export-TrackerData.ps1 -IncludeLegacyAvailability` opts into the old export for those uses.
 
 Only successful queries update the last-check timestamp. A failed query leaves its film due for the next daily task, including a failed weekly check; the next successful query starts a new daily or weekly interval. Results, observation dates, and resource metadata live in Canonical Films in Notion. The website displays the exported snapshot and makes no YTS API requests.
 
@@ -34,9 +27,9 @@ The restrained core scope currently covers major festival and awards sources inc
 GitHub Actions powers the tracker:
 
 - Pushes to `main` publish the committed web bundle.
-- Daily schedule runs availability checks.
-- Weekly schedule refreshes active lineup windows, then runs availability.
-- Manual runs can use `Availability`, `Lineups`, or `All`.
+- Daily schedule refreshes metadata and ratings, then checks due YTS listings.
+- Weekly schedule refreshes active lineup windows, then metadata, ratings, and due YTS listings.
+- Manual runs can use `Metadata`, `Lineups`, or `All`. The CLI's old `Availability` mode is a compatibility alias for `Metadata`; it no longer checks legal providers.
 
 Scheduled and manual syncs write to Notion, export `web/data/tracker-data.json`, run quality checks, and deploy GitHub Pages only after the checks pass.
 Push deployments also run the due YTS checks before exporting, so a deployment and the daily schedule share the same persisted check dates.
@@ -48,7 +41,7 @@ Push deployments also run the due YTS checks before exporting, so a deployment a
 .\scripts\Invoke-FestivalTracker.ps1 -Mode All -UseNotion
 
 # Ensure Notion schema before a sync
-.\scripts\Invoke-FestivalTracker.ps1 -Mode Availability -UseNotion -EnsureNotionSchema
+.\scripts\Invoke-FestivalTracker.ps1 -Mode Metadata -UseNotion -EnsureNotionSchema
 
 # Export web data
 .\scripts\Export-TrackerData.ps1 -UseNotion
@@ -73,6 +66,5 @@ node .\web\server.js
 - `TMDB_BEARER_TOKEN`
 - `NOTION_CANONICAL_FILMS_DATABASE_ID`
 - `NOTION_SELECTIONS_DATABASE_ID`
-- `NOTION_EVENTS_DATABASE_ID`
 
-Optional: `OMDB_API_KEY`, `WATCHMODE_API_KEY`, and legacy `NOTION_FILMS_DATABASE_ID`.
+Optional: `OMDB_API_KEY`, `TMDB_API_KEY`, and legacy `NOTION_FILMS_DATABASE_ID`. Keep `NOTION_EVENTS_DATABASE_ID` only for explicit historical maintenance; it is not required by normal production runs.

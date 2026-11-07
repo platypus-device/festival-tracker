@@ -99,7 +99,46 @@ if (Test-Path -LiteralPath $DataPath) {
     $payload = Get-Content -LiteralPath $DataPath -Raw | ConvertFrom-Json
     $films = @($payload.films)
     $selections = @($films | ForEach-Object { @($_.selections) })
-    $events = @($payload.events)
+    if ((Get-ObjectProperty $payload "catalogMode" "") -eq "yts") {
+        $listedFilms = @($films | Where-Object { $null -ne $_.ytsCatalog -and $_.ytsCatalog.status -eq "found" })
+        $invalidCatalogs = @($films | Where-Object {
+            $catalog = Get-ObjectProperty $_ "ytsCatalog"
+            if ($null -eq $catalog) { return $false }
+            $checked = [datetimeoffset]::MinValue
+            $imdbId = ([string]$_.imdbId).Trim().ToLowerInvariant()
+            return $imdbId -notmatch '^tt\d+$' -or $catalog.imdbId -cne $imdbId -or
+                $catalog.status -notin @("found", "not_found") -or
+                -not [datetimeoffset]::TryParse([string]$catalog.checkedAt, [ref]$checked)
+        })
+        if ($invalidCatalogs.Count -gt 0) {
+            Add-QualityIssue -List $qualityErrors -Code "invalid_yts_catalog" -Message "YTS results must have a successful check date and match the film's IMDb identity." -Count $invalidCatalogs.Count
+        }
+        $discoveries = @(Get-ObjectProperty $payload "discoveries" @())
+        $invalidDiscoveries = @($discoveries | Where-Object {
+            $discovery = $_
+            $matches = @($listedFilms | Where-Object { $_.id -eq $discovery.film_id -and $_.ytsCatalog.imdbId -ceq $discovery.imdb_id })
+            if ($matches.Count -ne 1) { return $true }
+            $observed = [datetimeoffset]::MinValue
+            $firstFound = [datetimeoffset]::MinValue
+            if (-not [datetimeoffset]::TryParse([string]$discovery.first_detected_at, [ref]$observed) -or
+                -not [datetimeoffset]::TryParse([string]$matches[0].ytsCatalog.firstFoundAt, [ref]$firstFound)) { return $true }
+            return $observed -ne $firstFound -or $discovery.event_date -ne $observed.ToOffset([timespan]::FromHours(8)).ToString("yyyy-MM-dd")
+        })
+        if ($invalidDiscoveries.Count -gt 0) {
+            Add-QualityIssue -List $qualityErrors -Code "invalid_yts_discovery" -Message "YTS discoveries must reference a listed film and its first observation time." -Count $invalidDiscoveries.Count
+        }
+        $duplicateDiscoveries = @($discoveries | Group-Object film_id | Where-Object { $_.Count -gt 1 })
+        if ($duplicateDiscoveries.Count -gt 0) {
+            Add-QualityIssue -List $qualityErrors -Code "duplicate_yts_discovery" -Message "Each film may have only one first YTS observation." -Count $duplicateDiscoveries.Count
+        }
+        if ($payload.totals.ytsListed -ne $listedFilms.Count -or $payload.totals.discoveries -ne $discoveries.Count) {
+            Add-QualityIssue -List $qualityErrors -Code "yts_total_mismatch" -Message "YTS totals do not match the exported films and discoveries."
+        }
+        if ($null -ne $payload.PSObject.Properties["events"] -or @($films | Where-Object { $null -ne $_.PSObject.Properties["availability"] -or $null -ne $_.PSObject.Properties["firstAvailableDate"] }).Count -gt 0) {
+            Add-QualityIssue -List $qualityErrors -Code "legacy_availability_in_catalog" -Message "The YTS catalog must not export historical legal-availability records."
+        }
+    }
+    $events = @(Get-ObjectProperty $payload "events" @())
     $attachedEventIds = @($films | ForEach-Object { @($_.availability) | ForEach-Object { [string](Get-ObjectProperty $_ "id" "") } | Where-Object { $_ } })
     $orphanedAvailabilityEvents = @($events | Where-Object {
         $eventId = [string](Get-ObjectProperty $_ "id" "")
