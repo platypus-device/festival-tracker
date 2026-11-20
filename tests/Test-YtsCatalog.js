@@ -6,6 +6,8 @@ const vm = require("node:vm");
 const { test } = require("node:test");
 
 const source = fs.readFileSync(path.join(__dirname, "../web/app.js"), "utf8");
+const redirectSource = fs.readFileSync(path.join(__dirname, "../web/download/redirect.js"), "utf8");
+const downloadHosts = JSON.parse(fs.readFileSync(path.join(__dirname, "../web/data/yts-download-hosts.json"), "utf8"));
 const prefix = "festival-tracker:yts:v1:";
 const film = { id: "film-a", title: "Film A", imdbId: "tt0111161", trackingStatus: "available_found" };
 const otherFilm = { id: "film-b", title: "Film B", imdbId: "tt0068646", trackingStatus: "pending" };
@@ -116,7 +118,8 @@ function createApp({ store = new Map(), storageBlocked = false, search = "", dat
       },
     },
     fetch: async (url) => {
-      if (String(url).startsWith("./data/")) return response(data);
+      if (String(url).startsWith("./data/tracker-data.json?")) return response(data);
+      if (String(url).startsWith("./data/yts-download-hosts.json?")) return response(downloadHosts);
       requests.push(String(url));
       throw new Error("Unexpected browser API request");
     },
@@ -147,11 +150,13 @@ function createApp({ store = new Map(), storageBlocked = false, search = "", dat
   };
 }
 
+const torrentHash = (number = 1) => number.toString(16).padStart(40, "0");
 const torrent = (number = 1, options = {}) => ({
-  url: `https://yts.gg/torrent/download/${number.toString(16).padStart(40, "0")}`,
+  url: `https://yts.gg/torrent/download/${torrentHash(number)}`,
   quality: "1080p", video_codec: "x265", type: "bluray", bit_depth: "10", audio_channels: "5.1", size_bytes: 2 * 1024 ** 3,
   ...options,
 });
+const downloadEntry = (hash) => `./download/?hash=${hash}`;
 
 test("shared results restore badges and resource links on every device without API calls", async () => {
   const shared = { ...film, ytsCatalog: catalog("found", [torrent()]) };
@@ -162,7 +167,7 @@ test("shared results restore badges and resource links on every device without A
     app.openDetail(shared);
     assert.equal(app.status(), "Listed on YTS");
     assert.match(app.meta(), /Checked/);
-    assert.equal(app.download().getAttribute("href"), torrent().url);
+    assert.equal(app.download().getAttribute("href"), downloadEntry(torrentHash()));
     assert.equal(app.subtitles().getAttribute("href"), "https://subhd.me/search/tt0111161");
     assert.equal(app.torrentSpec().hidden, false);
     assert.equal(app.requests.length, 0);
@@ -208,17 +213,18 @@ test("unchecked and malformed results remain unchecked without a lookup", () => 
 
 test("confirmed results stay visible without browser refreshes regardless of age", async () => {
   const app = createApp();
-  app.openDetail({ ...film, ytsCatalog: { ...catalog("found", [torrent()]), checkedAt: "2020-01-01T00:00:00Z" } });
   await app.ready();
+  app.openDetail({ ...film, ytsCatalog: { ...catalog("found", [torrent()]), checkedAt: "2020-01-01T00:00:00Z" } });
   assert.equal(app.status(), "Listed on YTS");
-  assert.equal(app.download().getAttribute("href"), torrent().url);
+  assert.equal(app.download().getAttribute("href"), downloadEntry(torrentHash()));
   assert.equal(app.requests.length, 0);
 });
 
-test("resource preference preserves resolution, codec, source, and technical tie breaks", () => {
+test("resource preference preserves resolution, codec, source, and technical tie breaks", async () => {
   const app = createApp();
+  await app.ready();
   const high = torrent(3, { quality: "2160p", video_codec: "x264" });
-  assert.equal(app.preferredYtsTorrent(catalog("found", [torrent(1), high])).url, high.url);
+  assert.equal(app.preferredYtsTorrent(catalog("found", [torrent(1), high])).hash, torrentHash(3));
   for (const versions of [
     [torrent(1, { video_codec: "x264" }), torrent(2)],
     [torrent(1, { type: "web", bit_depth: "12" }), torrent(2, { type: "bluray", bit_depth: "8" })],
@@ -226,14 +232,28 @@ test("resource preference preserves resolution, codec, source, and technical tie
     [torrent(1, { audio_channels: "2.0" }), torrent(2, { audio_channels: "5.1" })],
     [torrent(1, { size_bytes: 1024 ** 3 }), torrent(2)],
   ]) {
-    assert.equal(app.preferredYtsTorrent(catalog("found", versions)).url, versions[1].url);
-    assert.equal(app.preferredYtsTorrent(catalog("found", [...versions].reverse())).url, versions[1].url);
+    assert.equal(app.preferredYtsTorrent(catalog("found", versions)).hash, torrentHash(2));
+    assert.equal(app.preferredYtsTorrent(catalog("found", [...versions].reverse())).hash, torrentHash(2));
   }
 });
 
-test("invalid resource links cannot become download actions", () => {
-  const invalid = [null, "invalid", torrent(1, { url: "javascript:alert(1)" }), torrent(1, { url: "http://yts.gg/torrent/download/" + "a".repeat(40) }), torrent(1, { url: "https://yts.gg.example.com/torrent/download/" + "a".repeat(40) }), torrent(1, { url: "https://user:secret@yts.gg/torrent/download/" + "a".repeat(40) }), torrent(1, { quality: "3D" })];
+test("the same torrent hash keeps its button address across a host change", async () => {
   const app = createApp();
+  await app.ready();
+  const hash = "b".repeat(40);
+  for (const host of ["yts.gg", "yts.pw", "new-yts.example.org"]) {
+    const url = `https://${host}/torrent/download/${hash}`;
+    const record = torrent(2, { url, hash, apiHost: host });
+    app.openDetail({ ...film, ytsCatalog: catalog("found", [record]) });
+    assert.equal(app.download().hidden, false);
+    assert.equal(app.download().getAttribute("href"), downloadEntry(hash));
+  }
+});
+
+test("invalid resource links cannot become download actions", async () => {
+  const invalid = [null, "invalid", torrent(1, { url: "javascript:alert(1)" }), torrent(1, { url: "http://yts.gg/torrent/download/" + "a".repeat(40) }), torrent(1, { url: "https://yts.gg.example.com/torrent/download/" + "a".repeat(40) }), torrent(1, { url: "https://user:secret@yts.gg/torrent/download/" + "a".repeat(40) }), torrent(1, { quality: "3D" }), torrent(1, { hash: "c".repeat(40) })];
+  const app = createApp();
+  await app.ready();
   app.openDetail({ ...film, ytsCatalog: catalog("found", invalid) });
   assert.equal(app.status(), "Listed on YTS");
   assert.equal(app.download().hidden, true);
@@ -242,8 +262,48 @@ test("invalid resource links cannot become download actions", () => {
   assert.equal(app.subtitles().hidden, false);
 });
 
-test("opening another film clears resource actions from the previous result", () => {
+async function loadDownloadEntry(hash, urls) {
+  const redirects = [];
+  const downloadStatus = { textContent: "" };
+  const downloadLink = { href: "", hidden: true };
+  vm.runInNewContext(redirectSource, {
+    URL, URLSearchParams,
+    document: { querySelector: (selector) => selector === "#downloadStatus" ? downloadStatus : downloadLink },
+    window: { location: { search: `?hash=${hash}`, replace: (url) => redirects.push(url) } },
+    fetch: async (url, options) => {
+      assert.equal(url, "../data/yts-downloads.json");
+      assert.equal(options.cache, "no-store");
+      return response(urls);
+    },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  return { redirects, downloadStatus, downloadLink };
+}
+
+test("a saved download address follows the current export without changing its hash", async () => {
+  const hash = "b".repeat(40);
+  for (const host of ["yts.gg", "yts.pw"]) {
+    const url = `https://${host}/torrent/download/${hash}`;
+    const result = await loadDownloadEntry(hash, { [hash]: url });
+    assert.deepEqual(result.redirects, [url]);
+    assert.equal(result.downloadLink.href, url);
+    assert.equal(result.downloadLink.hidden, false);
+  }
+});
+
+test("a saved download address cannot redirect to a different hash or an unsafe URL", async () => {
+  const hash = "b".repeat(40);
+  for (const urls of [{}, { [hash]: torrent().url }, { [hash]: "javascript:alert(1)" }]) {
+    const result = await loadDownloadEntry(hash, urls);
+    assert.deepEqual(result.redirects, []);
+    assert.equal(result.downloadLink.hidden, true);
+    assert.match(result.downloadStatus.textContent, /No download address/);
+  }
+});
+
+test("opening another film clears resource actions from the previous result", async () => {
   const app = createApp();
+  await app.ready();
   app.openDetail({ ...film, ytsCatalog: catalog("found", [torrent()]) });
   assert.equal(app.download().hidden, false);
   app.closeDetail();

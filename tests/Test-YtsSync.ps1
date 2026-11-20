@@ -8,11 +8,12 @@ function Assert-Yts {
 }
 
 $now = [datetimeoffset]"2026-10-31T01:00:00Z"
-$resource = [pscustomobject]@{ url = "https://yts.gg/torrent/download/$('a' * 40)"; quality = "1080p"; video_codec = "x265"; type = "bluray"; bit_depth = "10"; audio_channels = "5.1"; size_bytes = 2147483648 }
+$resource = [pscustomobject]@{ url = "https://yts.pw/torrent/download/$('a' * 40)"; quality = "1080p"; video_codec = "x265"; type = "bluray"; bit_depth = "10"; audio_channels = "5.1"; size_bytes = 2147483648 }
 $foundPayload = [pscustomobject]@{ status = "ok"; data = [pscustomobject]@{ movie_count = 1; movies = @([pscustomobject]@{ imdb_code = "tt1001"; torrents = @($resource) }) } }
 $missingPayload = [pscustomobject]@{ status = "ok"; data = [pscustomobject]@{ movie_count = 0 } }
 $foundResult = ConvertFrom-YtsCatalogResponse -Payload $foundPayload -ImdbId "tt1001" -Now $now
-Assert-Yts ($foundResult.status -eq "found" -and $foundResult.torrents.Count -eq 1) "YTS response keeps an exact IMDb match and resource metadata"
+Assert-Yts ($foundResult.status -eq "found" -and $foundResult.torrents.Count -eq 1 -and $foundResult.torrents[0].url -eq $resource.url) "YTS response keeps an exact IMDb match and the configured yts.pw download"
+Assert-Yts ($foundResult.torrents[0].hash -eq ('a' * 40)) "legacy download addresses supply their torrent hash"
 Assert-Yts ($foundResult.firstFoundAt -eq $foundResult.checkedAt) "first YTS discovery uses the observation time"
 $missingResult = ConvertFrom-YtsCatalogResponse -Payload $missingPayload -ImdbId "tt1002" -Now $now
 Assert-Yts ($missingResult.status -eq "not_found" -and -not $missingResult.firstFoundAt) "empty successful YTS response confirms not found"
@@ -29,6 +30,15 @@ foreach ($badPayload in @(
 }
 $unsafeResource = [pscustomobject]@{ url = "https://yts.gg.example.test/torrent/download/$('b' * 40)"; quality = "1080p" }
 Assert-Yts (@(ConvertTo-YtsTorrentMetadata -Torrents @($unsafeResource)).Count -eq 0) "YTS metadata rejects untrusted resource domains"
+$movedResource = [pscustomobject]@{ url = "https://new-yts.example.org/torrent/download/$('a' * 40)"; hash = 'A' * 40; quality = "1080p" }
+$movedMovie = [pscustomobject]@{ imdb_code = "tt1001"; url = "https://new-yts.example.org/movies/example-2026"; torrents = @($movedResource, $unsafeResource) }
+$movedPayload = [pscustomobject]@{ status = "ok"; data = [pscustomobject]@{ movie_count = 1; movies = @($movedMovie) } }
+$movedResult = ConvertFrom-YtsCatalogResponse -Payload $movedPayload -ImdbId "tt1001" -Now $now
+Assert-Yts ($movedResult.torrents.Count -eq 1 -and $movedResult.torrents[0].apiHost -eq "new-yts.example.org") "fresh YTS metadata accepts a new movie host with a matching reported hash"
+$movedResource.hash = 'b' * 40
+$mismatch = ConvertFrom-YtsCatalogResponse -Payload $movedPayload -ImdbId "tt1001" -Now $now
+Assert-Yts ($mismatch.torrents.Count -eq 0) "a new host cannot authorize a download with a mismatched hash"
+$movedResource.hash = 'A' * 40
 
 function New-YtsTestFilm {
     param([string]$Id, [string]$Status = "available_found", [string]$YtsStatus = "", [string]$CheckedAt = "", [object]$PremiereYear = 2026)
@@ -44,7 +54,8 @@ $fresh = New-YtsTestFilm "tt1001"
 $pending = New-YtsTestFilm "tt1002" "pending"
 $missing = New-YtsTestFilm "tt1003" "available_found" "not_found" "2026-10-30T23:59:00+08:00"
 $today = New-YtsTestFilm "tt1004" "available_found" "not_found" "2026-10-31T00:01:00+08:00"
-$listed = New-YtsTestFilm "tt1005" "available_found" "found" "2020-01-01T00:00:00Z"
+$listed = New-YtsTestFilm "tt1005" "available_found" "found" $now.AddDays(-6).ToString("o")
+$listed.yts_torrents_json = ConvertTo-Json -InputObject @($resource) -Compress
 $changedIdentity = New-YtsTestFilm "tt1006" "available_found" "found" "2026-10-31T00:00:00Z"
 $changedIdentity.yts_imdb_id = "tt9999"
 $noImdb = New-YtsTestFilm ""
@@ -53,6 +64,10 @@ Assert-Yts ($candidates.Count -eq 4) "valid unchecked or missing films are due r
 Assert-Yts (@($candidates | Where-Object { $_.imdb_id -eq "tt1002" }).Count -eq 1) "pending films receive their first YTS check"
 Assert-Yts (@($candidates | Where-Object { $_.imdb_id -eq "tt1003" }).Count -eq 1) "missing films are due again on the next Shanghai calendar day"
 Assert-Yts (@($candidates | Where-Object { $_.imdb_id -eq "tt1006" }).Count -eq 1) "IMDb identity changes invalidate an old found result"
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($listed) -Now $now.AddDays(1)).Count -eq 1) "found films with links refresh after seven Shanghai calendar days"
+$noLink = New-YtsTestFilm "tt1007" "pending" "found" "2026-10-30T23:59:00+08:00"
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($noLink) -Now $now.AddDays(-1)).Count -eq 0) "a fresh listing with no usable torrent waits until the next check is due"
+Assert-Yts (@(Select-YtsCatalogCheckFilms -Films @($noLink) -Now $now).Count -eq 1) "a recent listing without a usable torrent is due again the next day"
 
 foreach ($year in @(2025, 2026)) {
     $recent = New-YtsTestFilm "tt1020" "available_found" "not_found" "2026-10-30T23:59:00+08:00" $year
@@ -116,7 +131,7 @@ $dateProperties = ConvertTo-NotionYtsCatalogProperties -Result $dateResult
 Assert-Yts ($dateProperties.'YTS First Found At'.date.start -eq $dateResult.firstFoundAt) "reused YTS discovery dates are valid ISO values for Notion writes"
 
 & (Get-Module FestivalTracker) {
-    param($Now, $FoundPayload, $MissingPayload, $NewFilm, $Assert)
+    param($Now, $FoundPayload, $MissingPayload, $MovedPayload, $NewFilm, $Assert)
     Set-Item -Path Function:New-YtsTestFilm -Value $NewFilm
     Set-Item -Path Function:Assert-Yts -Value $Assert
     $saved = @{}
@@ -157,6 +172,35 @@ Assert-Yts ($dateProperties.'YTS First Found At'.date.start -eq $dateResult.firs
         Assert-Yts ($again.requests -eq 0) "repeat same-day runs perform no YTS checks"
         $tomorrow = Sync-NotionYtsCatalog -Films @($a, $duplicate, $b) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now.AddDays(1)
         Assert-Yts ($tomorrow.requests -eq 1 -and $tomorrow.found -eq 0) "the next day rechecks missing films and skips listed films"
+
+        $firstSeen = $Now.AddDays(-3).ToString("o")
+        $withoutLink = New-YtsTestFilm "tt1001" "pending" "found" $firstSeen
+        $withoutLink.yts_first_found_at = $firstSeen
+        $recovered = Sync-NotionYtsCatalog -Films @($withoutLink) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
+        Assert-Yts ($recovered.requests -eq 1 -and (Get-FilmYtsCatalogResult -Film $withoutLink).torrents.Count -eq 1 -and $withoutLink.yts_first_found_at -eq $firstSeen) "YTS sync repopulates missing links and keeps the original discovery time"
+
+        $script:YtsFoundPayload = $MovedPayload
+        $stableListing = New-YtsTestFilm "tt1001" "pending" "found" $Now.AddDays(-7).ToString("o")
+        $stableListing.yts_first_found_at = $stableListing.yts_checked_at
+        $stableListing.yts_torrents_json = '[{"url":"https://yts.gg/torrent/download/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","quality":"1080p"},{"url":"https://yts.gg/torrent/download/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","quality":"720p"}]'
+        $refreshed = Sync-NotionYtsCatalog -Films @($stableListing) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
+        $stableResult = Get-FilmYtsCatalogResult -Film $stableListing
+        Assert-Yts ($refreshed.requests -eq 1 -and $stableResult.torrents.Count -eq 2 -and
+            $stableResult.torrents[0].url -eq $MovedPayload.data.movies[0].torrents[0].url -and
+            $stableResult.torrents[0].hash -eq ('a' * 40) -and $stableResult.torrents[1].hash -eq ('b' * 40) -and
+            $stableResult.firstFoundAt -eq $Now.AddDays(-7).ToString("o")) "domain refresh replaces a same-hash address and preserves older versions and discovery time"
+        $script:YtsFoundPayload = $FoundPayload
+
+        $blankDuplicate = New-YtsTestFilm "tt1001" "pending" "found" $firstSeen
+        $blankDuplicate.yts_first_found_at = $firstSeen
+        $blankDuplicate.notion_page_id = "blank-duplicate-page"
+        $copied = Sync-NotionYtsCatalog -Films @($withoutLink, $blankDuplicate) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
+        Assert-Yts ($copied.requests -eq 0 -and $copied.updated -eq 1 -and $blankDuplicate.yts_torrents_json -eq $withoutLink.yts_torrents_json) "an empty duplicate can reuse an existing usable listing"
+
+        $onceListed = New-YtsTestFilm "tt1002" "pending" "found" $firstSeen
+        $onceListed.yts_first_found_at = $firstSeen
+        $nowAbsent = Sync-NotionYtsCatalog -Films @($onceListed) -DatabaseId "test-db" -MinIntervalMs 0 -Now $Now
+        Assert-Yts ($nowAbsent.requests -eq 1 -and $onceListed.yts_status -eq "found" -and $onceListed.yts_first_found_at -eq $firstSeen -and [datetimeoffset]$onceListed.yts_checked_at -ge $Now) "a successful negative recheck advances the check date and keeps the confirmed listing"
 
         $old = $b.yts_checked_at
         $script:YtsTestMode = "failure"
@@ -209,4 +253,4 @@ Assert-Yts ($dateProperties.'YTS First Found At'.date.start -eq $dateResult.firs
         foreach ($name in $saved.Keys) { Set-Item -Path "Function:script:$name" -Value $saved[$name] }
         Remove-Variable -Scope Script -Name YtsTestCalls, YtsTestWrites, YtsTestMode, YtsFoundPayload, YtsMissingPayload -ErrorAction SilentlyContinue
     }
-} $now $foundPayload $missingPayload (Get-Command New-YtsTestFilm).ScriptBlock (Get-Command Assert-Yts).ScriptBlock
+} $now $foundPayload $missingPayload $movedPayload (Get-Command New-YtsTestFilm).ScriptBlock (Get-Command Assert-Yts).ScriptBlock

@@ -455,10 +455,14 @@ function Merge-WebFilms {
         $existing = $byKey[$key]
         $incomingYts = Get-ObjectProperty $film "ytsCatalog"
         $existingYts = Get-ObjectProperty $existing "ytsCatalog"
-        if ($null -ne $incomingYts -and ($null -eq $existingYts -or
+        $preferIncomingYts = $null -ne $incomingYts -and ($null -eq $existingYts -or
             ($incomingYts.status -eq "found" -and $existingYts.status -ne "found") -or
-            ($incomingYts.status -eq $existingYts.status -and [datetimeoffset]$incomingYts.checkedAt -gt [datetimeoffset]$existingYts.checkedAt))) {
-            Set-RecordProperty -Record $existing -Name "ytsCatalog" -Value $incomingYts
+            ($incomingYts.status -eq $existingYts.status -and [datetimeoffset]$incomingYts.checkedAt -gt [datetimeoffset]$existingYts.checkedAt))
+        if ($preferIncomingYts) { Set-RecordProperty -Record $existing -Name "ytsCatalog" -Value $incomingYts }
+        if ($incomingYts.status -eq "found" -and $existingYts.status -eq "found" -and $incomingYts.imdbId -ceq $existingYts.imdbId) {
+            $selected = $existing.ytsCatalog
+            $other = if ($preferIncomingYts) { $existingYts } else { $incomingYts }
+            $selected.torrents = @(Merge-YtsTorrentMetadata -Previous $other.torrents -Current $selected.torrents)
         }
         $existing.selections = @(
             @($existing.selections) + @($film.selections) |
@@ -808,4 +812,13 @@ if (-not (Test-Path $outputDirectory)) {
 }
 
 $payload | ConvertTo-Json -Depth 20 | Set-Content -Path $OutputPath -Encoding UTF8
+if (-not $IncludeLegacyAvailability) {
+    $downloadLinks = [ordered]@{}
+    $listedFilms = $webFilms | Where-Object { $_.ytsCatalog.status -eq "found" } |
+        Sort-Object { [datetimeoffset]$_.ytsCatalog.checkedAt }
+    foreach ($film in $listedFilms) {
+        foreach ($torrent in $film.ytsCatalog.torrents) { $downloadLinks[$torrent.hash] = $torrent.url }
+    }
+    $downloadLinks | ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $outputDirectory "yts-downloads.json") -Encoding UTF8
+}
 Write-Host "Exported $(@($webFilms).Count) films to $OutputPath"

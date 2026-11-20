@@ -1,24 +1,44 @@
 # YTS is the tracked catalog. Historical legal-availability records are left untouched.
+$Script:YtsDownloadHosts = [string[]](Get-Content -LiteralPath (Join-Path $PSScriptRoot "../web/data/yts-download-hosts.json") -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop)
+
 function ConvertTo-YtsTorrentMetadata {
-    param([object[]]$Torrents = @())
+    param([object[]]$Torrents = @(), [string]$ApiHost, [switch]$FromStoredResult)
 
     foreach ($torrent in $Torrents) {
         $url = [string](Get-ObjectProperty $torrent "url" "")
         $uri = $null
         if (-not [uri]::TryCreate($url, [UriKind]::Absolute, [ref]$uri)) { continue }
         if ($uri.Scheme -ne "https" -or -not $uri.IsDefaultPort -or $uri.UserInfo -or
-            $uri.Host -notin @("yts.gg", "yts.bz", "yts.mx") -or
-            $uri.AbsolutePath -notmatch '^/torrent/download/[a-f0-9]{40}$') { continue }
+            $uri.HostNameType -ne [UriHostNameType]::Dns -or -not $uri.Host.Contains(".") -or
+            $uri.AbsolutePath -notmatch '^/torrent/download/([a-f0-9]{40})$') { continue }
+        $hash = $Matches[1].ToLowerInvariant()
+        $reportedHash = [string](Get-ObjectProperty $torrent "hash" "")
+        if ($reportedHash -and $reportedHash -ne $hash) { continue }
+        $verifiedHost = if ($FromStoredResult) { Get-ObjectProperty $torrent "apiHost" } else { $ApiHost }
+        $verifiedByApi = $reportedHash -eq $hash -and $uri.Host -eq $verifiedHost
+        if ($uri.Host -notin $Script:YtsDownloadHosts -and -not $verifiedByApi) { continue }
         $quality = [string](Get-ObjectProperty $torrent "quality" "")
-        if ($quality -notmatch '^\d{3,4}p(?:\b|$)') { continue }
+        if ($quality -notmatch '^([0-9]{3,4})p(?:\b|$)' -or [int]$Matches[1] -eq 0) { continue }
 
-        $metadata = [ordered]@{ url = $uri.AbsoluteUri; quality = $quality }
+        $metadata = [ordered]@{ url = $uri.AbsoluteUri; hash = $hash; quality = $quality }
+        if ($verifiedByApi) { $metadata.apiHost = $uri.Host }
         foreach ($name in @("video_codec", "type", "bit_depth", "audio_channels", "size_bytes", "size")) {
             $value = Get-ObjectProperty $torrent $name
             if ($null -ne $value -and ([string]$value).Length -le 64) { $metadata[$name] = $value }
         }
         [pscustomobject]$metadata
     }
+}
+
+function Merge-YtsTorrentMetadata {
+    param([object[]]$Previous = @(), [object[]]$Current = @())
+
+    # A bookmarked hash keeps its last known address until the same version is observed again.
+    $byHash = [ordered]@{}
+    foreach ($torrent in ($Previous + $Current)) {
+        if ($torrent.hash) { $byHash[$torrent.hash] = $torrent }
+    }
+    $byHash.Values
 }
 
 function ConvertFrom-YtsCatalogResponse {
@@ -45,7 +65,15 @@ function ConvertFrom-YtsCatalogResponse {
     $torrents = @()
     if ($movie.Count -gt 0) {
         $resources = $movie[0].torrents
-        if ($resources -is [array]) { $torrents = @(ConvertTo-YtsTorrentMetadata -Torrents $resources) }
+        $movieUri = $null
+        $apiHost = ""
+        if ([uri]::TryCreate([string]$movie[0].url, [UriKind]::Absolute, [ref]$movieUri) -and
+            $movieUri.Scheme -eq "https" -and $movieUri.IsDefaultPort -and -not $movieUri.UserInfo -and
+            $movieUri.HostNameType -eq [UriHostNameType]::Dns -and $movieUri.Host.Contains(".") -and
+            $movieUri.AbsolutePath -match '^/movies/[a-z0-9-]+/?$') {
+            $apiHost = $movieUri.Host
+        }
+        if ($resources -is [array]) { $torrents = @(ConvertTo-YtsTorrentMetadata -Torrents $resources -ApiHost $apiHost) }
     }
     return [pscustomobject]@{
         imdbId = $ImdbId
@@ -69,7 +97,7 @@ function Get-FilmYtsCatalogResult {
     $torrents = @()
     try {
         $resources = ConvertFrom-Json -InputObject ([string](Get-ObjectProperty $Film "yts_torrents_json" "[]")) -ErrorAction Stop
-        $torrents = @(ConvertTo-YtsTorrentMetadata -Torrents @($resources))
+        $torrents = @(ConvertTo-YtsTorrentMetadata -Torrents @($resources) -FromStoredResult)
     }
     catch { } # A damaged resource field must not hide a confirmed catalog result.
     $firstFound = [datetimeoffset]::MinValue
@@ -102,11 +130,12 @@ function Test-YtsCatalogResultDue {
     )
 
     if ($null -eq $Result) { return $true }
-    if ($Result.status -eq "found") { return $false }
     # Only successful checks advance this date; an overdue failure stays due next run.
     $today = $Now.ToOffset([timespan]::FromHours(8)).Date
     $lastSuccess = ([datetimeoffset]$Result.checkedAt).ToOffset([timespan]::FromHours(8)).Date
-    $interval = Get-YtsCatalogRecheckIntervalDays -Film $Film -Now $Now
+    $interval = if ($Result.status -eq "found" -and $Result.torrents.Count -gt 0) { 7 } else {
+        Get-YtsCatalogRecheckIntervalDays -Film $Film -Now $Now
+    }
     return $lastSuccess.AddDays($interval) -le $today
 }
 
@@ -175,13 +204,26 @@ function Sync-NotionYtsCatalog {
     if ($DryRun) { $stats.deferred = $candidates.Count; return $stats }
     Ensure-NotionYtsCatalogSchema -DatabaseId $DatabaseId
     $resultsByImdb = @{}
+    $firstFoundByImdb = @{}
     foreach ($film in $Films) {
         $result = Get-FilmYtsCatalogResult -Film $film
         if ($null -eq $result) { continue }
-        $cached = $resultsByImdb[$result.imdbId]
-        if ($null -eq $cached -or $result.status -eq "found" -or
-            ($cached.status -ne "found" -and [datetimeoffset]$result.checkedAt -gt [datetimeoffset]$cached.checkedAt)) {
-            $resultsByImdb[$result.imdbId] = $result
+        $imdbId = $result.imdbId
+        $cached = $resultsByImdb[$imdbId]
+        $hasLinks = $result.torrents.Count -gt 0
+        $cachedHasLinks = $cached.torrents.Count -gt 0
+        $preferIncoming = $null -eq $cached -or ($result.status -eq "found" -and $cached.status -ne "found") -or
+            ($result.status -eq $cached.status -and (($hasLinks -and -not $cachedHasLinks) -or
+                ($hasLinks -eq $cachedHasLinks -and [datetimeoffset]$result.checkedAt -gt [datetimeoffset]$cached.checkedAt)))
+        if ($preferIncoming) { $resultsByImdb[$imdbId] = $result }
+        if ($result.status -eq "found" -and $cached.status -eq "found") {
+            $selected = $resultsByImdb[$imdbId]
+            $other = if ($preferIncoming) { $cached } else { $result }
+            $selected.torrents = @(Merge-YtsTorrentMetadata -Previous $other.torrents -Current $selected.torrents)
+        }
+        $firstFoundAt = $firstFoundByImdb[$imdbId]
+        if ($result.firstFoundAt -and (-not $firstFoundAt -or [datetimeoffset]$result.firstFoundAt -lt [datetimeoffset]$firstFoundAt)) {
+            $firstFoundByImdb[$imdbId] = $result.firstFoundAt
         }
     }
     $clock = [System.Diagnostics.Stopwatch]::StartNew()
@@ -193,7 +235,8 @@ function Sync-NotionYtsCatalog {
         $pageId = [string](Get-ObjectProperty $film "notion_page_id" "")
         if ([string]::IsNullOrWhiteSpace($pageId)) { throw "YTS sync requires a canonical Notion page ID for every candidate." }
         $imdbId = ([string]$film.imdb_id).Trim().ToLowerInvariant()
-        $result = $resultsByImdb[$imdbId]
+        $cached = $resultsByImdb[$imdbId]
+        $result = $cached
         if (Test-YtsCatalogResultDue -Film $film -Result $result -Now $Now) { $result = $null }
         if ($null -eq $result) {
             if ($attemptedImdb.ContainsKey($imdbId)) { continue }
@@ -205,8 +248,10 @@ function Sync-NotionYtsCatalog {
             try {
                 $payload = Invoke-YtsCatalogRequest -ImdbId $imdbId
                 $result = ConvertFrom-YtsCatalogResponse -Payload $payload -ImdbId $imdbId -Now ($Now.AddMilliseconds($clock.ElapsedMilliseconds))
-                $previous = Get-FilmYtsCatalogResult -Film $film
-                if ($null -ne $previous -and $previous.firstFoundAt) { $result.firstFoundAt = $previous.firstFoundAt }
+                if ($cached.status -eq "found") {
+                    $result.status = "found"
+                    $result.torrents = @(Merge-YtsTorrentMetadata -Previous $cached.torrents -Current $result.torrents)
+                }
                 $resultsByImdb[$imdbId] = $result
                 $failures = 0
             }
@@ -224,6 +269,7 @@ function Sync-NotionYtsCatalog {
                 continue
             }
         }
+        if ($firstFoundByImdb[$imdbId]) { $result.firstFoundAt = $firstFoundByImdb[$imdbId] }
         $properties = ConvertTo-NotionYtsCatalogProperties -Result $result
         # Persist each result immediately; a later API failure cannot lose earlier work.
         Invoke-NotionRequest -Method "PATCH" -Path "/v1/pages/$pageId" -Body @{ properties = $properties } | Out-Null

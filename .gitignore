@@ -1,3 +1,4 @@
 .tracker/
 .env
 *.log
+/web/data/yts-downloads.json

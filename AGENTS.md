@@ -10,12 +10,14 @@ https://platypus-device.github.io/festival-tracker/
 - `src/FestivalTracker.psm1`: main PowerShell module. It contains lineup parsers, metadata enrichment, Notion sync, schema management, and historical repair helpers. Normal runs do not check legal providers or create availability events.
 - `scripts/Invoke-FestivalTracker.ps1`: main tracker entrypoint. It delegates to `Invoke-FestivalTracker` in the module.
 - `scripts/Export-TrackerData.ps1`: exports production Notion state into `web/data/tracker-data.json` for the frontend.
-- `src/YtsCatalog.ps1` and `scripts/Sync-YtsCatalog.ps1`: check all canonical films with active selections and valid IMDb IDs, independently of historical availability status. Initial checks cover every year; not-found films premiered this year or last year are rechecked daily, older films weekly. Failed checks preserve the last-success date and remain due for the next daily task. Confirmed listings are retained. The browser displays exported results without querying YTS.
+- `src/YtsCatalog.ps1` and `scripts/Sync-YtsCatalog.ps1`: check all canonical films with active selections and valid IMDb IDs, independently of historical availability status. Initial checks cover every year. Films without usable torrent links are rechecked daily if premiered this year or last year, and weekly if older. Films with links refresh weekly. Failed checks preserve the last-success date and remain due for the next daily task. Confirmed listings and known torrent hashes are retained. The browser displays exported results without querying YTS.
 - `scripts/Test-TrackerDataQuality.ps1`: validates exported data and optional Notion state before deployment.
 - `config/festivals.json`: enabled festivals, source URLs, parsers, section scopes, and lineup windows.
 - `config/authorized_sources.json`: historical legal-source allowlist, used only by explicit legacy helpers and regression tests.
 - `web/`: static frontend deployed as the GitHub Pages artifact.
 - `web/data/tracker-data.json`: generated frontend data consumed by `web/app.js`.
+- `web/data/yts-download-hosts.json`: shared allowlist for historical YTS torrent records. Fresh API results can authorize a new host when the HTTPS movie page and download URL share that host and the URL matches the reported torrent hash.
+- `web/download/`: stable `download/?hash=…` entry point. The export generates `web/data/yts-downloads.json` with the current YTS destinations, and the browser reads it on click.
 - `.github/workflows/tracker.yml`: GitHub Actions sync, export, quality check, and Pages deployment.
 - `.tracker/`: ignored local fallback/cache for development and tests when `-UseNotion` is not supplied. It is not the production source of truth.
 
@@ -64,7 +66,7 @@ Optional:
 ## GitHub Actions And Deployment
 Deployment is handled by `.github/workflows/tracker.yml`.
 
-- Push to `main`: repair year metadata in Notion, check due YTS listings (without rechecking confirmed listings or fresh successful results), export web data from Notion, run quality checks, prepare `web/build-meta.*`, and deploy `web/` to GitHub Pages.
+- Push to `main`: repair year metadata in Notion, check due YTS listings, export web data from Notion, run quality checks, prepare `web/build-meta.*`, and deploy `web/` to GitHub Pages.
 - Daily scheduled run: refreshes `Metadata`, then checks due YTS listings for all active films.
 - Weekly scheduled run: runs `Lineups` with festival windows respected, then `Metadata` and YTS checks.
 - Manual workflow dispatch: supports `Metadata`, `Lineups`, or `All`.

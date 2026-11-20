@@ -1,5 +1,6 @@
 const state = {
   data: null,
+  ytsDownloadHosts: [],
   view: "yts",
   search: "",
   festival: "",
@@ -202,8 +203,15 @@ async function loadData() {
   const appScript = document.currentScript || [...document.scripts].find((script) => script.src.includes("app.js"));
   const appVersion = appScript?.src ? new URL(appScript.src, window.location.href).searchParams.get("v") : "";
   const buildVersion = window.FESTIVAL_TRACKER_BUILD?.version || appVersion || String(Date.now());
-  const response = await fetch(`./data/tracker-data.json?v=${encodeURIComponent(buildVersion)}`, { cache: "no-store" });
+  const version = encodeURIComponent(buildVersion);
+  const [response, downloadHosts] = await Promise.all([
+    fetch(`./data/tracker-data.json?v=${version}`, { cache: "no-store" }),
+    fetch(`./data/yts-download-hosts.json?v=${version}`)
+      .then((response) => response.ok ? response.json() : [])
+      .catch(() => []),
+  ]);
   if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
+  if (Array.isArray(downloadHosts)) state.ytsDownloadHosts = downloadHosts;
   state.data = await response.json();
   setupFilters();
   syncControls();
@@ -429,7 +437,11 @@ function normalizeYtsTorrent(torrent) {
   const href = safeExternalUrl(torrent.url);
   if (!href) return null;
   const url = new URL(href);
-  if (url.protocol !== "https:" || url.port || !["yts.gg", "yts.bz", "yts.mx"].includes(url.hostname) || !/^\/torrent\/download\/[a-f0-9]{40}$/i.test(url.pathname)) return null;
+  const hash = /^\/torrent\/download\/([a-f0-9]{40})$/i.exec(url.pathname)?.[1].toLowerCase();
+  const reportedHash = String(torrent.hash || "").toLowerCase();
+  const knownHost = state.ytsDownloadHosts.includes(url.hostname);
+  const verifiedHost = torrent.apiHost === url.hostname && reportedHash === hash;
+  if (url.protocol !== "https:" || url.port || !hash || (reportedHash && reportedHash !== hash) || !(knownHost || verifiedHost)) return null;
   const resolution = Number(/^(\d{3,4})p(?:\b|$)/i.exec(String(torrent.quality || ""))?.[1]);
   if (!resolution) return null;
   const codec = String(torrent.video_codec || "").trim().toLowerCase().replace(/[.\s-]/g, "");
@@ -440,7 +452,7 @@ function normalizeYtsTorrent(torrent) {
   const sizeBytes = Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0;
   const size = String(torrent.size || "").trim();
   return {
-    url: href,
+    hash,
     quality: `${resolution}p`,
     video_codec: ["x265", "h265", "hevc"].includes(codec) ? "x265" : ["x264", "h264", "avc"].includes(codec) ? "x264" : "",
     type: source === "bluray" ? "BluRay" : ["web", "webrip", "webdl"].includes(source) ? "WEB" : "",
@@ -459,7 +471,7 @@ function preferredYtsTorrent(result) {
   return result.torrents.map(normalizeYtsTorrent).filter(Boolean).sort((a, b) =>
     Number.parseInt(b.quality, 10) - Number.parseInt(a.quality, 10) ||
     codecRank(b) - codecRank(a) || sourceRank(b) - sourceRank(a) ||
-    b.bit_depth - a.bit_depth || audioRank(b) - audioRank(a) || b.size_bytes - a.size_bytes || a.url.localeCompare(b.url)
+    b.bit_depth - a.bit_depth || audioRank(b) - audioRank(a) || b.size_bytes - a.size_bytes || a.hash.localeCompare(b.hash)
   )[0] || null;
 }
 
@@ -494,7 +506,7 @@ function renderYtsCatalog(film) {
   spec.innerHTML = torrent ? ytsTorrentSpec(torrent).map((text) => `<span>${escapeHtml(text)}</span>`).join(" · ") : "";
   download.hidden = !torrent;
   if (torrent) {
-    download.setAttribute("href", torrent.url);
+    download.setAttribute("href", `./download/?hash=${torrent.hash}`);
     download.textContent = `Download Torrent · ${torrent.quality}`;
   } else {
     download.removeAttribute("href");
@@ -581,7 +593,7 @@ function openDetail(film) {
         </div>
         <p class="catalog-spec" data-yts-spec hidden></p>
         <div class="catalog-actions" data-yts-actions hidden>
-          <a class="catalog-download" data-yts-download target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" type="application/x-bittorrent" hidden></a>
+          <a class="catalog-download" data-yts-download target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden></a>
           <a class="catalog-subtitles external-link" data-yts-subtitles target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>${externalLinkContent("Search SubHD subtitles")}</a>
         </div>
         <p class="catalog-notice" data-yts-notice role="status" aria-live="polite" hidden></p>

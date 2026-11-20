@@ -1116,8 +1116,15 @@ Assert-Equal "2025" (($exportedWebData.festivalYears | ForEach-Object { [string]
 Assert-Equal "Berlin,Cannes,Locarno,NYFF,Venice" (($exportedWebData.festivals | ForEach-Object { [string]$_ }) -join ",") "exports festival filter options from individual selections"
 $catalogOutput = Join-Path $exportStateDir "catalog-data.json"
 $historicalEventsBefore = Get-Content -LiteralPath (Join-Path $exportStateDir "events.json") -Raw
+Set-RecordProperty -Record $duplicateFestivalFilms[0] -Name "yts_status" -Value "found"
+Set-RecordProperty -Record $duplicateFestivalFilms[0] -Name "yts_first_found_at" -Value "2026-10-30T01:00:00Z"
+Set-RecordProperty -Record $duplicateFestivalFilms[0] -Name "yts_torrents_json" -Value '[{"url":"https://yts.pw/torrent/download/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","quality":"720p"}]'
+ConvertTo-Json -InputObject $duplicateFestivalFilms -Depth 10 | Set-Content -Path (Join-Path $exportStateDir "films.json") -Encoding UTF8
 & (Join-Path $PSScriptRoot "..\scripts\Export-TrackerData.ps1") -OutputPath $catalogOutput -StateDir $exportStateDir | Out-Null
 $catalogData = Get-Content -LiteralPath $catalogOutput -Raw | ConvertFrom-Json
+$downloadIndex = Get-Content -LiteralPath (Join-Path $exportStateDir "yts-downloads.json") -Raw | ConvertFrom-Json
+Assert-Equal ("https://yts.gg/torrent/download/" + ('a' * 40)) $downloadIndex.('a' * 40) "exports a fixed torrent hash mapping from legacy YTS URLs"
+Assert-Equal ("https://yts.pw/torrent/download/" + ('b' * 40)) $downloadIndex.('b' * 40) "keeps both versions of a film when duplicate selections are merged"
 Assert-Equal "yts" $catalogData.catalogMode "default export is a YTS catalog"
 Assert-Equal 6 $catalogData.totals.films "YTS export retains all canonical film cards"
 Assert-Equal 1 $catalogData.totals.ytsListed "YTS totals use catalog results rather than legal availability"
