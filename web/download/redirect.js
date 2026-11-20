@@ -5,6 +5,7 @@ async function openTorrentDownload() {
   const hash = new URLSearchParams(window.location.search).get("hash")?.toLowerCase();
   if (!hash || !/^[a-f0-9]{40}$/.test(hash)) throw new Error("Invalid torrent hash");
 
+  downloadStatus.textContent = "Finding the download link…";
   const response = await fetch("../data/yts-downloads.json", { cache: "no-store" });
   if (!response.ok) throw new Error("Download index unavailable");
   const urls = await response.json();
@@ -14,7 +15,7 @@ async function openTorrentDownload() {
 
   downloadLink.href = target.href;
   downloadLink.hidden = false;
-  downloadStatus.textContent = "Opening the YTS download…";
+  downloadStatus.textContent = "If the download doesn’t start, use the link below.";
   window.location.replace(target.href);
 }
 
