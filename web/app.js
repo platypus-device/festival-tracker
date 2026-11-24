@@ -501,7 +501,8 @@ function renderYtsCatalog(film) {
   const download = card.querySelector("[data-yts-download]");
   const subtitles = card.querySelector("[data-yts-subtitles]");
   const torrent = preferredYtsTorrent(result);
-  const canSearchSubtitles = result?.status === "found";
+  const subtitleTitle = film.title?.trim() || film.originalTitle?.trim();
+  const canSearchSubtitles = result?.status === "found" && Boolean(subtitleTitle);
   spec.hidden = !torrent;
   spec.innerHTML = torrent ? ytsTorrentSpec(torrent).map((text) => `<span>${escapeHtml(text)}</span>`).join(" · ") : "";
   download.hidden = !torrent;
@@ -514,8 +515,9 @@ function renderYtsCatalog(film) {
   }
   subtitles.hidden = !canSearchSubtitles;
   if (canSearchSubtitles) {
-    subtitles.setAttribute("href", `https://subhd.me/search/${encodeURIComponent(imdbId)}`);
-    subtitles.setAttribute("aria-label", `Search SubHD subtitles using IMDb ${imdbId} (opens in a new tab)`);
+    const query = new URLSearchParams({ search: subtitleTitle });
+    subtitles.setAttribute("href", `https://www.subtitlecat.com/index.php?${query}`);
+    subtitles.setAttribute("aria-label", `Search Subtitle Cat for ${subtitleTitle} (opens in a new tab)`);
   } else {
     subtitles.removeAttribute("href");
     subtitles.removeAttribute("aria-label");
@@ -594,7 +596,7 @@ function openDetail(film) {
         <p class="catalog-spec" data-yts-spec hidden></p>
         <div class="catalog-actions" data-yts-actions hidden>
           <a class="catalog-download" data-yts-download target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden></a>
-          <a class="catalog-subtitles external-link" data-yts-subtitles target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>${externalLinkContent("Search SubHD subtitles")}</a>
+          <a class="catalog-subtitles external-link" data-yts-subtitles target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>${externalLinkContent("Search Subtitle Cat")}</a>
         </div>
         <p class="catalog-notice" data-yts-notice role="status" aria-live="polite" hidden></p>
       </div>

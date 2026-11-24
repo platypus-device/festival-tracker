@@ -168,11 +168,28 @@ test("shared results restore badges and resource links on every device without A
     assert.equal(app.status(), "Listed on YTS");
     assert.match(app.meta(), /Checked/);
     assert.equal(app.download().getAttribute("href"), downloadEntry(torrentHash()));
-    assert.equal(app.subtitles().getAttribute("href"), "https://subhd.me/search/tt0111161");
+    assert.equal(app.subtitles().getAttribute("href"), "https://www.subtitlecat.com/index.php?search=Film+A");
     assert.equal(app.torrentSpec().hidden, false);
     assert.equal(app.requests.length, 0);
     app.closeDetail();
   }
+});
+
+test("Subtitle Cat searches the display title or original title as one query parameter", () => {
+  const app = createApp();
+  const shared = { ...film, title: "  Café & Tea?  ", originalTitle: "茶 #1", ytsCatalog: catalog() };
+  for (const [title, expected] of [[shared.title, "Café & Tea?"], [" ", shared.originalTitle]]) {
+    app.openDetail({ ...shared, title });
+    const link = app.subtitles();
+    const url = new URL(link.getAttribute("href"));
+    assert.deepEqual([...url.searchParams], [["search", expected]]);
+    assert.equal(link.getAttribute("aria-label"), `Search Subtitle Cat for ${expected} (opens in a new tab)`);
+    assert.equal(link.hidden, false);
+  }
+  app.openDetail({ ...shared, title: "", originalTitle: null });
+  assert.equal(app.subtitles().hidden, true);
+  assert.equal(app.subtitles().getAttribute("href"), null);
+  assert.equal(app.actions().hidden, true);
 });
 
 test("old browser-only caches cannot override the published Notion snapshot", async () => {
